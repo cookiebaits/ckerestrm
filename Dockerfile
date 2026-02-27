@@ -1,4 +1,11 @@
-FROM python:3.11-slim-bookworm
+FROM debian:bookworm-slim
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Versions of Nginx and nginx-rtmp-module to use
+ENV NGINX_VERSION 1.26.1
+ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 # Install system dependencies
 RUN set -ex && \
@@ -13,26 +20,35 @@ RUN set -ex && \
         curl \
         build-essential \
         libpcre3-dev \
-        zlib1g-dev && \
+        zlib1g-dev \
+        python3 \
+        python3-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install pip manually
+RUN set -ex && \
+    wget -O get-pip.py https://bootstrap.pypa.io/get-pip.py && \
+    python3 get-pip.py && \
+    rm get-pip.py
 
 # Install Python packages
 RUN set -ex && \
     pip install --no-cache-dir flask gunicorn
 
-# Download and decompress Nginx
-RUN mkdir -p /tmp/build/nginx && \
+# Download and decompress Nginx (FIXED)
+RUN set -ex && \
+    mkdir -p /tmp/build/nginx && \
     cd /tmp/build/nginx && \
-    wget -O ${NGINX_VERSION}.tar.gz https://nginx.org/download/${NGINX_VERSION}.tar.gz && \
-    tar -zxf ${NGINX_VERSION}.tar.gz
+    wget -O nginx-${NGINX_VERSION}.tar.gz https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
+    tar -zxf nginx-${NGINX_VERSION}.tar.gz
 
 # Download and decompress RTMP module
-RUN mkdir -p /tmp/build/nginx-rtmp-module && \
+RUN set -ex && \
+    mkdir -p /tmp/build/nginx-rtmp-module && \
     cd /tmp/build/nginx-rtmp-module && \
     wget -O nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz https://github.com/arut/nginx-rtmp-module/archive/v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    tar -zxf nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    cd nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}
+    tar -zxf nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz
 
 # Build and install Nginx
 # The default puts everything under /usr/local/nginx, so it's needed to change
