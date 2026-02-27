@@ -1,14 +1,16 @@
-FROM buildpack-deps:bookworm
+FROM debian:bookworm-slim
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.26.1
+ENV NGINX_VERSION 1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
-# Install dependencies including build tools
-RUN apt-get update && \
+# Update package list and install dependencies
+RUN set -ex && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
-        python3 \
-        python3-pip \
         ca-certificates \
         openssl \
         libssl-dev \
@@ -17,11 +19,14 @@ RUN apt-get update && \
         wget \
         build-essential \
         libpcre3-dev \
-        zlib1g-dev && \
-    pip3 install flask gunicorn && \
+        zlib1g-dev \
+        python3 \
+        python3-pip \
+        python3-dev && \
+    pip3 install --no-cache-dir flask gunicorn && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    pip3 cache purge
+    rm -rf /var/lib/apt/lists/*
+
 
 # Download and decompress Nginx
 RUN mkdir -p /tmp/build/nginx && \
