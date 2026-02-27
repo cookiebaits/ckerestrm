@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV NGINX_VERSION 1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
-# Install system dependencies
+# Install system dependencies INCLUDING python packages
 RUN set -ex && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -22,33 +22,18 @@ RUN set -ex && \
         libpcre3-dev \
         zlib1g-dev \
         python3 \
+        python3-pip \
+        python3-flask \
+        python3-gunicorn \
         python3-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install pip manually
+# Verify installations
 RUN set -ex && \
-    wget -O get-pip.py https://bootstrap.pypa.io/get-pip.py && \
-    python3 get-pip.py && \
-    rm get-pip.py
+    python3 -c "import flask; print('Flask installed')" && \
+    python3 -c "import gunicorn; print('Gunicorn installed')"
 
-# Install Python packages
-RUN set -ex && \
-    pip install --no-cache-dir flask gunicorn
-
-# Download and decompress Nginx (FIXED)
-RUN set -ex && \
-    mkdir -p /tmp/build/nginx && \
-    cd /tmp/build/nginx && \
-    wget -O nginx-${NGINX_VERSION}.tar.gz https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
-    tar -zxf nginx-${NGINX_VERSION}.tar.gz
-
-# Download and decompress RTMP module
-RUN set -ex && \
-    mkdir -p /tmp/build/nginx-rtmp-module && \
-    cd /tmp/build/nginx-rtmp-module && \
-    wget -O nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz https://github.com/arut/nginx-rtmp-module/archive/v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    tar -zxf nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz
 
 # Build and install Nginx
 # The default puts everything under /usr/local/nginx, so it's needed to change
