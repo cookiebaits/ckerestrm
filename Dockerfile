@@ -1,15 +1,11 @@
 FROM debian:bookworm-slim
 
-# Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Versions of Nginx and nginx-rtmp-module to use
 ENV NGINX_VERSION 1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
-# Update package list and install dependencies
-RUN set -ex && \
-    apt-get update && \
+# Install system dependencies
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         openssl \
@@ -22,12 +18,15 @@ RUN set -ex && \
         zlib1g-dev \
         python3 \
         python3-pip \
-        python3-dev && \
-    pip3 install --no-cache-dir flask gunicorn && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+        python3-dev
 
+# Install Python packages
+RUN pip3 install --no-cache-dir flask gunicorn
 
+# Clean up
+RUN apt-get update -v && \
+    apt-get install -y -v --no-install-recommends [packages]
+    
 # Download and decompress Nginx
 RUN mkdir -p /tmp/build/nginx && \
     cd /tmp/build/nginx && \
