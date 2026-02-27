@@ -1,5 +1,9 @@
-FROM buildpack-deps:bookworm-scm
-
+FROM debian:bookworm-slim
+RUN apt-get update && \
+    apt-get install -y nginx libnginx-mod-rtmp && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+	
 # Versions of Nginx and nginx-rtmp-module to use
 ENV NGINX_VERSION nginx-1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
