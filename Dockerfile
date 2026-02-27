@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV NGINX_VERSION 1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
-# Install system dependencies
+# Install system dependencies with verbose output
 RUN set -ex && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -28,10 +28,26 @@ RUN set -ex && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and install Python packages
+# Debug Python and pip installation
 RUN set -ex && \
-    python3 -m pip install --upgrade pip && \
-    pip3 install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org flask gunicorn
+    echo "Python version:" && \
+    python3 --version && \
+    echo "Pip location:" && \
+    which pip3 && \
+    echo "Pip version:" && \
+    pip3 --version
+
+# Try multiple approaches to upgrade/install pip
+RUN set -ex && \
+    python3 -m pip install --upgrade pip || \
+    python3 -m pip install --upgrade pip --trusted-host pypi.org --trusted-host files.pythonhosted.org || \
+    echo "Pip upgrade failed, continuing anyway..."
+
+# Install Python packages with fallbacks
+RUN set -ex && \
+    (pip3 install --no-cache-dir flask gunicorn || \
+     pip3 install --no-cache-dir --trusted-host pypi.org --trusted-host files.pythonhosted.org flask gunicorn || \
+     pip3 install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org flask gunicorn)
 
 # Download and decompress Nginx
 RUN mkdir -p /tmp/build/nginx && \
