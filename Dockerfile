@@ -4,14 +4,25 @@ FROM buildpack-deps:bookworm
 ENV NGINX_VERSION nginx-1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
+# Install dependencies including build tools
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-pip && \
+    apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        ca-certificates \
+        openssl \
+        libssl-dev \
+        stunnel4 \
+        gettext \
+        wget \
+        build-essential \
+        libpcre3-dev \
+        zlib1g-dev && \
     pip3 install flask gunicorn && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
-	
+
 # Download and decompress Nginx
 RUN mkdir -p /tmp/build/nginx && \
     cd /tmp/build/nginx && \
