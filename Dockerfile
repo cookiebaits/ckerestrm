@@ -1,22 +1,16 @@
 FROM buildpack-deps:bullseye
 
+# Versions of Nginx and nginx-rtmp-module to use
 ENV NGINX_VERSION nginx-1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates openssl libssl-dev stunnel4 gettext && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN mkdir -p /tmp/build/nginx && \
-    cd /tmp/build/nginx && \
-    wget -O ${NGINX_VERSION}.tar.gz https://nginx.org/download/${NGINX_VERSION}.tar.gz && \
-    tar -zxf ${NGINX_VERSION}.tar.gz
-
-RUN mkdir -p /tmp/build/nginx-rtmp-module && \
-    cd /tmp/build/nginx-rtmp-module && \
-    wget -O nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz https://github.com/arut/nginx-rtmp-module/archive/v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    tar -zxf nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    cd nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}
+    apt-get install -y --no-install-recommends python3 python3-pip && \
+    pip3 install flask gunicorn && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip3 cache purge
 	
 # Download and decompress Nginx
 RUN mkdir -p /tmp/build/nginx && \
