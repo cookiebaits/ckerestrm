@@ -1,13 +1,6 @@
-FROM debian:bookworm-slim
+FROM python:3.11-slim-bookworm
 
-# Prevent interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION 1.26.1
-ENV NGINX_RTMP_MODULE_VERSION 1.2.2
-
-# Install system dependencies (without pip initially)
+# Install system dependencies
 RUN set -ex && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -20,27 +13,13 @@ RUN set -ex && \
         curl \
         build-essential \
         libpcre3-dev \
-        zlib1g-dev \
-        python3 \
-        python3-dev && \
+        zlib1g-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
-# Install pip manually using get-pip.py
-RUN set -ex && \
-    wget -O get-pip.py https://bootstrap.pypa.io/get-pip.py && \
-    python3 get-pip.py && \
-    rm get-pip.py
-
-# Verify pip installation
-RUN set -ex && \
-    pip --version && \
-    python3 -m pip --version
 
 # Install Python packages
 RUN set -ex && \
     pip install --no-cache-dir flask gunicorn
-
 
 # Download and decompress Nginx
 RUN mkdir -p /tmp/build/nginx && \
