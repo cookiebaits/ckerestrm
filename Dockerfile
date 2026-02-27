@@ -1,4 +1,4 @@
-FROM debian:bookworm-scm 
+FROM debian:bookworm-scm
 	
 # Versions of Nginx and nginx-rtmp-module to use
 ENV NGINX_VERSION nginx-1.26.1
