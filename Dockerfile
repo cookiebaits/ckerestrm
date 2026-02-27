@@ -34,7 +34,6 @@ RUN set -ex && \
     python3 -c "import flask; print('Flask installed')" && \
     python3 -c "import gunicorn; print('Gunicorn installed')"
 
-
 # Build and install Nginx
 # The default puts everything under /usr/local/nginx, so it's needed to change
 # it explicitly. Not just for order but to have it in the PATH
