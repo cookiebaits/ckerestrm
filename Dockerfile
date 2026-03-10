@@ -1,4 +1,4 @@
-FROM buildpack-deps:bulleseye
+FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
 ENV NGINX_VERSION nginx-1.26.1
