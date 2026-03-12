@@ -4,7 +4,7 @@ FROM debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION=nginx-1.26.1
+ENV NGINX_VERSION=nginx-1.29.6
 ENV NGINX_RTMP_MODULE_VERSION=1.2.2
 
 # Install system dependencies
