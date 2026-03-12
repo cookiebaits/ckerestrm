@@ -21,12 +21,13 @@ RUN set -x && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python and required modules
+# Install Python and required modules using a virtual environment
 RUN set -x && \
     apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install flask gunicorn && \
-    pip3 cache purge
+    apt-get install -y --no-install-recommends python3 python3-pip python3-venv && \
+    python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install flask gunicorn && \
+    rm -rf /var/lib/apt/lists/*   
 
 # Download and decompress Nginx
 RUN set -x && \
