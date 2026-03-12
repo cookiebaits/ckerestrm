@@ -43,8 +43,8 @@ RUN set -x && \
     wget -O nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz \
         https://github.com/arut/nginx-rtmp-module/archive/refs/tags/v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
     tar -zxf nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    mv nginx-rtmp-module-* nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}   
-
+    mv nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION} /tmp/build/nginx-rtmp-module-final   
+    
 # Build and install Nginx
 RUN set -x && \
     cd /tmp/build/nginx/${NGINX_VERSION} && \
