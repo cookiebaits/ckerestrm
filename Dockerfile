@@ -79,7 +79,7 @@ COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
 COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
 
 #Youtube
-ENV YOUTUBE_URL rtmp://a.rtmp.youtube.com/live2/
+ENV YOUTUBE_URL rtmp://x.rtmp.youtube.com/live2/
 ENV YOUTUBE_KEY ""
 
 #Facebook
