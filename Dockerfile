@@ -95,7 +95,7 @@ ENV CLOUDFLARE_URL rtmp://127.0.0.1:19352/live/
 ENV CLOUDFLARE_KEY ""
 
 #Twitch
-ENV TWITCH_URL ""
+ENV TWITCH_URL rtmp://ingest.global-contribute.live-video.net/app/
 ENV TWITCH_KEY ""
 
 #Rtmp1
