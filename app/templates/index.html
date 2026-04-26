@@ -23,14 +23,42 @@
     <div class="container">
         <a href="{{ url_for('logout') }}" class="logout">Logout</a>
         <h1>PrismRTMPS Dashboard</h1>
-        <form method="POST" action="{{ url_for('save') }}">
             <h2>Master Settings</h2>
-            <div class="form-group">
-                <label>Master Stream Key (OBS uses this)</label>
-                <input type="text" name="master_stream_key" value="{{ settings.master_stream_key }}" required>
+            <div class="form-group" style="display:flex; gap:10px;">
+                <form method="POST" action="{{ url_for('save') }}" style="flex-grow:1;">
+                    <label>Master Stream Key (OBS uses this)</label>
+                    <input type="text" name="master_stream_key" value="{{ settings.master_stream_key }}" required style="margin-bottom:10px;">
+            </div>
+
+            <form method="POST" action="{{ url_for('regenerate_key') }}" style="display:inline;">
+                <input type="submit" value="Regenerate Key" style="background-color:#ffc107; color:black; margin-bottom: 20px;">
+            </form>
+
+        <form method="POST" action="{{ url_for('save') }}">
+            <!-- Re-add the master stream key as a hidden field so it saves correctly if the user hits save -->
+            <input type="hidden" name="master_stream_key" value="{{ settings.master_stream_key }}">
+
+            <h2>Transcoding (For Low Upload Speeds)</h2>
+            <div class="platform-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="transcode_active" name="transcode_active" {% if settings.transcode_active %}checked{% endif %}>
+                    <label for="transcode_active" style="display:inline; margin:0;">Enable FFmpeg Transcoding</label>
+                </div>
+                <div class="form-group">
+                    <label>Resolution Output</label>
+                    <select name="resolution" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="1080" {% if settings.resolution == '1080' %}selected{% endif %}>1080p</option>
+                        <option value="720" {% if settings.resolution == '720' %}selected{% endif %}>720p</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Streaming Bitrate (e.g. 4000k, 6000k)</label>
+                    <input type="text" name="bitrate" value="{{ settings.bitrate }}">
+                </div>
             </div>
 
             <h2>Destinations</h2>
+            <p style="font-size: 0.9em; color: #666;">Use <b>rtmps://</b> for secure connections (Kick, YouTube, X, Twitch support this natively and it will route through the internal Stunnel proxy).</p>
 
             {% set platforms = [
                 ('YouTube', 'youtube'),

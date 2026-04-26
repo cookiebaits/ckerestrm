@@ -6,14 +6,34 @@ rtmp {
     server {
         listen 1935;
         listen [::]:1935 ipv6only=on;
-        chunk_size 8192;
+        chunk_size 4096;
+
+        # Stability Enhancements
+        drop_idle_publisher 10s;
+        wait_key on;
+        wait_video on;
+        interleave on;
+        sync 10ms;
 
         application live {
             live on;
             record off;
             on_publish http://127.0.0.1:8080/validate?key=$name;
-            
+
+# FFMPEG_EXEC
 # PUSH_DIRECTIVES
+        }
+
+        application out {
+            live on;
+            record off;
+
+            # This application only receives internal streams from ffmpeg.
+            # Do not allow external publishing.
+            allow publish 127.0.0.1;
+            deny publish all;
+
+# OUT_PUSH_DIRECTIVES
         }
     }
 }

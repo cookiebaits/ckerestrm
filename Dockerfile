@@ -5,12 +5,15 @@ ENV NGINX_VERSION nginx-1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-pip sqlite3 && \
+    apt-get install -y --no-install-recommends python3 python3-pip sqlite3 ffmpeg && \
     pip3 install flask gunicorn && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
+
+# Create stunnel log directory
+RUN mkdir -p /var/log/stunnel4 && chown stunnel4:stunnel4 /var/log/stunnel4
 	
 # Download and decompress Nginx
 RUN mkdir -p /tmp/build/nginx && \
