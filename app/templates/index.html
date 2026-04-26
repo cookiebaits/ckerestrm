@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PrismRTMPS Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+        h1 { text-align: center; color: #333; }
+        h2 { color: #555; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .platform-group { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; }
+        .checkbox-group { display: flex; align-items: center; margin-bottom: 10px; }
+        .checkbox-group input { margin-right: 10px; }
+        input[type="submit"] { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        input[type="submit"]:hover { background-color: #0056b3; }
+        .logout { float: right; color: #d9534f; text-decoration: none; font-weight: bold; }
+        .logout:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+        <h1>PrismRTMPS Dashboard</h1>
+        <form method="POST" action="{{ url_for('save') }}">
+            <h2>Master Settings</h2>
+            <div class="form-group">
+                <label>Master Stream Key (OBS uses this)</label>
+                <input type="text" name="master_stream_key" value="{{ settings.master_stream_key }}" required>
+            </div>
+
+            <h2>Destinations</h2>
+
+            {% set platforms = [
+                ('YouTube', 'youtube'),
+                ('Twitch', 'twitch'),
+                ('Instagram', 'instagram'),
+                ('X (Twitter)', 'x'),
+                ('Kick', 'kick')
+            ] %}
+
+            {% for label, name in platforms %}
+            <div class="platform-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="{{ name }}_active" name="{{ name }}_active" {% if settings[name ~ '_active'] %}checked{% endif %}>
+                    <label for="{{ name }}_active" style="display:inline; margin:0;">Enable {{ label }}</label>
+                </div>
+                <div class="form-group">
+                    <label>RTMP URL</label>
+                    <input type="text" name="{{ name }}_url" value="{{ settings[name ~ '_url'] }}">
+                </div>
+                <div class="form-group">
+                    <label>Stream Key</label>
+                    <input type="password" name="{{ name }}_key" value="{{ settings[name ~ '_key'] }}">
+                </div>
+            </div>
+            {% endfor %}
+
+            <input type="submit" value="Save Settings & Reload Nginx">
+        </form>
+    </div>
+</body>
+</html>
