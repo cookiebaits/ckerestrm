@@ -25,7 +25,12 @@ You stream **one** high-quality feed to your PrismRTMPS server, and it will:
 1.  **Validate** the incoming stream to ensure it's from you, preventing unauthorized access.
 2.  **Relay** your stream to all the platforms you configure.
 
-This fork also includes performance tuning (optimized `chunk_size`), updated core components for better stability and security, and active maintenance.
+### New Features in this Version:
+*   **Dokploy Compatible Web Dashboard:** Manage your stream keys, transcodes, and destinations easily from a persistent, SQLite-backed web UI.
+*   **Incoming & Outgoing RTMPS Support:** Stream securely from OBS to your server via RTMPS (port 1936), and automatically relay to platforms like YouTube and Kick using dynamic Stunnel proxies.
+*   **Low Bandwidth Optimization (Transcoding):** Built-in FFmpeg support to downscale resolution and lower bitrate directly from the dashboard, saving your upload bandwidth.
+*   **Server Telemetry:** Real-time ping and upload speed testing built directly into the admin panel.
+*   **Twitch API Integration:** Sync your Twitch stream key automatically. *(Note: YouTube, Kick, Instagram, and X (Twitter) currently require manual stream key entry due to official API limitations on those platforms).*
 
 ## Prequisites
 
@@ -33,89 +38,38 @@ You'd need a VPS server. Key considerations:
 *   **Network Performance:** Good bandwidth, low latency, and stable routing between your VPS and your chosen streaming platforms are crucial, especially for 1080p 60fps.
 *   **Resources:** A 2 vCore, 2GB RAM VPS (like those from Ionos, Linode, Digital Ocean, Vultr, Hetzner Cloud) is often sufficient. This fork has been tested and runs effectively on such configurations. Choose a location strategically.
 
-## How To Set up `waefrebeorn/PrismRTMPS`
+## How To Set up `waefrebeorn/PrismRTMPS` via Docker/Dokploy
 
-*   1- **SSH into your VPS server:**
-    ```bash
-    ssh root@<your_server_ip_address>
-    ```
+The application is now fully controllable via a Web Dashboard. You no longer need to pass stream keys as environment variables.
 
-*   2- **Enter your password.**
-
-*   3- **Install Docker & Git:**
-    *   Follow the official Docker installation guide for your VPS's Linux distribution.
-    *   Example for Debian/Ubuntu:
-        ```bash
-        sudo apt update && sudo apt install -y docker.io git
-        sudo systemctl start docker
-        sudo systemctl enable docker
-        ```
-
-*   4- **Clone and Build the PrismRTMPS image:**
-    ```bash
-    git clone https://github.com/waefrebeorn/PrismRTMPS.git
-    cd PrismRTMPS
-    docker build -t prism-rtmps . 
-    ```
-    *(Using `prism-rtmps` as the image name to differentiate)*
-
-*   5- **Verify the image has been built:**
-    ```bash
-    docker images
-    ```
-    *(You should see `prism-rtmps` listed)*
-
-*   6- **Run the PrismRTMPS Container:**
-    *   Provide the specific stream keys for **each destination platform** you want to stream *to*.
-    *   **IMPORTANT (Stream Key for OBS):** The key you use in OBS (Step 7) **must be ONE of the actual stream keys you provide below** (e.g., your `YOUTUBE_KEY`, `TWITCH_KEY`, etc.). This is how PrismRTMPS validates your stream.
-    *   Remove lines for platforms you *don't* intend to use.
-
-    **Example `docker run` command:**
+*   1- **Deploy via Docker (or Dokploy):**
     ```bash
     docker run -d --name prism-rtmps \
       -p 1935:1935 \
-      -p 8081:8081 `# Expose port for RTMP stats page` \
-      --restart unless-stopped `# Optional: auto-restart container` \
-      # --- Provide stream keys for YOUR desired destinations ---
-      # --- The key you use in OBS MUST match one of these ---
-      -e YOUTUBE_KEY="your-youtube-stream-key" `# You could use this key in OBS` \
-      -e TWITCH_URL="rtmp://live-iad.twitch.tv/app/" `# Find your nearest Twitch ingest server!` \
-      -e TWITCH_KEY="your_twitch_stream_key" `# Or you could use this key in OBS` \
-      -e KICK_KEY="sk_us-west-1_xxxxxxxxxxxxxx" `# Or this one...` \
-      -e FACEBOOK_KEY="your-facebook-stream-key" \
-      -e X_KEY="your_x_twitter_stream_key" \
-      # -e INSTAGRAM_KEY="your-ig-key" ` # Uncomment if using Instagram ` \
-      # -e CLOUDFLARE_KEY="your-cf-key" ` # Uncomment if using Cloudflare ` \
-      # -e TROVO_KEY="your-trovo-key" `   # Uncomment if using Trovo ` \
-      # -e RTMP1_URL="rtmp://custom.server.com/live" ` # Uncomment for Custom Dest 1 ` \
-      # -e RTMP1_KEY="custom-key-1" `                  # Uncomment for Custom Dest 1 ` \
+      -p 1936:1936 `# Optional: Expose for inbound RTMPS` \
+      -p 8080:8080 `# Expose port for Web Dashboard` \
+      -v /path/to/your/data:/app/data `# Ensure database persists` \
+      -e ADMIN_USERNAME="admin" \
+      -e ADMIN_PASSWORD="your_secure_password" \
+      --restart unless-stopped \
       prism-rtmps 
     ```
-    *   The `-d` runs the container detached. `--restart unless-stopped` is recommended.
-    *   **Note on Validator:** `stream_validator.py` in this fork checks the incoming key against *all* non-empty destination keys you provide.
 
-*   7- **Configure OBS (or other streaming software):**
-    *   Service: `Custom...`
-    *   Server: `rtmp://<your_vps_ip_address>:1935/live`
-        *(The application path is `/live` by default in this fork for simplicity and predictability)*
-    *   Stream Key: **Use ONE of the actual stream keys you configured in the `docker run` command.**
+*   2- **Configure Destinations:**
+    *   Navigate to `http://<your_vps_ip>:8080` in your web browser.
+    *   Log in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
+    *   Toggle the platforms you want to stream to and paste in your stream keys.
+    *   (Optional) Setup Twitch API credentials to auto-sync your stream key.
 
-*   8- **Begin streaming from OBS!**
+*   3- **Configure OBS (or other streaming software):**
+    *   **Server:** Copy the RTMPS or RTMP URL displayed at the top of your Web Dashboard.
+    *   **Stream Key:** Copy the Master Stream Key from the Dashboard.
 
-
-We advise testing with one or two destinations first.
-
-## How To Manage PrismRTMPS
-
-*   **STOP** the container: `docker stop prism-rtmps`
-*   **START** the container: `docker start prism-rtmps`
-*   **VIEW LOGS:** `docker logs prism-rtmps` (or `docker logs -f prism-rtmps` for live logs)
-*   **EDIT Destinations / Keys:** Stop, remove (`docker rm prism-rtmps`), and re-run the `docker run` command.
-*   **UNINSTALL:** Stop, remove container, then `docker rmi prism-rtmps`.
+*   4- **Begin streaming from OBS!**
 
 ## Troubleshooting Common Issues
 
-*   **Lag / Falling Behind Stream:** Often a network bottleneck. This fork uses `chunk_size: 8192` for improved performance.
+*   **Lag / Falling Behind Stream:** If you have a slow upload speed, enable **FFmpeg Transcoding** in the Web Dashboard and lower your bitrate/resolution.
     *   **Diagnosis:** Test one destination at a time. Use `mtr <destination_hostname>` from VPS.
     *   **Solutions:** Different ingest servers, different VPS location, or lower stream bitrate.
 *   **Stream Rejects / "Invalid Key":**

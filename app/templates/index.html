@@ -86,6 +86,7 @@
 
         <h2>Admin Account</h2>
         <form method="POST" action="{{ url_for('update_account') }}" style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label>Username</label>
                 <input type="text" name="admin_username" value="{{ settings.admin_username }}" required>
@@ -100,15 +101,18 @@
             <h2>Master Settings</h2>
             <div class="form-group" style="display:flex; gap:10px;">
                 <form method="POST" action="{{ url_for('save') }}" style="flex-grow:1;">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <label>Master Stream Key (OBS uses this)</label>
                     <input type="text" name="master_stream_key" value="{{ settings.master_stream_key }}" required style="margin-bottom:10px;">
             </div>
 
             <form method="POST" action="{{ url_for('regenerate_key') }}" style="display:inline;">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <input type="submit" value="Regenerate Key" style="background-color:#ffc107; color:black; margin-bottom: 20px;">
             </form>
 
         <form method="POST" action="{{ url_for('save') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <!-- Re-add the master stream key as a hidden field so it saves correctly if the user hits save -->
             <input type="hidden" name="master_stream_key" value="{{ settings.master_stream_key }}">
 

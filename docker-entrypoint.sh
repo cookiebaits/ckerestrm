@@ -20,7 +20,7 @@ cd /app && python3 -c 'from app import init_db_and_conf; init_db_and_conf()'
 echo "Starting Web Dashboard and Validator..."
 # Start Gunicorn in the background to run the Flask app
 gunicorn \
-    --workers 1 \
+    --workers 3 \
     --bind 0.0.0.0:8080 \
     --log-level info \
     --chdir /app \

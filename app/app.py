@@ -2,9 +2,22 @@ import os
 import sqlite3
 import subprocess
 from flask import Flask, render_template, request, redirect, url_for, session, Response
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24) # Ensure session security
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+SECRET_FILE = '/app/data/secret.key'
+if os.path.exists(SECRET_FILE):
+    with open(SECRET_FILE, 'rb') as f:
+        app.secret_key = f.read()
+else:
+    app.secret_key = os.urandom(24)
+    # create dir if running tests outside container
+    os.makedirs('/app/data', exist_ok=True)
+    with open(SECRET_FILE, 'wb') as f:
+        f.write(app.secret_key)
+
 DB_PATH = '/app/data/settings.db'
 NGINX_CONF = '/etc/nginx/nginx.conf'
 NGINX_TEMPLATE = '/etc/nginx/nginx.conf.template'
@@ -123,12 +136,18 @@ def generate_stunnel_conf(settings):
     return stunnel_mappings
 
 def _build_nginx_conf(settings, stunnel_mappings):
+    import re
+    def sanitize(s):
+        if not s: return ''
+        # Remove semicolons, newlines, quotes to prevent Nginx config injection
+        return re.sub(r'[;\n\r\'"]', '', s)
+
     push_directives = []
     platforms = ['youtube', 'twitch', 'instagram', 'x', 'kick']
     for p in platforms:
         if settings[f'{p}_active']:
-            url = settings[f'{p}_url']
-            key = settings[f'{p}_key']
+            url = sanitize(settings[f'{p}_url'])
+            key = sanitize(settings[f'{p}_key'])
             if not url or not key:
                 continue
 
@@ -153,8 +172,8 @@ def _build_nginx_conf(settings, stunnel_mappings):
             new_conf = new_conf.replace('# OUT_PUSH_DIRECTIVES', push_block)
 
             res_map = {'1080': '1920x1080', '720': '1280x720'}
-            res = res_map.get(settings['resolution'], '1920x1080')
-            bitrate = settings['bitrate']
+            res = sanitize(res_map.get(settings['resolution'], '1920x1080'))
+            bitrate = sanitize(settings['bitrate'])
             ffmpeg_exec = f"exec ffmpeg -i rtmp://127.0.0.1:1935/live/$name -c:v libx264 -preset veryfast -b:v {bitrate} -maxrate {bitrate} -bufsize {bitrate} -s {res} -c:a aac -b:a 128k -f flv rtmp://127.0.0.1:1935/out/$name;"
             new_conf = new_conf.replace('# FFMPEG_EXEC', ffmpeg_exec)
         else:
@@ -196,6 +215,15 @@ def init_db_and_conf():
     stunnel_mappings = generate_stunnel_conf(settings)
     _build_nginx_conf(settings, stunnel_mappings)
 
+import secrets
+
+def generate_csrf_token():
+    if '_csrf_token' not in session:
+        session['_csrf_token'] = secrets.token_hex(32)
+    return session['_csrf_token']
+
+app.jinja_env.globals['csrf_token'] = generate_csrf_token
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -216,6 +244,10 @@ def login():
 def update_account():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+
+    token = session.get('_csrf_token', None)
+    if not token or token != request.form.get('_csrf_token'):
+        return Response('CSRF validation failed', status=403)
 
     new_username = request.form.get('admin_username')
     new_password = request.form.get('admin_password')
@@ -343,6 +375,10 @@ def save():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
+    token = session.get('_csrf_token', None)
+    if not token or token != request.form.get('_csrf_token'):
+        return Response('CSRF validation failed', status=403)
+
     master_stream_key = request.form.get('master_stream_key', '')
 
     platforms = ['youtube', 'twitch', 'instagram', 'x', 'kick']
@@ -390,10 +426,7 @@ def save():
 
 @app.route('/validate', methods=['POST'])
 def validate():
-    raw_data = request.get_data(as_text=True)
-    from urllib.parse import parse_qs
-    parsed_data = parse_qs(raw_data)
-    stream_key_attempt = parsed_data.get('name', [''])[0]
+    stream_key_attempt = request.form.get('name', '')
 
     conn = get_db_connection()
     settings = conn.execute('SELECT master_stream_key FROM settings ORDER BY id DESC LIMIT 1').fetchone()
@@ -408,6 +441,10 @@ def validate():
 def regenerate_key():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+
+    token = session.get('_csrf_token', None)
+    if not token or token != request.form.get('_csrf_token'):
+        return Response('CSRF validation failed', status=403)
 
     import secrets
     import string
