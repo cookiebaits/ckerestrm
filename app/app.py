@@ -145,8 +145,8 @@ def _build_nginx_conf(settings, stunnel_mappings):
     import re
     def sanitize(s):
         if not s: return ''
-        # Remove semicolons, newlines, quotes to prevent Nginx config injection
-        return re.sub(r'[;\n\r\'"]', '', s)
+        # Remove semicolons, newlines, quotes, and spaces to prevent Nginx config injection and FFmpeg argument injection
+        return re.sub(r'[;\n\r\'" ]', '', s)
 
     push_directives = []
     platforms = ['youtube', 'twitch', 'instagram', 'x', 'kick']

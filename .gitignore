@@ -1,1 +1,7 @@
 __pycache__/
+data/
+ookla-speedtest-1.2.0-linux-x86_64.tgz
+speedtest
+speedtest.5
+speedtest.md
+test_rtmp.py
