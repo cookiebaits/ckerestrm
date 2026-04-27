@@ -85,7 +85,7 @@ COPY app /app
 VOLUME ["/app/data"]
 
 ENV ADMIN_USERNAME "admin"
-ENV ADMIN_PASSWORD "password"
+ENV ADMIN_PASSWORD "P4sswerd"
 ENV DEBUG ""
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh

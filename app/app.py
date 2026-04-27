@@ -23,7 +23,7 @@ NGINX_CONF = '/etc/nginx/nginx.conf'
 NGINX_TEMPLATE = '/etc/nginx/nginx.conf.template'
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'password')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'P4sswerd')
 
 import urllib.parse
 def get_db_connection():
@@ -39,8 +39,10 @@ def init_db():
         "ALTER TABLE settings ADD COLUMN transcode_active INTEGER DEFAULT 0",
         "ALTER TABLE settings ADD COLUMN resolution TEXT DEFAULT '1080'",
         "ALTER TABLE settings ADD COLUMN bitrate TEXT DEFAULT '6000k'",
+        "ALTER TABLE settings ADD COLUMN framerate TEXT DEFAULT '60'",
+        "ALTER TABLE settings ADD COLUMN video_preset TEXT DEFAULT 'veryfast'",
         "ALTER TABLE settings ADD COLUMN admin_username TEXT DEFAULT 'admin'",
-        "ALTER TABLE settings ADD COLUMN admin_password TEXT DEFAULT 'password'",
+        "ALTER TABLE settings ADD COLUMN admin_password TEXT DEFAULT 'P4sswerd'",
         "ALTER TABLE settings ADD COLUMN twitch_client_id TEXT DEFAULT ''",
         "ALTER TABLE settings ADD COLUMN twitch_client_secret TEXT DEFAULT ''",
         "ALTER TABLE settings ADD COLUMN youtube_client_id TEXT DEFAULT ''",
@@ -57,11 +59,13 @@ def init_db():
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             admin_username TEXT DEFAULT 'admin',
-            admin_password TEXT DEFAULT 'password',
+            admin_password TEXT DEFAULT 'P4sswerd',
             master_stream_key TEXT DEFAULT 'default_key',
             transcode_active INTEGER DEFAULT 0,
             resolution TEXT DEFAULT '1080',
             bitrate TEXT DEFAULT '6000k',
+            framerate TEXT DEFAULT '60',
+            video_preset TEXT DEFAULT 'veryfast',
             youtube_url TEXT DEFAULT 'rtmps://a.rtmps.youtube.com/live2/',
             youtube_key TEXT DEFAULT '',
             youtube_client_id TEXT DEFAULT '',
@@ -174,7 +178,10 @@ def _build_nginx_conf(settings, stunnel_mappings):
             res_map = {'1080': '1920x1080', '720': '1280x720'}
             res = sanitize(res_map.get(settings['resolution'], '1920x1080'))
             bitrate = sanitize(settings['bitrate'])
-            ffmpeg_exec = f"exec ffmpeg -i rtmp://127.0.0.1:1935/live/$name -c:v libx264 -preset veryfast -b:v {bitrate} -maxrate {bitrate} -bufsize {bitrate} -s {res} -c:a aac -b:a 128k -f flv rtmp://127.0.0.1:1935/out/$name;"
+            fps = sanitize(settings.get('framerate', '60'))
+            preset = sanitize(settings.get('video_preset', 'veryfast'))
+
+            ffmpeg_exec = f"exec ffmpeg -i rtmp://127.0.0.1:1935/live/$name -c:v libx264 -preset {preset} -b:v {bitrate} -maxrate {bitrate} -bufsize {bitrate} -s {res} -r {fps} -c:a aac -b:a 128k -f flv rtmp://127.0.0.1:1935/out/$name;"
             new_conf = new_conf.replace('# FFMPEG_EXEC', ffmpeg_exec)
         else:
             new_conf = template.replace('# PUSH_DIRECTIVES', push_block)
@@ -404,6 +411,8 @@ def save():
     updates['transcode_active'] = 1 if request.form.get('transcode_active') else 0
     updates['resolution'] = request.form.get('resolution', '1080')
     updates['bitrate'] = request.form.get('bitrate', '6000k')
+    updates['framerate'] = request.form.get('framerate', '60')
+    updates['video_preset'] = request.form.get('video_preset', 'veryfast')
 
     updates['twitch_client_id'] = request.form.get('twitch_client_id', '')
     updates['twitch_client_secret'] = request.form.get('twitch_client_secret', '')
@@ -418,6 +427,7 @@ def save():
         UPDATE settings SET
             master_stream_key = ?,
             transcode_active = ?, resolution = ?, bitrate = ?,
+            framerate = ?, video_preset = ?,
             youtube_url = ?, youtube_key = ?, youtube_active = ?,
             twitch_url = ?, twitch_key = ?, twitch_active = ?,
             twitch_client_id = ?, twitch_client_secret = ?,
@@ -427,6 +437,7 @@ def save():
     ''', (
         updates['master_stream_key'],
         updates['transcode_active'], updates['resolution'], updates['bitrate'],
+        updates['framerate'], updates['video_preset'],
         updates['youtube_url'], updates['youtube_key'], updates['youtube_active'],
         updates['twitch_url'], updates['twitch_key'], updates['twitch_active'],
         updates['twitch_client_id'], updates['twitch_client_secret'],
@@ -509,35 +520,23 @@ def api_ping_platforms():
     if not session.get('logged_in'):
         return Response('Unauthorized', status=401)
 
-    import platform
-    import re
-    param = '-n' if platform.system().lower()=='windows' else '-c'
+    import socket
+    import time
 
     results = {'twitch': 'Error', 'youtube': 'Error'}
 
-    try:
-        res = subprocess.check_output(['ping', param, '4', 'live.twitch.tv']).decode('utf-8')
-        # Extract average ping. This varies by OS but we can look for "avg" or min/avg/max
-        match = re.search(r'=\s*[\d\.]+/([\d\.]+)/[\d\.]+', res) # Linux standard
-        if match:
-            results['twitch'] = f"{float(match.group(1)):.1f} ms"
-        else:
-            # Fallback simple search
-            match = re.search(r'time=([\d\.]+)', res)
-            if match:
-                results['twitch'] = f"{float(match.group(1)):.1f} ms"
-    except Exception: pass
+    def measure_tcp_latency(host, port=443, timeout=3):
+        try:
+            start_time = time.time()
+            with socket.create_connection((host, port), timeout=timeout):
+                pass
+            end_time = time.time()
+            return f"{(end_time - start_time) * 1000:.1f} ms"
+        except Exception:
+            return "Timeout/Blocked"
 
-    try:
-        res = subprocess.check_output(['ping', param, '4', 'a.rtmps.youtube.com']).decode('utf-8')
-        match = re.search(r'=\s*[\d\.]+/([\d\.]+)/[\d\.]+', res)
-        if match:
-            results['youtube'] = f"{float(match.group(1)):.1f} ms"
-        else:
-            match = re.search(r'time=([\d\.]+)', res)
-            if match:
-                results['youtube'] = f"{float(match.group(1)):.1f} ms"
-    except Exception: pass
+    results['twitch'] = measure_tcp_latency('live.twitch.tv')
+    results['youtube'] = measure_tcp_latency('a.rtmps.youtube.com')
 
     from flask import jsonify
     return jsonify(results)
@@ -548,8 +547,8 @@ def api_speedtest():
         return Response('Unauthorized', status=401)
 
     try:
-        # Run speedtest-cli and parse output
-        res = subprocess.check_output(['speedtest-cli', '--simple']).decode('utf-8')
+        # Run speedtest-cli and parse output. Use --secure to avoid some provider HTTP blocks.
+        res = subprocess.check_output(['speedtest-cli', '--simple', '--secure'], stderr=subprocess.STDOUT).decode('utf-8')
         # Example output:
         # Ping: 12.345 ms
         # Download: 123.45 Mbit/s

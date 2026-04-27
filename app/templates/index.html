@@ -71,16 +71,16 @@
                             </div>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-secondary">
-                            <span>Ping Twitch</span>
+                            <span>Latency (Twitch)</span>
                             <div>
                                 <span id="status-ping-twitch" class="text-info me-2">Not tested</span>
                             </div>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <span>Ping YouTube</span>
+                            <span>Latency (YouTube)</span>
                             <div>
                                 <span id="status-ping-youtube" class="text-info me-2">Not tested</span>
-                                <button id="btn-ping" class="btn btn-sm btn-outline-info py-0">Run Ping</button>
+                                <button id="btn-ping" class="btn btn-sm btn-outline-info py-0" title="Measures TCP handshake time to bypass ICMP blocks">Run Latency Test</button>
                             </div>
                         </div>
                     </div>
@@ -209,7 +209,7 @@
                                 <input class="form-check-input" type="checkbox" id="transcode_active" name="transcode_active" {% if settings.transcode_active %}checked{% endif %}>
                                 <label class="form-check-label" for="transcode_active">Enable Live Transcoding</label>
                             </div>
-                            <div class="row">
+                            <div class="row mb-2">
                                 <div class="col-6">
                                     <label class="form-label small text-muted">Resolution Output</label>
                                     <select class="form-select form-select-sm" name="resolution">
@@ -220,6 +220,24 @@
                                 <div class="col-6">
                                     <label class="form-label small text-muted">Max Bitrate (e.g. 4000k)</label>
                                     <input type="text" class="form-control form-control-sm" name="bitrate" value="{{ settings.bitrate }}">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <label class="form-label small text-muted" title="Lower FPS saves bandwidth">Framerate</label>
+                                    <select class="form-select form-select-sm" name="framerate">
+                                        <option value="60" {% if settings.framerate == '60' %}selected{% endif %}>60 fps</option>
+                                        <option value="30" {% if settings.framerate == '30' %}selected{% endif %}>30 fps</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-muted" title="ultrafast uses less CPU, veryfast/faster looks better but uses more CPU">Video Preset</label>
+                                    <select class="form-select form-select-sm" name="video_preset">
+                                        <option value="ultrafast" {% if settings.video_preset == 'ultrafast' %}selected{% endif %}>Ultrafast (Low CPU)</option>
+                                        <option value="superfast" {% if settings.video_preset == 'superfast' %}selected{% endif %}>Superfast</option>
+                                        <option value="veryfast" {% if settings.video_preset == 'veryfast' %}selected{% endif %}>Veryfast (Balanced)</option>
+                                        <option value="faster" {% if settings.video_preset == 'faster' %}selected{% endif %}>Faster (High CPU)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
