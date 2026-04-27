@@ -420,6 +420,67 @@ def regenerate_key():
 def health():
     return "OK"
 
+@app.route('/api/status')
+def api_status():
+    if not session.get('logged_in'):
+        return Response('Unauthorized', status=401)
+
+    status = {
+        'nginx': False,
+        'stunnel': False,
+        'ping': 'error'
+    }
+
+    # Check processes
+    try:
+        if subprocess.run(['pgrep', 'nginx'], stdout=subprocess.DEVNULL).returncode == 0:
+            status['nginx'] = True
+    except Exception: pass
+
+    try:
+        if subprocess.run(['pgrep', 'stunnel4'], stdout=subprocess.DEVNULL).returncode == 0:
+            status['stunnel'] = True
+    except Exception: pass
+
+    # Fast ping check to google.com
+    import platform
+    import re
+    param = '-n' if platform.system().lower()=='windows' else '-c'
+    try:
+        res = subprocess.check_output(['ping', param, '1', '8.8.8.8']).decode('utf-8')
+        # Extract time=X ms
+        match = re.search(r'time=([\d\.]+)', res)
+        if match:
+            status['ping'] = f"{float(match.group(1)):.1f} ms"
+    except Exception:
+        pass
+
+    from flask import jsonify
+    return jsonify(status)
+
+@app.route('/api/speedtest')
+def api_speedtest():
+    if not session.get('logged_in'):
+        return Response('Unauthorized', status=401)
+
+    try:
+        # Run speedtest-cli and parse output
+        res = subprocess.check_output(['speedtest-cli', '--simple']).decode('utf-8')
+        # Example output:
+        # Ping: 12.345 ms
+        # Download: 123.45 Mbit/s
+        # Upload: 67.89 Mbit/s
+        data = {}
+        for line in res.splitlines():
+            if ':' in line:
+                key, val = line.split(':', 1)
+                data[key.strip()] = val.strip()
+        from flask import jsonify
+        return jsonify(data)
+    except Exception as e:
+        app.logger.error(f"Speedtest failed: {e}")
+        return Response('Error running speedtest', status=500)
+
 if __name__ == '__main__':
     init_db()
     generate_nginx_conf()

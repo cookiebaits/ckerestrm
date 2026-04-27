@@ -6,7 +6,7 @@ ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip sqlite3 ffmpeg && \
-    pip3 install flask gunicorn requests && \
+    pip3 install flask gunicorn requests speedtest-cli && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -75,6 +75,9 @@ COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
 #X Stunnel Port 19354
 COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
 
+# Incoming RTMPS Port 1936
+COPY stunnel/incoming_rtmps.conf /etc/stunnel/conf.d/incoming_rtmps.conf
+
 # Setup Flask Web Dashboard
 COPY app /app
 
@@ -89,6 +92,7 @@ COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 1935
+EXPOSE 1936
 EXPOSE 8080
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
