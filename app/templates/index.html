@@ -183,61 +183,52 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-header">Low Bandwidth Transcoding</div>
-                    <div class="card-body">
-                        <!-- Transcode form will be bundled with the main save below,
-                             so we just wrap it visually here. It's technically outside the main form now
-                             but we'll adjust the main form to wrap everything. -->
-                    </div>
-                </div>
-
             </div>
 
-            <!-- Right Column: Destinations -->
+            <!-- Right Column: Destinations and Transcoding settings -->
             <div class="col-md-8">
-                <!-- Wrap destinations and transcoding in one main form -->
                 <form method="POST" action="{{ url_for('save') }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="master_stream_key" value="{{ settings.master_stream_key }}">
 
-                    <!-- Transcoding Config (Visually injected via CSS grid trick or just placed here) -->
-                    <div class="card mb-4">
-                        <div class="card-header">Low Bandwidth Optimization (FFmpeg)</div>
-                        <div class="card-body">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="transcode_active" name="transcode_active" {% if settings.transcode_active %}checked{% endif %}>
-                                <label class="form-check-label" for="transcode_active">Enable Live Transcoding</label>
-                            </div>
-                            <div class="row mb-2">
-                                <div class="col-6">
-                                    <label class="form-label small text-muted">Resolution Output</label>
-                                    <select class="form-select form-select-sm" name="resolution">
-                                        <option value="1080" {% if settings.resolution == '1080' %}selected{% endif %}>1080p</option>
-                                        <option value="720" {% if settings.resolution == '720' %}selected{% endif %}>720p</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small text-muted">Max Bitrate (e.g. 4000k)</label>
-                                    <input type="text" class="form-control form-control-sm" name="bitrate" value="{{ settings.bitrate }}">
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-6">
-                                    <label class="form-label small text-muted" title="Lower FPS saves bandwidth">Framerate</label>
-                                    <select class="form-select form-select-sm" name="framerate">
-                                        <option value="60" {% if settings.framerate == '60' %}selected{% endif %}>60 fps</option>
-                                        <option value="30" {% if settings.framerate == '30' %}selected{% endif %}>30 fps</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small text-muted" title="ultrafast uses less CPU, veryfast/faster looks better but uses more CPU">Video Preset</label>
-                                    <select class="form-select form-select-sm" name="video_preset">
-                                        <option value="ultrafast" {% if settings.video_preset == 'ultrafast' %}selected{% endif %}>Ultrafast (Low CPU)</option>
-                                        <option value="superfast" {% if settings.video_preset == 'superfast' %}selected{% endif %}>Superfast</option>
-                                        <option value="veryfast" {% if settings.video_preset == 'veryfast' %}selected{% endif %}>Veryfast (Balanced)</option>
-                                        <option value="faster" {% if settings.video_preset == 'faster' %}selected{% endif %}>Faster (High CPU)</option>
-                                    </select>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary bg-opacity-25 text-primary">Low Bandwidth Optimization (FFmpeg)</div>
+                                <div class="card-body">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="transcode_active" name="transcode_active" {% if settings.transcode_active %}checked{% endif %}>
+                                        <label class="form-check-label" for="transcode_active">Enable Live Transcoding</label>
+                                    </div>
+                                    <div class="row mb-2">
+                                        <div class="col-md-3 col-6 mb-2">
+                                            <label class="form-label small text-muted">Resolution Output</label>
+                                            <select class="form-select form-select-sm" name="resolution">
+                                                <option value="1080" {% if settings.resolution == '1080' %}selected{% endif %}>1080p</option>
+                                                <option value="720" {% if settings.resolution == '720' %}selected{% endif %}>720p</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-6 mb-2">
+                                            <label class="form-label small text-muted">Max Bitrate</label>
+                                            <input type="text" class="form-control form-control-sm" name="bitrate" value="{{ settings.bitrate }}" placeholder="e.g. 4000k">
+                                        </div>
+                                        <div class="col-md-3 col-6 mb-2">
+                                            <label class="form-label small text-muted" title="Lower FPS saves bandwidth">Framerate</label>
+                                            <select class="form-select form-select-sm" name="framerate">
+                                                <option value="60" {% if settings.framerate == '60' %}selected{% endif %}>60 fps</option>
+                                                <option value="30" {% if settings.framerate == '30' %}selected{% endif %}>30 fps</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-6 mb-2">
+                                            <label class="form-label small text-muted" title="ultrafast uses less CPU, veryfast/faster looks better but uses more CPU">Video Preset</label>
+                                            <select class="form-select form-select-sm" name="video_preset">
+                                                <option value="ultrafast" {% if settings.video_preset == 'ultrafast' %}selected{% endif %}>Ultrafast (Low CPU)</option>
+                                                <option value="superfast" {% if settings.video_preset == 'superfast' %}selected{% endif %}>Superfast</option>
+                                                <option value="veryfast" {% if settings.video_preset == 'veryfast' %}selected{% endif %}>Veryfast (Balanced)</option>
+                                                <option value="faster" {% if settings.video_preset == 'faster' %}selected{% endif %}>Faster (High CPU)</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

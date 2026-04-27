@@ -547,17 +547,18 @@ def api_speedtest():
         return Response('Unauthorized', status=401)
 
     try:
-        # Run speedtest-cli and parse output. Use --secure to avoid some provider HTTP blocks.
-        res = subprocess.check_output(['speedtest-cli', '--simple', '--secure'], stderr=subprocess.STDOUT).decode('utf-8')
-        # Example output:
-        # Ping: 12.345 ms
-        # Download: 123.45 Mbit/s
-        # Upload: 67.89 Mbit/s
-        data = {}
-        for line in res.splitlines():
-            if ':' in line:
-                key, val = line.split(':', 1)
-                data[key.strip()] = val.strip()
+        import json
+        # Run official Ookla speedtest binary and parse JSON output
+        # The license acceptance is required on first run, so we pass the flags
+        res = subprocess.check_output(['speedtest', '--accept-license', '--accept-gdpr', '-f', 'json'], stderr=subprocess.STDOUT).decode('utf-8')
+
+        parsed = json.loads(res)
+        data = {
+            'Ping': f"{parsed.get('ping', {}).get('latency', 0):.2f} ms",
+            'Download': f"{(parsed.get('download', {}).get('bandwidth', 0) * 8 / 1000000):.2f} Mbit/s",
+            'Upload': f"{(parsed.get('upload', {}).get('bandwidth', 0) * 8 / 1000000):.2f} Mbit/s"
+        }
+
         from flask import jsonify
         return jsonify(data)
     except Exception as e:

@@ -5,12 +5,19 @@ ENV NGINX_VERSION nginx-1.26.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-pip sqlite3 ffmpeg procps && \
-    pip3 install flask gunicorn requests speedtest-cli && \
+    apt-get install -y --no-install-recommends python3 python3-pip sqlite3 ffmpeg procps wget && \
+    pip3 install flask gunicorn requests && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
+
+# Install Official Ookla Speedtest CLI (more reliable for uploads)
+RUN mkdir -p /tmp/speedtest && cd /tmp/speedtest && \
+    wget https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-linux-x86_64.tgz && \
+    tar -zxvf ookla-speedtest-1.2.0-linux-x86_64.tgz && \
+    mv speedtest /usr/local/bin/speedtest && \
+    rm -rf /tmp/speedtest
 
 # Create stunnel log directory
 RUN mkdir -p /var/log/stunnel4 && chown stunnel4:stunnel4 /var/log/stunnel4
