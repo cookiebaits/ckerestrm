@@ -359,6 +359,23 @@ def twitch_callback():
     generate_nginx_conf()
     return redirect(url_for('dashboard'))
 
+INGEST_SERVERS = {
+    'youtube': [
+        ('Primary YouTube Ingest', 'rtmps://a.rtmps.youtube.com/live2/'),
+        ('Backup YouTube Ingest', 'rtmps://b.rtmps.youtube.com/live2/')
+    ],
+    'twitch': [
+        ('US East (Ashburn, VA)', 'rtmps://iad03.contribute.live-video.net/app/'),
+        ('US East (New York, NY)', 'rtmps://jfk.contribute.live-video.net/app/'),
+        ('US Central (Dallas, TX)', 'rtmps://dfw.contribute.live-video.net/app/'),
+        ('US West (San Francisco, CA)', 'rtmps://sfo.contribute.live-video.net/app/'),
+        ('US West (Seattle, WA)', 'rtmps://sea.contribute.live-video.net/app/'),
+        ('EU (London, UK)', 'rtmps://lhr03.contribute.live-video.net/app/'),
+        ('EU (Frankfurt, UK)', 'rtmps://fra02.contribute.live-video.net/app/'),
+        ('Global Auto-Routing', 'rtmps://ingest.global-contribute.live-video.net/app/')
+    ]
+}
+
 @app.route('/')
 def dashboard():
     if not session.get('logged_in'):
@@ -368,7 +385,7 @@ def dashboard():
     settings = conn.execute('SELECT * FROM settings ORDER BY id DESC LIMIT 1').fetchone()
     conn.close()
 
-    return render_template('index.html', settings=settings)
+    return render_template('index.html', settings=settings, ingest_servers=INGEST_SERVERS)
 
 @app.route('/save', methods=['POST'])
 def save():
@@ -484,21 +501,46 @@ def api_status():
             status['stunnel'] = True
     except Exception: pass
 
-    # Fast ping check to google.com
+    from flask import jsonify
+    return jsonify(status)
+
+@app.route('/api/ping_platforms')
+def api_ping_platforms():
+    if not session.get('logged_in'):
+        return Response('Unauthorized', status=401)
+
     import platform
     import re
     param = '-n' if platform.system().lower()=='windows' else '-c'
+
+    results = {'twitch': 'Error', 'youtube': 'Error'}
+
     try:
-        res = subprocess.check_output(['ping', param, '1', '8.8.8.8']).decode('utf-8')
-        # Extract time=X ms
-        match = re.search(r'time=([\d\.]+)', res)
+        res = subprocess.check_output(['ping', param, '4', 'live.twitch.tv']).decode('utf-8')
+        # Extract average ping. This varies by OS but we can look for "avg" or min/avg/max
+        match = re.search(r'=\s*[\d\.]+/([\d\.]+)/[\d\.]+', res) # Linux standard
         if match:
-            status['ping'] = f"{float(match.group(1)):.1f} ms"
-    except Exception:
-        pass
+            results['twitch'] = f"{float(match.group(1)):.1f} ms"
+        else:
+            # Fallback simple search
+            match = re.search(r'time=([\d\.]+)', res)
+            if match:
+                results['twitch'] = f"{float(match.group(1)):.1f} ms"
+    except Exception: pass
+
+    try:
+        res = subprocess.check_output(['ping', param, '4', 'a.rtmps.youtube.com']).decode('utf-8')
+        match = re.search(r'=\s*[\d\.]+/([\d\.]+)/[\d\.]+', res)
+        if match:
+            results['youtube'] = f"{float(match.group(1)):.1f} ms"
+        else:
+            match = re.search(r'time=([\d\.]+)', res)
+            if match:
+                results['youtube'] = f"{float(match.group(1)):.1f} ms"
+    except Exception: pass
 
     from flask import jsonify
-    return jsonify(status)
+    return jsonify(results)
 
 @app.route('/api/speedtest')
 def api_speedtest():
