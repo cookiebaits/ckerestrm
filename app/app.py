@@ -26,21 +26,33 @@ def init_db():
         conn.execute("ALTER TABLE settings ADD COLUMN transcode_active INTEGER DEFAULT 0")
         conn.execute("ALTER TABLE settings ADD COLUMN resolution TEXT DEFAULT '1080'")
         conn.execute("ALTER TABLE settings ADD COLUMN bitrate TEXT DEFAULT '6000k'")
+        conn.execute("ALTER TABLE settings ADD COLUMN admin_username TEXT DEFAULT 'admin'")
+        conn.execute("ALTER TABLE settings ADD COLUMN admin_password TEXT DEFAULT 'password'")
+        conn.execute("ALTER TABLE settings ADD COLUMN twitch_client_id TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE settings ADD COLUMN twitch_client_secret TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE settings ADD COLUMN youtube_client_id TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE settings ADD COLUMN youtube_client_secret TEXT DEFAULT ''")
     except sqlite3.OperationalError:
         pass
 
     conn.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_username TEXT DEFAULT 'admin',
+            admin_password TEXT DEFAULT 'password',
             master_stream_key TEXT DEFAULT 'default_key',
             transcode_active INTEGER DEFAULT 0,
             resolution TEXT DEFAULT '1080',
             bitrate TEXT DEFAULT '6000k',
             youtube_url TEXT DEFAULT 'rtmps://a.rtmps.youtube.com/live2/',
             youtube_key TEXT DEFAULT '',
+            youtube_client_id TEXT DEFAULT '',
+            youtube_client_secret TEXT DEFAULT '',
             youtube_active INTEGER DEFAULT 0,
             twitch_url TEXT DEFAULT 'rtmps://ingest.global-contribute.live-video.net/app/',
             twitch_key TEXT DEFAULT '',
+            twitch_client_id TEXT DEFAULT '',
+            twitch_client_secret TEXT DEFAULT '',
             twitch_active INTEGER DEFAULT 0,
             instagram_url TEXT DEFAULT 'rtmps://live-upload.instagram.com/rtmp/',
             instagram_key TEXT DEFAULT '',
@@ -56,9 +68,11 @@ def init_db():
     row = conn.execute('SELECT * FROM settings').fetchone()
     if row is None:
         conn.execute('''INSERT INTO settings (
+            admin_username, admin_password,
             master_stream_key,
             youtube_url, twitch_url, instagram_url, x_url, kick_url
-        ) VALUES (?, ?, ?, ?, ?, ?)''', (
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (
+            ADMIN_USERNAME, ADMIN_PASSWORD,
             'default_key',
             'rtmps://a.rtmps.youtube.com/live2/',
             'rtmps://ingest.global-contribute.live-video.net/app/',
@@ -180,16 +194,133 @@ def init_db_and_conf():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form['username'] == ADMIN_USERNAME and request.form['password'] == ADMIN_PASSWORD:
+        username_attempt = request.form['username']
+        password_attempt = request.form['password']
+
+        conn = get_db_connection()
+        settings = conn.execute('SELECT admin_username, admin_password FROM settings ORDER BY id DESC LIMIT 1').fetchone()
+        conn.close()
+
+        if settings and username_attempt == settings['admin_username'] and password_attempt == settings['admin_password']:
             session['logged_in'] = True
             return redirect(url_for('dashboard'))
         return render_template('login.html', error='Invalid Credentials')
     return render_template('login.html')
 
+@app.route('/update_account', methods=['POST'])
+def update_account():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    new_username = request.form.get('admin_username')
+    new_password = request.form.get('admin_password')
+
+    if new_username and new_password:
+        conn = get_db_connection()
+        conn.execute('UPDATE settings SET admin_username = ?, admin_password = ?', (new_username, new_password))
+        conn.commit()
+        conn.close()
+
+    return redirect(url_for('dashboard'))
+
 @app.route('/logout')
 def logout():
     session.pop('logged_in', None)
     return redirect(url_for('login'))
+
+import requests
+
+@app.route('/oauth/twitch/login')
+def twitch_login():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    settings = conn.execute('SELECT twitch_client_id FROM settings ORDER BY id DESC LIMIT 1').fetchone()
+    conn.close()
+
+    if not settings or not settings['twitch_client_id']:
+        return "Twitch Client ID not configured.", 400
+
+    client_id = settings['twitch_client_id']
+    redirect_uri = url_for('twitch_callback', _external=True)
+    # Twitch OAuth scope required to read stream key is channel:read:stream_key
+    auth_url = f"https://id.twitch.tv/oauth2/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope=channel:read:stream_key"
+    return redirect(auth_url)
+
+@app.route('/oauth/twitch/callback')
+def twitch_callback():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    code = request.args.get('code')
+    if not code:
+        return "Missing authorization code.", 400
+
+    conn = get_db_connection()
+    settings = conn.execute('SELECT twitch_client_id, twitch_client_secret FROM settings ORDER BY id DESC LIMIT 1').fetchone()
+
+    if not settings or not settings['twitch_client_id'] or not settings['twitch_client_secret']:
+        conn.close()
+        return "Twitch OAuth credentials missing.", 400
+
+    client_id = settings['twitch_client_id']
+    client_secret = settings['twitch_client_secret']
+    redirect_uri = url_for('twitch_callback', _external=True)
+
+    # Exchange code for token
+    token_url = "https://id.twitch.tv/oauth2/token"
+    token_data = {
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'code': code,
+        'grant_type': 'authorization_code',
+        'redirect_uri': redirect_uri
+    }
+    r = requests.post(token_url, data=token_data)
+    if r.status_code != 200:
+        conn.close()
+        return f"Failed to get token: {r.text}", 400
+
+    token_json = r.json()
+    access_token = token_json.get('access_token')
+
+    # Get user id (broadcaster id)
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Client-Id': client_id
+    }
+    user_r = requests.get('https://api.twitch.tv/helix/users', headers=headers)
+    if user_r.status_code != 200:
+        conn.close()
+        return f"Failed to get user id: {user_r.text}", 400
+
+    user_data = user_r.json()
+    if not user_data['data']:
+        conn.close()
+        return "No user found.", 400
+    broadcaster_id = user_data['data'][0]['id']
+
+    # Get stream key
+    stream_key_r = requests.get(f'https://api.twitch.tv/helix/streams/key?broadcaster_id={broadcaster_id}', headers=headers)
+    if stream_key_r.status_code != 200:
+        conn.close()
+        return f"Failed to get stream key: {stream_key_r.text}", 400
+
+    stream_key_data = stream_key_r.json()
+    if not stream_key_data['data']:
+        conn.close()
+        return "No stream key found.", 400
+
+    stream_key = stream_key_data['data'][0]['stream_key']
+
+    # Update DB
+    conn.execute('UPDATE settings SET twitch_key = ?', (stream_key,))
+    conn.commit()
+    conn.close()
+
+    generate_nginx_conf()
+    return redirect(url_for('dashboard'))
 
 @app.route('/')
 def dashboard():
@@ -216,6 +347,9 @@ def save():
     updates['resolution'] = request.form.get('resolution', '1080')
     updates['bitrate'] = request.form.get('bitrate', '6000k')
 
+    updates['twitch_client_id'] = request.form.get('twitch_client_id', '')
+    updates['twitch_client_secret'] = request.form.get('twitch_client_secret', '')
+
     for p in platforms:
         updates[f'{p}_url'] = request.form.get(f'{p}_url', '')
         updates[f'{p}_key'] = request.form.get(f'{p}_key', '')
@@ -228,6 +362,7 @@ def save():
             transcode_active = ?, resolution = ?, bitrate = ?,
             youtube_url = ?, youtube_key = ?, youtube_active = ?,
             twitch_url = ?, twitch_key = ?, twitch_active = ?,
+            twitch_client_id = ?, twitch_client_secret = ?,
             instagram_url = ?, instagram_key = ?, instagram_active = ?,
             x_url = ?, x_key = ?, x_active = ?,
             kick_url = ?, kick_key = ?, kick_active = ?
@@ -236,6 +371,7 @@ def save():
         updates['transcode_active'], updates['resolution'], updates['bitrate'],
         updates['youtube_url'], updates['youtube_key'], updates['youtube_active'],
         updates['twitch_url'], updates['twitch_key'], updates['twitch_active'],
+        updates['twitch_client_id'], updates['twitch_client_secret'],
         updates['instagram_url'], updates['instagram_key'], updates['instagram_active'],
         updates['x_url'], updates['x_key'], updates['x_active'],
         updates['kick_url'], updates['kick_key'], updates['kick_active']

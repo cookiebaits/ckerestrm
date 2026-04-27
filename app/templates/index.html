@@ -23,6 +23,29 @@
     <div class="container">
         <a href="{{ url_for('logout') }}" class="logout">Logout</a>
         <h1>PrismRTMPS Dashboard</h1>
+
+        <div style="background-color: #e2f0d9; padding: 15px; border-radius: 4px; border: 1px solid #c5e0b4; margin-bottom: 20px;">
+            <h3 style="margin-top: 0; color: #385723;">Your OBS Settings</h3>
+            <p style="margin-bottom: 5px;"><strong>Server:</strong> <span id="obs-server-url" style="font-family: monospace; background: white; padding: 2px 5px; border: 1px solid #ccc;">rtmp://localhost:1935/live</span></p>
+            <p style="margin-bottom: 0;"><strong>Stream Key:</strong> <span style="font-family: monospace; background: white; padding: 2px 5px; border: 1px solid #ccc;">{{ settings.master_stream_key }}</span></p>
+        </div>
+        <script>
+            document.getElementById('obs-server-url').innerText = 'rtmp://' + window.location.hostname + ':1935/live';
+        </script>
+
+        <h2>Admin Account</h2>
+        <form method="POST" action="{{ url_for('update_account') }}" style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="admin_username" value="{{ settings.admin_username }}" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="admin_password" value="{{ settings.admin_password }}" required>
+            </div>
+            <input type="submit" value="Update Login Credentials">
+        </form>
+
             <h2>Master Settings</h2>
             <div class="form-group" style="display:flex; gap:10px;">
                 <form method="POST" action="{{ url_for('save') }}" style="flex-grow:1;">
@@ -80,8 +103,22 @@
                 </div>
                 <div class="form-group">
                     <label>Stream Key</label>
-                    <input type="password" name="{{ name }}_key" value="{{ settings[name ~ '_key'] }}">
+                    <div style="display:flex; gap:10px;">
+                        <input type="password" name="{{ name }}_key" value="{{ settings[name ~ '_key'] }}" style="flex-grow:1;">
+                        {% if name == 'twitch' %}
+                            <a href="{{ url_for('twitch_login') }}" style="background: #6441a5; color: white; padding: 8px 15px; text-decoration: none; border-radius: 4px; border: none; cursor: pointer;">Sync via Twitch</a>
+                        {% endif %}
+                    </div>
                 </div>
+                {% if name == 'twitch' %}
+                <div style="margin-top: 10px; padding: 10px; background: #e9ecef; border-radius: 4px; font-size: 0.9em;">
+                    <strong>Twitch API Integration (Optional)</strong><br>
+                    <label>Client ID:</label>
+                    <input type="text" name="twitch_client_id" value="{{ settings.twitch_client_id }}" style="margin-bottom: 5px;">
+                    <label>Client Secret:</label>
+                    <input type="password" name="twitch_client_secret" value="{{ settings.twitch_client_secret }}">
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
 
