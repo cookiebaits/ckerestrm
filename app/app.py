@@ -41,6 +41,7 @@ def init_db():
         "ALTER TABLE settings ADD COLUMN bitrate TEXT DEFAULT '6000k'",
         "ALTER TABLE settings ADD COLUMN framerate TEXT DEFAULT '60'",
         "ALTER TABLE settings ADD COLUMN video_preset TEXT DEFAULT 'veryfast'",
+        "ALTER TABLE settings ADD COLUMN service_enabled INTEGER DEFAULT 0",
         "ALTER TABLE settings ADD COLUMN admin_username TEXT DEFAULT 'admin'",
         "ALTER TABLE settings ADD COLUMN admin_password TEXT DEFAULT 'P4sswerd'",
         "ALTER TABLE settings ADD COLUMN twitch_client_id TEXT DEFAULT ''",
@@ -61,11 +62,12 @@ def init_db():
             admin_username TEXT DEFAULT 'admin',
             admin_password TEXT DEFAULT 'P4sswerd',
             master_stream_key TEXT DEFAULT 'default_key',
-            transcode_active INTEGER DEFAULT 0,
+            service_enabled INTEGER DEFAULT 0,
+            transcode_active INTEGER DEFAULT 1,
             resolution TEXT DEFAULT '1080',
-            bitrate TEXT DEFAULT '6000k',
-            framerate TEXT DEFAULT '60',
-            video_preset TEXT DEFAULT 'veryfast',
+            bitrate TEXT DEFAULT '4500k',
+            framerate TEXT DEFAULT '50',
+            video_preset TEXT DEFAULT 'faster',
             youtube_url TEXT DEFAULT 'rtmps://a.rtmps.youtube.com/live2/',
             youtube_key TEXT DEFAULT '',
             youtube_client_id TEXT DEFAULT '',
@@ -148,22 +150,24 @@ def _build_nginx_conf(settings, stunnel_mappings):
 
     push_directives = []
     platforms = ['youtube', 'twitch', 'instagram', 'x', 'kick']
-    for p in platforms:
-        if settings[f'{p}_active']:
-            url = sanitize(settings[f'{p}_url'])
-            key = sanitize(settings[f'{p}_key'])
-            if not url or not key:
-                continue
 
-            if url.startswith('rtmps://') and p in stunnel_mappings:
-                actual_url = stunnel_mappings[p]
-                if not actual_url.endswith('/'):
-                    actual_url += '/'
-                push_directives.append(f"            push {actual_url}{key};")
-            else:
-                if not url.endswith('/'):
-                    url += '/'
-                push_directives.append(f"            push {url}{key};")
+    if settings.get('service_enabled'):
+        for p in platforms:
+            if settings[f'{p}_active']:
+                url = sanitize(settings[f'{p}_url'])
+                key = sanitize(settings[f'{p}_key'])
+                if not url or not key:
+                    continue
+
+                if url.startswith('rtmps://') and p in stunnel_mappings:
+                    actual_url = stunnel_mappings[p]
+                    if not actual_url.endswith('/'):
+                        actual_url += '/'
+                    push_directives.append(f"            push {actual_url}{key};")
+                else:
+                    if not url.endswith('/'):
+                        url += '/'
+                    push_directives.append(f"            push {url}{key};")
 
     push_block = "\n".join(push_directives)
 
@@ -171,7 +175,12 @@ def _build_nginx_conf(settings, stunnel_mappings):
         with open(NGINX_TEMPLATE, 'r') as f:
             template = f.read()
 
-        if settings['transcode_active']:
+        if not settings.get('service_enabled'):
+            # If service is off, drop all pushes and deny publishing
+            new_conf = template.replace('# PUSH_DIRECTIVES', "deny publish all;")
+            new_conf = new_conf.replace('# OUT_PUSH_DIRECTIVES', "")
+            new_conf = new_conf.replace('# FFMPEG_EXEC', "")
+        elif settings['transcode_active']:
             new_conf = template.replace('# PUSH_DIRECTIVES', "")
             new_conf = new_conf.replace('# OUT_PUSH_DIRECTIVES', push_block)
 
@@ -206,9 +215,14 @@ def generate_nginx_conf():
     _build_nginx_conf(settings, stunnel_mappings)
 
     try:
-        subprocess.run(['nginx', '-s', 'reload'], check=True)
+        # First check if Nginx is actually running (in case it crashed or this is first boot manually triggered)
+        if subprocess.run(['pgrep', 'nginx'], stdout=subprocess.DEVNULL).returncode != 0:
+            app.logger.info("Nginx not running, starting it...")
+            subprocess.run(['nginx'], check=True)
+        else:
+            subprocess.run(['nginx', '-s', 'reload'], check=True)
     except Exception as e:
-        app.logger.error(f"Failed to reload nginx: {e}")
+        app.logger.error(f"Failed to reload/start nginx: {e}")
 
 def init_db_and_conf():
     init_db()
@@ -408,11 +422,12 @@ def save():
     platforms = ['youtube', 'twitch', 'instagram', 'x', 'kick']
     updates = {'master_stream_key': master_stream_key}
 
+    updates['service_enabled'] = 1 if request.form.get('service_enabled') else 0
     updates['transcode_active'] = 1 if request.form.get('transcode_active') else 0
     updates['resolution'] = request.form.get('resolution', '1080')
-    updates['bitrate'] = request.form.get('bitrate', '6000k')
-    updates['framerate'] = request.form.get('framerate', '60')
-    updates['video_preset'] = request.form.get('video_preset', 'veryfast')
+    updates['bitrate'] = request.form.get('bitrate', '4500k')
+    updates['framerate'] = request.form.get('framerate', '50')
+    updates['video_preset'] = request.form.get('video_preset', 'faster')
 
     updates['twitch_client_id'] = request.form.get('twitch_client_id', '')
     updates['twitch_client_secret'] = request.form.get('twitch_client_secret', '')
@@ -426,6 +441,7 @@ def save():
     conn.execute('''
         UPDATE settings SET
             master_stream_key = ?,
+            service_enabled = ?,
             transcode_active = ?, resolution = ?, bitrate = ?,
             framerate = ?, video_preset = ?,
             youtube_url = ?, youtube_key = ?, youtube_active = ?,
@@ -436,6 +452,7 @@ def save():
             kick_url = ?, kick_key = ?, kick_active = ?
     ''', (
         updates['master_stream_key'],
+        updates['service_enabled'],
         updates['transcode_active'], updates['resolution'], updates['bitrate'],
         updates['framerate'], updates['video_preset'],
         updates['youtube_url'], updates['youtube_key'], updates['youtube_active'],

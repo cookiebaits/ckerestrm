@@ -169,6 +169,11 @@
 
                         <form method="POST" action="{{ url_for('save') }}" class="mb-2">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-check form-switch mb-3 mt-2 border-bottom border-secondary pb-3">
+                                <input class="form-check-input fs-5" type="checkbox" id="service_enabled" name="service_enabled" {% if settings.service_enabled %}checked{% endif %}>
+                                <label class="form-check-label fw-bold mt-1" for="service_enabled">Enable RTMP Service</label>
+                            </div>
+
                             <h6 class="text-muted">Master Stream Key</h6>
                             <div class="input-group input-group-sm mb-2">
                                 <input type="text" class="form-control" name="master_stream_key" value="{{ settings.master_stream_key }}" required>
@@ -190,6 +195,8 @@
                 <form method="POST" action="{{ url_for('save') }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="master_stream_key" value="{{ settings.master_stream_key }}">
+                    <!-- Send service_enabled state as hidden so it doesn't get toggled off when saving from the right column -->
+                    <input type="hidden" name="service_enabled" value="{% if settings.service_enabled %}on{% endif %}">
 
                     <div class="row mb-3">
                         <div class="col-12">
