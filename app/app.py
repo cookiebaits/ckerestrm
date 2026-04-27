@@ -151,23 +151,22 @@ def _build_nginx_conf(settings, stunnel_mappings):
     push_directives = []
     platforms = ['youtube', 'twitch', 'instagram', 'x', 'kick']
 
-    if settings.get('service_enabled'):
-        for p in platforms:
-            if settings[f'{p}_active']:
-                url = sanitize(settings[f'{p}_url'])
-                key = sanitize(settings[f'{p}_key'])
-                if not url or not key:
-                    continue
+    for p in platforms:
+        if settings[f'{p}_active']:
+            url = sanitize(settings[f'{p}_url'])
+            key = sanitize(settings[f'{p}_key'])
+            if not url or not key:
+                continue
 
-                if url.startswith('rtmps://') and p in stunnel_mappings:
-                    actual_url = stunnel_mappings[p]
-                    if not actual_url.endswith('/'):
-                        actual_url += '/'
-                    push_directives.append(f"            push {actual_url}{key};")
-                else:
-                    if not url.endswith('/'):
-                        url += '/'
-                    push_directives.append(f"            push {url}{key};")
+            if url.startswith('rtmps://') and p in stunnel_mappings:
+                actual_url = stunnel_mappings[p]
+                if not actual_url.endswith('/'):
+                    actual_url += '/'
+                push_directives.append(f"            push {actual_url}{key};")
+            else:
+                if not url.endswith('/'):
+                    url += '/'
+                push_directives.append(f"            push {url}{key};")
 
     push_block = "\n".join(push_directives)
 
@@ -175,12 +174,7 @@ def _build_nginx_conf(settings, stunnel_mappings):
         with open(NGINX_TEMPLATE, 'r') as f:
             template = f.read()
 
-        if not settings.get('service_enabled'):
-            # If service is off, drop all pushes and deny publishing
-            new_conf = template.replace('# PUSH_DIRECTIVES', "deny publish all;")
-            new_conf = new_conf.replace('# OUT_PUSH_DIRECTIVES', "")
-            new_conf = new_conf.replace('# FFMPEG_EXEC', "")
-        elif settings['transcode_active']:
+        if settings['transcode_active']:
             new_conf = template.replace('# PUSH_DIRECTIVES', "")
             new_conf = new_conf.replace('# OUT_PUSH_DIRECTIVES', push_block)
 
@@ -474,10 +468,13 @@ def validate():
     stream_key_attempt = request.form.get('name', '')
 
     conn = get_db_connection()
-    settings = conn.execute('SELECT master_stream_key FROM settings ORDER BY id DESC LIMIT 1').fetchone()
+    settings = conn.execute('SELECT master_stream_key, service_enabled FROM settings ORDER BY id DESC LIMIT 1').fetchone()
     conn.close()
 
-    if settings and stream_key_attempt == settings['master_stream_key']:
+    if not settings or not settings['service_enabled']:
+        return Response('Service is offline', status=403)
+
+    if stream_key_attempt == settings['master_stream_key']:
         return Response('OK', status=200)
 
     return Response('Invalid stream key', status=403)
