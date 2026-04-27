@@ -22,18 +22,23 @@ def init_db():
     conn = get_db_connection()
 
     # Try adding new columns if they don't exist (SQLite doesn't have IF NOT EXISTS for columns, so we catch the exception)
-    try:
-        conn.execute("ALTER TABLE settings ADD COLUMN transcode_active INTEGER DEFAULT 0")
-        conn.execute("ALTER TABLE settings ADD COLUMN resolution TEXT DEFAULT '1080'")
-        conn.execute("ALTER TABLE settings ADD COLUMN bitrate TEXT DEFAULT '6000k'")
-        conn.execute("ALTER TABLE settings ADD COLUMN admin_username TEXT DEFAULT 'admin'")
-        conn.execute("ALTER TABLE settings ADD COLUMN admin_password TEXT DEFAULT 'password'")
-        conn.execute("ALTER TABLE settings ADD COLUMN twitch_client_id TEXT DEFAULT ''")
-        conn.execute("ALTER TABLE settings ADD COLUMN twitch_client_secret TEXT DEFAULT ''")
-        conn.execute("ALTER TABLE settings ADD COLUMN youtube_client_id TEXT DEFAULT ''")
-        conn.execute("ALTER TABLE settings ADD COLUMN youtube_client_secret TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
+    columns_to_add = [
+        "ALTER TABLE settings ADD COLUMN transcode_active INTEGER DEFAULT 0",
+        "ALTER TABLE settings ADD COLUMN resolution TEXT DEFAULT '1080'",
+        "ALTER TABLE settings ADD COLUMN bitrate TEXT DEFAULT '6000k'",
+        "ALTER TABLE settings ADD COLUMN admin_username TEXT DEFAULT 'admin'",
+        "ALTER TABLE settings ADD COLUMN admin_password TEXT DEFAULT 'password'",
+        "ALTER TABLE settings ADD COLUMN twitch_client_id TEXT DEFAULT ''",
+        "ALTER TABLE settings ADD COLUMN twitch_client_secret TEXT DEFAULT ''",
+        "ALTER TABLE settings ADD COLUMN youtube_client_id TEXT DEFAULT ''",
+        "ALTER TABLE settings ADD COLUMN youtube_client_secret TEXT DEFAULT ''"
+    ]
+
+    for query in columns_to_add:
+        try:
+            conn.execute(query)
+        except sqlite3.OperationalError:
+            pass
 
     conn.execute('''
         CREATE TABLE IF NOT EXISTS settings (
