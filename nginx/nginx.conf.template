@@ -8,6 +8,12 @@ rtmp {
         listen [::]:1935 ipv6only=on;
         chunk_size ${CHUNK_SIZE};
 
+        # Stability and Security Enhancements
+        ping 30s;
+        ping_timeout 10s;
+        drop_idle_publisher 10s;
+        deny play all; # Prevent unauthorized viewing
+
         # Facebook Application
         application facebook {
             live on;

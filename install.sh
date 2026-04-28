@@ -52,7 +52,7 @@ prompt_for_key() {
     read -r input
 
     if [ ! -z "$input" ]; then
-        eval $var_name=\"$input\"
+        printf -v "$var_name" "%s" "$input"
         save_config
     fi
 }
