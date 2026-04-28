@@ -51,7 +51,7 @@ You'd need a VPS server. Key considerations:
 
 *   4- **Clone and Build the PrismRTMPS image:**
     ```bash
-    git clone https://github.com/cookiebaits/PrismRTMPS.git
+    git clone https://github.com/cookiebaits/prism-rtmps.git
     cd PrismRTMPS
     docker build -t prism-rtmps . 
     ```
