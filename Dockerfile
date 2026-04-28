@@ -121,6 +121,8 @@ ENV KICK_KEY ""
 ENV X_URL rtmp://127.0.0.1:19354/x/
 ENV X_KEY ""
 
+ENV CHUNK_SIZE "8192"
+
 ENV DEBUG ""
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
