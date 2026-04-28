@@ -59,9 +59,14 @@
                         <i class="bi bi-activity"></i> Server Telemetry
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between mb-2 pb-2 border-bottom border-secondary">
+                        <div class="d-flex justify-content-between mb-2 pb-2 border-bottom border-secondary align-items-center">
                             <span>Nginx Service</span>
-                            <span id="status-nginx" class="badge bg-secondary">Checking...</span>
+                            <div>
+                                <span id="status-nginx" class="badge bg-secondary me-2">Checking...</span>
+                                <div class="form-check form-switch d-inline-block mb-0 align-middle">
+                                    <input class="form-check-input" type="checkbox" id="service_enabled_toggle" {% if settings.service_enabled %}checked{% endif %}>
+                                </div>
+                            </div>
                         </div>
                         <div class="d-flex justify-content-between mb-2 pb-2 border-bottom border-secondary align-items-center">
                             <span>Upload Speed</span>
@@ -91,6 +96,25 @@
         <script>
             document.getElementById('obs-server-url').innerText = 'rtmp://' + window.location.hostname + ':1935/live';
             document.getElementById('obs-server-url-tls').innerText = 'rtmps://' + window.location.hostname + ':1936/live';
+
+            document.getElementById('service_enabled_toggle').addEventListener('change', function() {
+                const isEnabled = this.checked;
+                fetch('/toggle_service', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: isEnabled, _csrf_token: '{{ csrf_token() }}' })
+                }).then(r => r.json()).then(data => {
+                    if(data.success) {
+                        updateStatus();
+                    } else {
+                        alert("Failed to toggle service");
+                        this.checked = !isEnabled;
+                    }
+                }).catch(err => {
+                    alert("Error toggling service");
+                    this.checked = !isEnabled;
+                });
+            });
 
             function updateStatus() {
                 fetch('/api/status')
@@ -169,11 +193,6 @@
 
                         <form method="POST" action="{{ url_for('save') }}" class="mb-2">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                            <div class="form-check form-switch mb-3 mt-2 border-bottom border-secondary pb-3">
-                                <input class="form-check-input fs-5" type="checkbox" id="service_enabled" name="service_enabled" {% if settings.service_enabled %}checked{% endif %}>
-                                <label class="form-check-label fw-bold mt-1" for="service_enabled">Enable RTMP Service</label>
-                            </div>
-
                             <h6 class="text-muted">Master Stream Key</h6>
                             <div class="input-group input-group-sm mb-2">
                                 <input type="text" class="form-control" name="master_stream_key" value="{{ settings.master_stream_key }}" required>
@@ -195,8 +214,6 @@
                 <form method="POST" action="{{ url_for('save') }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="master_stream_key" value="{{ settings.master_stream_key }}">
-                    <!-- Send service_enabled state as hidden so it doesn't get toggled off when saving from the right column -->
-                    <input type="hidden" name="service_enabled" value="{% if settings.service_enabled %}on{% endif %}">
 
                     <div class="row mb-3">
                         <div class="col-12">

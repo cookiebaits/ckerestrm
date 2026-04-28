@@ -41,7 +41,7 @@ def init_db():
         "ALTER TABLE settings ADD COLUMN bitrate TEXT DEFAULT '6000k'",
         "ALTER TABLE settings ADD COLUMN framerate TEXT DEFAULT '60'",
         "ALTER TABLE settings ADD COLUMN video_preset TEXT DEFAULT 'veryfast'",
-        "ALTER TABLE settings ADD COLUMN service_enabled INTEGER DEFAULT 0",
+        "ALTER TABLE settings ADD COLUMN service_enabled INTEGER DEFAULT 1",
         "ALTER TABLE settings ADD COLUMN admin_username TEXT DEFAULT 'admin'",
         "ALTER TABLE settings ADD COLUMN admin_password TEXT DEFAULT 'P4sswerd'",
         "ALTER TABLE settings ADD COLUMN twitch_client_id TEXT DEFAULT ''",
@@ -62,7 +62,7 @@ def init_db():
             admin_username TEXT DEFAULT 'admin',
             admin_password TEXT DEFAULT 'P4sswerd',
             master_stream_key TEXT DEFAULT 'default_key',
-            service_enabled INTEGER DEFAULT 0,
+            service_enabled INTEGER DEFAULT 1,
             transcode_active INTEGER DEFAULT 1,
             resolution TEXT DEFAULT '1080',
             bitrate TEXT DEFAULT '4500k',
@@ -106,6 +106,9 @@ def init_db():
         ))
     conn.commit()
     conn.close()
+
+# Ensure DB exists on app load before any requests are processed
+init_db()
 
 def generate_stunnel_conf(settings):
     platforms = ['youtube', 'twitch', 'instagram', 'x', 'kick']
@@ -155,16 +158,16 @@ def _build_nginx_conf(settings, stunnel_mappings):
         if settings[f'{p}_active']:
             url = sanitize(settings[f'{p}_url'])
             key = sanitize(settings[f'{p}_key'])
-            if not url or not key:
+            if not url:
                 continue
 
             if url.startswith('rtmps://') and p in stunnel_mappings:
                 actual_url = stunnel_mappings[p]
-                if not actual_url.endswith('/'):
+                if not actual_url.endswith('/') and key:
                     actual_url += '/'
                 push_directives.append(f"            push {actual_url}{key};")
             else:
-                if not url.endswith('/'):
+                if not url.endswith('/') and key:
                     url += '/'
                 push_directives.append(f"            push {url}{key};")
 
@@ -478,6 +481,25 @@ def validate():
         return Response('OK', status=200)
 
     return Response('Invalid stream key', status=403)
+
+@app.route('/toggle_service', methods=['POST'])
+def toggle_service():
+    if not session.get('logged_in'):
+        return Response('Unauthorized', status=401)
+
+    token = session.get('_csrf_token', None)
+    if not token or token != request.json.get('_csrf_token'):
+        return Response('CSRF validation failed', status=403)
+
+    enabled = 1 if request.json.get('enabled') else 0
+
+    conn = get_db_connection()
+    conn.execute('UPDATE settings SET service_enabled = ?', (enabled,))
+    conn.commit()
+    conn.close()
+
+    generate_nginx_conf()
+    return jsonify({"success": True})
 
 @app.route('/regenerate_key', methods=['POST'])
 def regenerate_key():
