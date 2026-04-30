@@ -22,6 +22,7 @@ TROVO_KEY=""
 RTMP1_URL=""
 RTMP1_KEY=""
 OBS_KEY=""
+SERVER_DOMAIN=""
 CHUNK_SIZE="8192"
 
 CONFIG_FILE="rtmp_config.env"
@@ -46,6 +47,7 @@ TROVO_KEY="$TROVO_KEY"
 RTMP1_URL="$RTMP1_URL"
 RTMP1_KEY="$RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
+SERVER_DOMAIN="$SERVER_DOMAIN"
 CHUNK_SIZE="$CHUNK_SIZE"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
@@ -101,8 +103,8 @@ configure_keys() {
                case $y_opt in
                    1) YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
                    2) YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
-                   3) YOUTUBE_URL="rtmps://a.rtmps.youtube.com/live2/" ;;
-                   4) YOUTUBE_URL="rtmps://b.rtmps.youtube.com/live2?backup=1" ;;
+                   3) YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
+                   4) YOUTUBE_URL="rtmp://127.0.0.1:19355/live2?backup=1" ;;
                    5)
                       echo -e "Enter Custom YouTube Server URL: "
                       read -r y_url
@@ -124,7 +126,8 @@ configure_keys() {
                echo "  3) US West (rtmp://usw20.contribute.live-video.net/app/)"
                echo "  4) Europe Central (rtmp://euc10.contribute.live-video.net/app/)"
                echo "  5) Europe West (rtmp://euw10.contribute.live-video.net/app/)"
-               echo "  6) Custom URL"
+               echo "  6) Global Secure RTMPS Proxy (rtmp://127.0.0.1:19356/app/)"
+               echo "  7) Custom URL"
                echo -e "Option (Current URL: $TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
@@ -133,7 +136,8 @@ configure_keys() {
                    3) TWITCH_URL="rtmp://usw20.contribute.live-video.net/app/" ;;
                    4) TWITCH_URL="rtmp://euc10.contribute.live-video.net/app/" ;;
                    5) TWITCH_URL="rtmp://euw10.contribute.live-video.net/app/" ;;
-                   6)
+                   6) TWITCH_URL="rtmp://127.0.0.1:19356/app/" ;;
+                   7)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -165,9 +169,14 @@ configure_obs() {
     clear
     echo -e "${GREEN}=== OBS Configuration ===${NC}"
     # Determine the public IP if possible, or fallback to placeholder
-    SERVER_IP=$(curl -s ifconfig.me || echo "<your_server_ip>")
+    if [ ! -z "$SERVER_DOMAIN" ]; then
+        SERVER_HOST="$SERVER_DOMAIN"
+    else
+        SERVER_HOST=$(curl -s ifconfig.me || echo "<your_server_ip>")
+    fi
+
     echo -e "To stream to this server from OBS or another encoder:"
-    echo -e "  ${YELLOW}Server URL:${NC} rtmp://${SERVER_IP}:1935/live"
+    echo -e "  ${YELLOW}Server URL:${NC} rtmp://${SERVER_HOST}:1935/live"
     echo ""
     echo -e "For security, PrismRTMPS requires a matching stream key to accept your stream."
     echo -e "You must either use one of the destination keys you already configured (e.g., your Twitch or YouTube key),"
@@ -185,6 +194,23 @@ configure_obs() {
         OBS_KEY="$input"
         save_config
         echo -e "${GREEN}Custom OBS Key updated.${NC}"
+        sleep 1
+    fi
+
+    echo ""
+    echo -e "If you use Cloudflare or a custom domain, you can set it here."
+    echo -e "Current Custom Domain: ${SERVER_DOMAIN:-None}"
+    echo -e "Enter new Domain (Type 'disable' to remove, or press Enter to keep current): "
+    read -r domain_input
+    if [ "$domain_input" == "disable" ] || [ "$domain_input" == "DISABLE" ]; then
+        SERVER_DOMAIN=""
+        save_config
+        echo -e "${GREEN}Custom Domain removed.${NC}"
+        sleep 1
+    elif [ ! -z "$domain_input" ]; then
+        SERVER_DOMAIN="$domain_input"
+        save_config
+        echo -e "${GREEN}Custom Domain updated.${NC}"
         sleep 1
     fi
 }
