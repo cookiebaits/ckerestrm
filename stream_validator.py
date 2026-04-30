@@ -26,6 +26,7 @@ DESTINATION_KEYS = {
     'rtmp2': os.getenv('RTMP2_KEY', ''),
     'rtmp3': os.getenv('RTMP3_KEY', ''),
     'trovo': os.getenv('TROVO_KEY', ''),
+    'obs': os.getenv('OBS_KEY', ''),
 }
 
 # Populate VALID_KEYS with only the keys that are actually set (non-empty)

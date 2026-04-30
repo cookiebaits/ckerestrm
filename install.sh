@@ -21,6 +21,7 @@ X_KEY=""
 TROVO_KEY=""
 RTMP1_URL=""
 RTMP1_KEY=""
+OBS_KEY=""
 CHUNK_SIZE="8192"
 
 CONFIG_FILE="rtmp_config.env"
@@ -44,6 +45,7 @@ X_KEY="$X_KEY"
 TROVO_KEY="$TROVO_KEY"
 RTMP1_URL="$RTMP1_URL"
 RTMP1_KEY="$RTMP1_KEY"
+OBS_KEY="$OBS_KEY"
 CHUNK_SIZE="$CHUNK_SIZE"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
@@ -159,6 +161,34 @@ configure_keys() {
     done
 }
 
+configure_obs() {
+    clear
+    echo -e "${GREEN}=== OBS Configuration ===${NC}"
+    # Determine the public IP if possible, or fallback to placeholder
+    SERVER_IP=$(curl -s ifconfig.me || echo "<your_server_ip>")
+    echo -e "To stream to this server from OBS or another encoder:"
+    echo -e "  ${YELLOW}Server URL:${NC} rtmp://${SERVER_IP}:1935/live"
+    echo ""
+    echo -e "For security, PrismRTMPS requires a matching stream key to accept your stream."
+    echo -e "You must either use one of the destination keys you already configured (e.g., your Twitch or YouTube key),"
+    echo -e "or you can create a custom, specific OBS Master Key here."
+    echo ""
+    echo -e "Current Custom OBS Key: ${OBS_KEY:-None}"
+    echo -e "Enter new Custom OBS Key (Type 'disable' to remove, or press Enter to keep current): "
+    read -r input
+    if [ "$input" == "disable" ] || [ "$input" == "DISABLE" ]; then
+        OBS_KEY=""
+        save_config
+        echo -e "${GREEN}Custom OBS Key removed.${NC}"
+        sleep 1
+    elif [ ! -z "$input" ]; then
+        OBS_KEY="$input"
+        save_config
+        echo -e "${GREEN}Custom OBS Key updated.${NC}"
+        sleep 1
+    fi
+}
+
 configure_optimizations() {
     clear
     echo -e "${GREEN}=== Optimizations ===${NC}"
@@ -222,6 +252,7 @@ build_and_run() {
         -e TROVO_KEY="$TROVO_KEY" \
         -e RTMP1_URL="$RTMP1_URL" \
         -e RTMP1_KEY="$RTMP1_KEY" \
+        -e OBS_KEY="$OBS_KEY" \
         -e CHUNK_SIZE="$CHUNK_SIZE" \
         prism-rtmps
 
@@ -267,22 +298,24 @@ while true; do
     echo -e "${GREEN}=====================================${NC}"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys"
-    echo "3) Configure Optimizations (Chunk Size)"
-    echo "4) Build & Start Server"
-    echo "5) Stop Server"
-    echo "6) View Logs"
-    echo "7) Quit"
+    echo "3) Configure OBS Setup & Security Key"
+    echo "4) Configure Optimizations (Chunk Size)"
+    echo "5) Build & Start Server"
+    echo "6) Stop Server"
+    echo "7) View Logs"
+    echo "8) Quit"
     echo -e "Select an option: \c"
     read -r option
 
     case $option in
         1) install_docker ;;
         2) configure_keys ;;
-        3) configure_optimizations ;;
-        4) build_and_run ;;
-        5) stop_container ;;
-        6) view_logs ;;
-        7) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        3) configure_obs ;;
+        4) configure_optimizations ;;
+        5) build_and_run ;;
+        6) stop_container ;;
+        7) view_logs ;;
+        8) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done

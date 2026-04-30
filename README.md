@@ -65,7 +65,7 @@ You'd need a VPS server. Key considerations:
 
 We advise testing with one or two destinations first.
 
-## Manual Manage PrismRTMPS
+## How To Manage PrismRTMPS
 
 *   **STOP** the container: `docker stop prism-rtmps`
 *   **START** the container: `docker start prism-rtmps`
