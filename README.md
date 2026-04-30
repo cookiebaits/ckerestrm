@@ -42,7 +42,7 @@ You'd need a VPS server. Key considerations:
 
 *   2- **Clone the repository:**
     ```bash
-    git clone https://github.com/cookiebaits/PrismRTMPS.git
+    git clone https://github.com/cookiebaits/prism-rtmps.git
     cd PrismRTMPS
     ```
 
