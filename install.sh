@@ -54,10 +54,15 @@ prompt_for_key() {
     local var_name=$2
     local current_value=${!var_name}
 
-    echo -e "Enter Stream Key for ${YELLOW}$platform${NC} (Leave blank to keep current: ${current_value:-None}): "
+    echo -e "Enter Stream Key for ${YELLOW}$platform${NC} (Type 'disable' to remove key, or leave blank to keep current: ${current_value:-None}): "
     read -r input
 
-    if [ ! -z "$input" ]; then
+    if [ "$input" == "disable" ] || [ "$input" == "DISABLE" ]; then
+        printf -v "$var_name" "%s" ""
+        save_config
+        echo -e "${GREEN}Disabled stream to $platform.${NC}"
+        sleep 1
+    elif [ ! -z "$input" ]; then
         printf -v "$var_name" "%s" "$input"
         save_config
     fi
