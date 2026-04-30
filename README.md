@@ -48,7 +48,7 @@ You'd need a VPS server. Key considerations:
 
 *   3- **Run the Interactive Installer:**
     ```bash
-    ./install.sh
+    sudo ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
     *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
