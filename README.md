@@ -43,7 +43,8 @@ You'd need a VPS server. Key considerations:
 *   2- **Clone the repository:**
     ```bash
     git clone https://github.com/cookiebaits/prism-rtmps.git
-    cd PrismRTMPS
+    cd prism-rtmps
+    chmod +x install.sh
     ```
 
 *   3- **Run the Interactive Installer:**
