@@ -48,6 +48,7 @@ You'd need a VPS server. Key considerations:
 
 *   3- **Run the Interactive Installer:**
     ```bash
+    chmod +x install.sh
     ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
