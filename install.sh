@@ -83,24 +83,58 @@ configure_keys() {
         case $choice in
             1)
                prompt_for_key "YouTube Key" "YOUTUBE_KEY"
-               echo -e "Enter YouTube Server URL (Current: $YOUTUBE_URL): "
-               read -r y_url
-               if [ ! -z "$y_url" ]; then
-                   YOUTUBE_URL="$y_url"
-                   save_config
-               fi
+               echo -e "Select YouTube Server:"
+               echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
+               echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
+               echo "  3) Secure Primary (rtmps://a.rtmps.youtube.com/live2/)"
+               echo "  4) Secure Backup (rtmps://b.rtmps.youtube.com/live2?backup=1)"
+               echo "  5) Custom URL"
+               echo -e "Option (Current URL: $YOUTUBE_URL): \c"
+               read -r y_opt
+               case $y_opt in
+                   1) YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
+                   2) YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
+                   3) YOUTUBE_URL="rtmps://a.rtmps.youtube.com/live2/" ;;
+                   4) YOUTUBE_URL="rtmps://b.rtmps.youtube.com/live2?backup=1" ;;
+                   5)
+                      echo -e "Enter Custom YouTube Server URL: "
+                      read -r y_url
+                      if [ ! -z "$y_url" ]; then
+                          YOUTUBE_URL="$y_url"
+                      fi
+                      ;;
+               esac
+               save_config
                ;;
             2) prompt_for_key "Facebook" "FACEBOOK_KEY" ;;
             3) prompt_for_key "Instagram" "INSTAGRAM_KEY" ;;
             4) prompt_for_key "Cloudflare" "CLOUDFLARE_KEY" ;;
             5)
                prompt_for_key "Twitch Key" "TWITCH_KEY"
-               echo -e "Enter Twitch Server URL (Current: $TWITCH_URL): "
-               read -r t_url
-               if [ ! -z "$t_url" ]; then
-                   TWITCH_URL="$t_url"
-                   save_config
-               fi
+               echo -e "Select Twitch Server:"
+               echo "  1) Global Auto (rtmp://ingest.global-contribute.live-video.net/app/)"
+               echo "  2) US East (rtmp://use10.contribute.live-video.net/app/)"
+               echo "  3) US West (rtmp://usw20.contribute.live-video.net/app/)"
+               echo "  4) Europe Central (rtmp://euc10.contribute.live-video.net/app/)"
+               echo "  5) Europe West (rtmp://euw10.contribute.live-video.net/app/)"
+               echo "  6) Custom URL"
+               echo -e "Option (Current URL: $TWITCH_URL): \c"
+               read -r t_opt
+               case $t_opt in
+                   1) TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
+                   2) TWITCH_URL="rtmp://use10.contribute.live-video.net/app/" ;;
+                   3) TWITCH_URL="rtmp://usw20.contribute.live-video.net/app/" ;;
+                   4) TWITCH_URL="rtmp://euc10.contribute.live-video.net/app/" ;;
+                   5) TWITCH_URL="rtmp://euw10.contribute.live-video.net/app/" ;;
+                   6)
+                      echo -e "Enter Custom Twitch Server URL: "
+                      read -r t_url
+                      if [ ! -z "$t_url" ]; then
+                          TWITCH_URL="$t_url"
+                      fi
+                      ;;
+               esac
+               save_config
                ;;
             6) prompt_for_key "Kick" "KICK_KEY" ;;
             7) prompt_for_key "X (Twitter)" "X_KEY" ;;
