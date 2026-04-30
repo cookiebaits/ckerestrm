@@ -9,6 +9,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Default values
+YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/"
 YOUTUBE_KEY=""
 FACEBOOK_KEY=""
 INSTAGRAM_KEY=""
@@ -18,6 +19,8 @@ TWITCH_KEY=""
 KICK_KEY=""
 X_KEY=""
 TROVO_KEY=""
+RTMP1_URL=""
+RTMP1_KEY=""
 CHUNK_SIZE="8192"
 
 CONFIG_FILE="rtmp_config.env"
@@ -29,6 +32,7 @@ fi
 
 save_config() {
     cat <<ENV_EOF > "$CONFIG_FILE"
+YOUTUBE_URL="$YOUTUBE_URL"
 YOUTUBE_KEY="$YOUTUBE_KEY"
 FACEBOOK_KEY="$FACEBOOK_KEY"
 INSTAGRAM_KEY="$INSTAGRAM_KEY"
@@ -38,6 +42,8 @@ TWITCH_KEY="$TWITCH_KEY"
 KICK_KEY="$KICK_KEY"
 X_KEY="$X_KEY"
 TROVO_KEY="$TROVO_KEY"
+RTMP1_URL="$RTMP1_URL"
+RTMP1_KEY="$RTMP1_KEY"
 CHUNK_SIZE="$CHUNK_SIZE"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
@@ -69,12 +75,21 @@ configure_keys() {
         echo "6) Kick (Current: ${KICK_KEY:-None})"
         echo "7) X (Twitter) (Current: ${X_KEY:-None})"
         echo "8) Trovo (Current: ${TROVO_KEY:-None})"
-        echo "9) Back to Main Menu"
+        echo "9) Custom RTMP (Current URL: ${RTMP1_URL:-None})"
+        echo "10) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
 
         case $choice in
-            1) prompt_for_key "YouTube" "YOUTUBE_KEY" ;;
+            1)
+               prompt_for_key "YouTube Key" "YOUTUBE_KEY"
+               echo -e "Enter YouTube Server URL (Current: $YOUTUBE_URL): "
+               read -r y_url
+               if [ ! -z "$y_url" ]; then
+                   YOUTUBE_URL="$y_url"
+                   save_config
+               fi
+               ;;
             2) prompt_for_key "Facebook" "FACEBOOK_KEY" ;;
             3) prompt_for_key "Instagram" "INSTAGRAM_KEY" ;;
             4) prompt_for_key "Cloudflare" "CLOUDFLARE_KEY" ;;
@@ -90,7 +105,16 @@ configure_keys() {
             6) prompt_for_key "Kick" "KICK_KEY" ;;
             7) prompt_for_key "X (Twitter)" "X_KEY" ;;
             8) prompt_for_key "Trovo" "TROVO_KEY" ;;
-            9) break ;;
+            9)
+               echo -e "Enter Custom RTMP Server URL (Current: $RTMP1_URL): "
+               read -r c_url
+               if [ ! -z "$c_url" ]; then
+                   RTMP1_URL="$c_url"
+                   save_config
+               fi
+               prompt_for_key "Custom RTMP Key" "RTMP1_KEY"
+               ;;
+            10) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -147,6 +171,7 @@ build_and_run() {
         -p 1935:1935 \
         -p 8081:8081 \
         --restart unless-stopped \
+        -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
         -e FACEBOOK_KEY="$FACEBOOK_KEY" \
         -e INSTAGRAM_KEY="$INSTAGRAM_KEY" \
@@ -156,6 +181,8 @@ build_and_run() {
         -e KICK_KEY="$KICK_KEY" \
         -e X_KEY="$X_KEY" \
         -e TROVO_KEY="$TROVO_KEY" \
+        -e RTMP1_URL="$RTMP1_URL" \
+        -e RTMP1_KEY="$RTMP1_KEY" \
         -e CHUNK_SIZE="$CHUNK_SIZE" \
         prism-rtmps
 
