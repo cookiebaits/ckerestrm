@@ -240,6 +240,8 @@ view_logs() {
 
     echo -e "${YELLOW}Showing logs for prism-rtmps... (Press Ctrl+C to exit)${NC}"
     docker logs -f prism-rtmps
+    echo -e "Press Enter to return to menu..."
+    read -r
 }
 
 stop_container() {
