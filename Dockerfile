@@ -1,4 +1,4 @@
-FROM buildpack-deps:bullseye
+FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
 ENV NGINX_VERSION nginx-1.26.2
@@ -120,6 +120,8 @@ ENV KICK_KEY ""
 
 ENV X_URL rtmp://127.0.0.1:19354/x/
 ENV X_KEY ""
+
+ENV CHUNK_SIZE "8192"
 
 ENV DEBUG ""
 
