@@ -126,7 +126,7 @@ configure_keys() {
                echo "  3) US West (rtmp://usw20.contribute.live-video.net/app/)"
                echo "  4) Europe Central (rtmp://euc10.contribute.live-video.net/app/)"
                echo "  5) Europe West (rtmp://euw10.contribute.live-video.net/app/)"
-               echo "  6) Global Secure RTMPS Proxy (rtmp://127.0.0.1:19356/app/)"
+               echo "  6) Global Secure RTMPS Proxy (rtmps://ingest.global-contribute.live-video.net/app/)"
                echo "  7) Custom URL"
                echo -e "Option (Current URL: $TWITCH_URL): \c"
                read -r t_opt
