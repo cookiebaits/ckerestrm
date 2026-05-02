@@ -5,6 +5,7 @@ ENV NGINX_VERSION nginx-1.26.2
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
     pip3 install --break-system-packages flask gunicorn && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
