@@ -196,9 +196,14 @@ configure_obs() {
         echo -e "${GREEN}Custom OBS Key updated.${NC}"
         sleep 1
     fi
+}
 
-    echo ""
+configure_reverse_proxy() {
+    clear
+    echo -e "${GREEN}=== Configure Reverse Proxy / Custom Domain ===${NC}"
     echo -e "If you use Cloudflare or a custom domain, you can set it here."
+    echo -e "This will update the OBS instructions to use your domain instead of your raw server IP."
+    echo ""
     echo -e "Current Custom Domain: ${SERVER_DOMAIN:-None}"
     echo -e "Enter new Domain (Type 'disable' to remove, or press Enter to keep current): "
     read -r domain_input
@@ -325,11 +330,12 @@ while true; do
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys"
     echo "3) Configure OBS Setup & Security Key"
-    echo "4) Configure Optimizations (Chunk Size)"
-    echo "5) Build & Start Server"
-    echo "6) Stop Server"
-    echo "7) View Logs"
-    echo "8) Quit"
+    echo "4) Configure Reverse Proxy / Custom Domain"
+    echo "5) Configure Optimizations (Chunk Size)"
+    echo "6) Build & Start Server"
+    echo "7) Stop Server"
+    echo "8) View Logs"
+    echo "9) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -337,11 +343,12 @@ while true; do
         1) install_docker ;;
         2) configure_keys ;;
         3) configure_obs ;;
-        4) configure_optimizations ;;
-        5) build_and_run ;;
-        6) stop_container ;;
-        7) view_logs ;;
-        8) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        4) configure_reverse_proxy ;;
+        5) configure_optimizations ;;
+        6) build_and_run ;;
+        7) stop_container ;;
+        8) view_logs ;;
+        9) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
