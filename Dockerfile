@@ -79,6 +79,7 @@ COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
 #X Stunnel Port 19354
 COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
 COPY stunnel/youtube.conf /etc/stunnel/conf.d/youtube.conf
+COPY stunnel/youtube-backup.conf /etc/stunnel/conf.d/youtube-backup.conf
 COPY stunnel/twitch.conf /etc/stunnel/conf.d/twitch.conf
 
 #Youtube

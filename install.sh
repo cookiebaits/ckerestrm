@@ -104,7 +104,7 @@ configure_keys() {
                    1) YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
                    2) YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
                    3) YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
-                   4) YOUTUBE_URL="rtmp://127.0.0.1:19355/live2?backup=1" ;;
+                   4) YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
                    5)
                       echo -e "Enter Custom YouTube Server URL: "
                       read -r y_url
