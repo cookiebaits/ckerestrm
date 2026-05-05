@@ -5,6 +5,7 @@ ENV NGINX_VERSION nginx-1.26.2
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
     pip3 install --break-system-packages flask gunicorn && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
@@ -77,6 +78,9 @@ COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
 
 #X Stunnel Port 19354
 COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
+COPY stunnel/youtube.conf /etc/stunnel/conf.d/youtube.conf
+COPY stunnel/youtube-backup.conf /etc/stunnel/conf.d/youtube-backup.conf
+COPY stunnel/twitch.conf /etc/stunnel/conf.d/twitch.conf
 
 #Youtube
 ENV YOUTUBE_URL rtmp://x.rtmp.youtube.com/live2/
