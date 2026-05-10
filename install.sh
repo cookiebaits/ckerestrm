@@ -204,6 +204,11 @@ configure_reverse_proxy() {
     echo -e "If you use Cloudflare or a custom domain, you can set it here."
     echo -e "This will update the OBS instructions to use your domain instead of your raw server IP."
     echo ""
+    echo -e "${RED}IMPORTANT CLOUDFLARE WARNING:${NC}"
+    echo -e "Standard Cloudflare proxying (Orange Cloud) blocks RTMP traffic on port 1935."
+    echo -e "If using Cloudflare, you MUST set your DNS record to ${YELLOW}'DNS Only' (Grey Cloud)${NC}"
+    echo -e "otherwise your stream will fail to connect."
+    echo ""
     echo -e "Current Custom Domain: ${SERVER_DOMAIN:-None}"
     echo -e "Enter new Domain (Type 'disable' to remove, or press Enter to keep current): "
     read -r domain_input
