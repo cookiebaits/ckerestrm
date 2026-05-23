@@ -1,7 +1,7 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.26.2
+ENV NGINX_VERSION nginx-1.27.3
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 RUN apt-get update && \
@@ -81,6 +81,7 @@ COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
 COPY stunnel/youtube.conf /etc/stunnel/conf.d/youtube.conf
 COPY stunnel/youtube-backup.conf /etc/stunnel/conf.d/youtube-backup.conf
 COPY stunnel/twitch.conf /etc/stunnel/conf.d/twitch.conf
+COPY stunnel/tiktok.conf /etc/stunnel/conf.d/tiktok.conf
 
 #Youtube
 ENV YOUTUBE_URL rtmp://x.rtmp.youtube.com/live2/
@@ -122,12 +123,22 @@ ENV TROVO_KEY ""
 ENV KICK_URL rtmp://127.0.0.1:19353/kick/
 ENV KICK_KEY ""
 
+ENV TIKTOK_URL ""
+ENV TIKTOK_KEY ""
+
 ENV X_URL rtmp://127.0.0.1:19354/x/
 ENV X_KEY ""
 
 ENV OBS_KEY ""
 
 ENV CHUNK_SIZE "8192"
+
+ENV TIKTOK_V_URL ""
+ENV TIKTOK_V_KEY ""
+ENV TWITCH_V_URL ""
+ENV TWITCH_V_KEY ""
+ENV YOUTUBE_V_URL ""
+ENV YOUTUBE_V_KEY ""
 
 ENV DEBUG ""
 
