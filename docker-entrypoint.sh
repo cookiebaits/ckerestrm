@@ -111,6 +111,9 @@ add_push "TikTok"     "TIKTOK_KEY"     "TIKTOK_URL"     "tiktok"
 add_push "RTMP1"      "RTMP1_KEY"      "RTMP1_URL"      "rtmp1"
 add_push "RTMP2"      "RTMP2_KEY"      "RTMP2_URL"      "rtmp2"
 add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
+add_push "TikTok Vertical"  "TIKTOK_V_KEY"   "TIKTOK_V_URL"   "tiktok_v"
+add_push "Twitch Vertical"  "TWITCH_V_KEY"   "TWITCH_V_URL"   "twitch_v"
+add_push "YouTube Vertical" "YOUTUBE_V_KEY"  "YOUTUBE_V_URL"  "youtube_v"
 
 
 if [ $ENV_OK -eq 1 ]; then

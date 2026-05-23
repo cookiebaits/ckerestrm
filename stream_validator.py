@@ -28,6 +28,9 @@ DESTINATION_KEYS = {
     'rtmp3': os.getenv('RTMP3_KEY', ''),
     'trovo': os.getenv('TROVO_KEY', ''),
     'obs': os.getenv('OBS_KEY', ''),
+    'tiktok_v': os.getenv('TIKTOK_V_KEY', ''),
+    'twitch_v': os.getenv('TWITCH_V_KEY', ''),
+    'youtube_v': os.getenv('YOUTUBE_V_KEY', ''),
 }
 
 # Populate VALID_KEYS with only the keys that are actually set (non-empty)
