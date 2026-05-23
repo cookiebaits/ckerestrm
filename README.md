@@ -27,6 +27,13 @@ You stream **one** high-quality feed to your PrismRTMPS server, and it will:
 
 This fork also includes performance tuning (optimized `chunk_size`), updated core components for better stability and security, and active maintenance.
 
+### 🌟 New Features in This Fork
+*   **Interactive Menu Installer:** A streamlined `./install.sh` script to painlessly configure your streams, install Docker, and launch your server.
+*   **Simultaneous Vertical Streaming:** Natively push a secondary vertical feed (e.g., from the OBS Aitum Vertical plugin) simultaneously to TikTok, YouTube Shorts, and Twitch.
+*   **Native RTMPS Support:** Securely tunnel streams to modern CDNs requiring TLS/SNI handshakes (like YouTube, Twitch, TikTok, Kick, and Facebook) using internal Stunnel proxies.
+*   **Custom OBS Security Keys:** Define a private, dedicated "Master Key" to authenticate your OBS connection independent of your destination stream keys.
+*   **Cloudflare & Custom Domain Display:** Mask your VPS IP by configuring a custom domain to output in your OBS configuration instructions.
+
 ## Prequisites
 
 You'd need a VPS server. Key considerations:
@@ -57,11 +64,15 @@ You'd need a VPS server. Key considerations:
 
 *   4- **Configure OBS (or other streaming software):**
     *   Service: `Custom...`
-    *   Server: `rtmp://<your_vps_ip_address>:1935/live`
-        *(The application path is `/live` by default in this fork for simplicity and predictability)*
-    *   Stream Key: **Use ONE of the actual stream keys you configured during the setup process.** This is how PrismRTMPS validates your stream.
+    *   Server: `rtmp://<your_vps_ip_address>:1935/live` (or your custom domain)
+    *   Stream Key: **Enter the Custom OBS Key you set in the installer menu, OR use any of your active destination stream keys.** This is how PrismRTMPS securely validates your stream.
 
-*   5- **Begin streaming from OBS!**
+*   5- **(Optional) Configure Simultaneous Vertical Streaming:**
+    *   If using the **Aitum Vertical Plugin** in OBS:
+    *   Server: `rtmp://<your_vps_ip_address>:1935/vertical` (or your custom domain)
+    *   Stream Key: *Use the same authentication key as your primary stream.*
+
+*   6- **Begin streaming from OBS!**
 
 We advise testing with one or two destinations first.
 
