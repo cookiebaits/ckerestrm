@@ -17,6 +17,7 @@ VALID_KEYS = []
 DESTINATION_KEYS = {
     'youtube': os.getenv('YOUTUBE_KEY', ''),
     'twitch': os.getenv('TWITCH_KEY', ''),
+    'tiktok': os.getenv('TIKTOK_KEY', ''),
     'kick': os.getenv('KICK_KEY', ''),
     'x': os.getenv('X_KEY', ''),
     'facebook': os.getenv('FACEBOOK_KEY', ''),

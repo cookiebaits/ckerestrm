@@ -16,6 +16,8 @@ INSTAGRAM_KEY=""
 CLOUDFLARE_KEY=""
 TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/"
 TWITCH_KEY=""
+TIKTOK_URL=""
+TIKTOK_KEY=""
 KICK_KEY=""
 X_KEY=""
 TROVO_KEY=""
@@ -41,6 +43,8 @@ INSTAGRAM_KEY="$INSTAGRAM_KEY"
 CLOUDFLARE_KEY="$CLOUDFLARE_KEY"
 TWITCH_URL="$TWITCH_URL"
 TWITCH_KEY="$TWITCH_KEY"
+TIKTOK_URL="$TIKTOK_URL"
+TIKTOK_KEY="$TIKTOK_KEY"
 KICK_KEY="$KICK_KEY"
 X_KEY="$X_KEY"
 TROVO_KEY="$TROVO_KEY"
@@ -76,49 +80,22 @@ configure_keys() {
     while true; do
         clear
         echo -e "${GREEN}=== Configure Stream Keys ===${NC}"
-        echo "1) YouTube (Current: ${YOUTUBE_KEY:-None})"
-        echo "2) Facebook (Current: ${FACEBOOK_KEY:-None})"
-        echo "3) Instagram (Current: ${INSTAGRAM_KEY:-None})"
-        echo "4) Cloudflare (Current: ${CLOUDFLARE_KEY:-None})"
-        echo "5) Twitch (Current: ${TWITCH_KEY:-None})"
-        echo "6) Kick (Current: ${KICK_KEY:-None})"
-        echo "7) X (Twitter) (Current: ${X_KEY:-None})"
-        echo "8) Trovo (Current: ${TROVO_KEY:-None})"
-        echo "9) Custom RTMP (Current URL: ${RTMP1_URL:-None})"
-        echo "10) Back to Main Menu"
+        echo "1) Twitch (Current: ${TWITCH_KEY:-None})"
+        echo "2) YouTube (Current: ${YOUTUBE_KEY:-None})"
+        echo "3) TikTok (Current: ${TIKTOK_KEY:-None})"
+        echo "4) Facebook (Current: ${FACEBOOK_KEY:-None})"
+        echo "5) Instagram (Current: ${INSTAGRAM_KEY:-None})"
+        echo "6) Cloudflare (Current: ${CLOUDFLARE_KEY:-None})"
+        echo "7) Kick (Current: ${KICK_KEY:-None})"
+        echo "8) X (Twitter) (Current: ${X_KEY:-None})"
+        echo "9) Trovo (Current: ${TROVO_KEY:-None})"
+        echo "10) Custom RTMP (Current URL: ${RTMP1_URL:-None})"
+        echo "11) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
 
         case $choice in
             1)
-               prompt_for_key "YouTube Key" "YOUTUBE_KEY"
-               echo -e "Select YouTube Server:"
-               echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
-               echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
-               echo "  3) Secure Primary (rtmps://a.rtmps.youtube.com/live2/)"
-               echo "  4) Secure Backup (rtmps://b.rtmps.youtube.com/live2?backup=1)"
-               echo "  5) Custom URL"
-               echo -e "Option (Current URL: $YOUTUBE_URL): \c"
-               read -r y_opt
-               case $y_opt in
-                   1) YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
-                   2) YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
-                   3) YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
-                   4) YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
-                   5)
-                      echo -e "Enter Custom YouTube Server URL: "
-                      read -r y_url
-                      if [ ! -z "$y_url" ]; then
-                          YOUTUBE_URL="$y_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            2) prompt_for_key "Facebook" "FACEBOOK_KEY" ;;
-            3) prompt_for_key "Instagram" "INSTAGRAM_KEY" ;;
-            4) prompt_for_key "Cloudflare" "CLOUDFLARE_KEY" ;;
-            5)
                prompt_for_key "Twitch Key" "TWITCH_KEY"
                echo -e "Select Twitch Server:"
                echo "  1) Global Auto (rtmp://ingest.global-contribute.live-video.net/app/)"
@@ -147,10 +124,47 @@ configure_keys() {
                esac
                save_config
                ;;
-            6) prompt_for_key "Kick" "KICK_KEY" ;;
-            7) prompt_for_key "X (Twitter)" "X_KEY" ;;
-            8) prompt_for_key "Trovo" "TROVO_KEY" ;;
-            9)
+            2)
+               prompt_for_key "YouTube Key" "YOUTUBE_KEY"
+               echo -e "Select YouTube Server:"
+               echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
+               echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
+               echo "  3) Secure Primary (rtmp://127.0.0.1:19355/live2/)"
+               echo "  4) Secure Backup (rtmp://127.0.0.1:19357/live2?backup=1)"
+               echo "  5) Custom URL"
+               echo -e "Option (Current URL: $YOUTUBE_URL): \c"
+               read -r y_opt
+               case $y_opt in
+                   1) YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
+                   2) YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
+                   3) YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
+                   4) YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
+                   5)
+                      echo -e "Enter Custom YouTube Server URL: "
+                      read -r y_url
+                      if [ ! -z "$y_url" ]; then
+                          YOUTUBE_URL="$y_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            3)
+               prompt_for_key "TikTok Key" "TIKTOK_KEY"
+               echo -e "Enter TikTok Server URL (Current: ${TIKTOK_URL:-None}): "
+               read -r tk_url
+               if [ ! -z "$tk_url" ]; then
+                   TIKTOK_URL="$tk_url"
+                   save_config
+               fi
+               ;;
+            4) prompt_for_key "Facebook" "FACEBOOK_KEY" ;;
+            5) prompt_for_key "Instagram" "INSTAGRAM_KEY" ;;
+            6) prompt_for_key "Cloudflare" "CLOUDFLARE_KEY" ;;
+            7) prompt_for_key "Kick" "KICK_KEY" ;;
+            8) prompt_for_key "X (Twitter)" "X_KEY" ;;
+            9) prompt_for_key "Trovo" "TROVO_KEY" ;;
+            10)
                echo -e "Enter Custom RTMP Server URL (Current: $RTMP1_URL): "
                read -r c_url
                if [ ! -z "$c_url" ]; then
@@ -159,7 +173,7 @@ configure_keys() {
                fi
                prompt_for_key "Custom RTMP Key" "RTMP1_KEY"
                ;;
-            10) break ;;
+            11) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -283,6 +297,8 @@ build_and_run() {
         -e CLOUDFLARE_KEY="$CLOUDFLARE_KEY" \
         -e TWITCH_URL="$TWITCH_URL" \
         -e TWITCH_KEY="$TWITCH_KEY" \
+        -e TIKTOK_URL="$TIKTOK_URL" \
+        -e TIKTOK_KEY="$TIKTOK_KEY" \
         -e KICK_KEY="$KICK_KEY" \
         -e X_KEY="$X_KEY" \
         -e TROVO_KEY="$TROVO_KEY" \

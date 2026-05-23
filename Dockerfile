@@ -1,7 +1,7 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.26.2
+ENV NGINX_VERSION nginx-1.27.3
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 RUN apt-get update && \
@@ -121,6 +121,9 @@ ENV TROVO_KEY ""
 #Kick
 ENV KICK_URL rtmp://127.0.0.1:19353/kick/
 ENV KICK_KEY ""
+
+ENV TIKTOK_URL ""
+ENV TIKTOK_KEY ""
 
 ENV X_URL rtmp://127.0.0.1:19354/x/
 ENV X_KEY ""
