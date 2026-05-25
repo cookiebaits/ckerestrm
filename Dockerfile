@@ -1,7 +1,7 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.28.0
+ENV NGINX_VERSION nginx-1.30.1
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
 
 ENV STUNNEL_VERSION 5.78
