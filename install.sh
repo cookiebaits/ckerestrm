@@ -27,6 +27,9 @@ RTMP1_KEY=""
 OBS_KEY=""
 SERVER_DOMAIN=""
 CHUNK_SIZE="8192"
+STREAM_TITLE=""
+EPISODE_NUM=""
+AUTO_INCREMENT="n"
 
 TIKTOK_V_URL=""
 TIKTOK_V_KEY=""
@@ -62,6 +65,9 @@ RTMP1_KEY="$RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
 SERVER_DOMAIN="$SERVER_DOMAIN"
 CHUNK_SIZE="$CHUNK_SIZE"
+STREAM_TITLE="$STREAM_TITLE"
+EPISODE_NUM="$EPISODE_NUM"
+AUTO_INCREMENT="$AUTO_INCREMENT"
 
 TIKTOK_V_URL="$TIKTOK_V_URL"
 TIKTOK_V_KEY="$TIKTOK_V_KEY"
@@ -383,6 +389,71 @@ configure_reverse_proxy() {
     fi
 }
 
+manage_titles() {
+    clear
+    echo -e "${GREEN}=== Manage Stream Titles ===${NC}"
+    echo -e "This feature allows you to update your stream title across platforms."
+    echo -e "Current Base Title: ${YELLOW}${STREAM_TITLE:-None}${NC}"
+    echo -e "Current Episode Number: ${YELLOW}${EPISODE_NUM:-None}${NC}"
+    echo -e "Auto-Increment Episode: ${YELLOW}${AUTO_INCREMENT}${NC}"
+    echo ""
+
+    echo -e "Enter new Stream Title (press Enter to keep current): "
+    read -r title_input
+    if [ ! -z "$title_input" ]; then
+        STREAM_TITLE="$title_input"
+    fi
+
+    echo -e "Enter Episode Number (optional, leave blank or type 'disable' to remove, press Enter to keep current): "
+    read -r ep_input
+    if [ "$ep_input" == "disable" ] || [ "$ep_input" == "DISABLE" ]; then
+        EPISODE_NUM=""
+    elif [ ! -z "$ep_input" ]; then
+        EPISODE_NUM="$ep_input"
+    fi
+
+    if [ ! -z "$EPISODE_NUM" ]; then
+        echo -e "Enable auto-increment for episode number after pushing? (y/n) [Current: $AUTO_INCREMENT]: "
+        read -r auto_input
+        if [ "$auto_input" == "y" ] || [ "$auto_input" == "Y" ]; then
+            AUTO_INCREMENT="y"
+        elif [ "$auto_input" == "n" ] || [ "$auto_input" == "N" ]; then
+            AUTO_INCREMENT="n"
+        fi
+    else
+        AUTO_INCREMENT="n"
+    fi
+
+    save_config
+
+    # Format the final title
+    FINAL_TITLE="$STREAM_TITLE"
+    if [ ! -z "$EPISODE_NUM" ]; then
+        FINAL_TITLE="(Episode $EPISODE_NUM) $STREAM_TITLE"
+    fi
+
+    echo -e "\n${GREEN}Final Stream Title to push:${NC} $FINAL_TITLE"
+    echo -e "Pushing title to Twitch, YouTube, TikTok, and Kick..."
+
+    # Run the python script to attempt API updates
+    if [ -f "update_titles.py" ]; then
+        if ! python3 -c "import requests" &> /dev/null; then
+            echo -e "${YELLOW}Installing python3-requests for API integrations...${NC}"
+            sudo apt-get update && sudo apt-get install -y python3-requests
+        fi
+        python3 update_titles.py "$FINAL_TITLE"
+    fi
+
+    if [ "$AUTO_INCREMENT" == "y" ] && [ ! -z "$EPISODE_NUM" ]; then
+        EPISODE_NUM=$((EPISODE_NUM + 1))
+        save_config
+        echo -e "${YELLOW}Episode number auto-incremented to $EPISODE_NUM for next stream.${NC}"
+    fi
+
+    echo -e "\nPress Enter to return to menu..."
+    read -r
+}
+
 configure_optimizations() {
     clear
     echo -e "${GREEN}=== Optimizations ===${NC}"
@@ -504,11 +575,12 @@ while true; do
     echo "3) Configure Vertical Streams"
     echo "4) Configure OBS Setup & Security Key"
     echo "5) Configure Reverse Proxy / Custom Domain"
-    echo "6) Configure Optimizations (Chunk Size)"
-    echo "7) Build & Start Server"
-    echo "8) Stop Server"
-    echo "9) View Logs"
-    echo "10) Quit"
+    echo "6) Manage Stream Titles"
+    echo "7) Configure Optimizations (Chunk Size)"
+    echo "8) Build & Start Server"
+    echo "9) Stop Server"
+    echo "10) View Logs"
+    echo "11) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -518,11 +590,12 @@ while true; do
         3) configure_vertical ;;
         4) configure_obs ;;
         5) configure_reverse_proxy ;;
-        6) configure_optimizations ;;
-        7) build_and_run ;;
-        8) stop_container ;;
-        9) view_logs ;;
-        10) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        6) manage_titles ;;
+        7) configure_optimizations ;;
+        8) build_and_run ;;
+        9) stop_container ;;
+        10) view_logs ;;
+        11) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
