@@ -30,7 +30,7 @@ This fork also includes performance tuning (optimized `chunk_size`), updated cor
 ### 🌟 New Features in This Fork
 *   **Interactive Menu Installer:** A streamlined `./install.sh` script to painlessly configure your streams, install Docker, and launch your server.
 *   **Simultaneous Vertical Streaming:** Natively push a secondary vertical feed (e.g., from the OBS Aitum Vertical plugin) simultaneously to TikTok, YouTube Shorts, and Twitch.
-*   **Native RTMPS Support:** Securely tunnel streams to modern CDNs requiring TLS/SNI handshakes (like YouTube, Twitch, TikTok, Kick, and Facebook) using internal Stunnel proxies. 
+*   **Native RTMPS Support:** Securely tunnel streams to modern CDNs requiring TLS/SNI handshakes (like YouTube, Twitch, TikTok, Kick, and Facebook) using internal Stunnel proxies.
 *   **Custom OBS Security Keys:** Define a private, dedicated "Master Key" to authenticate your OBS connection independent of your destination stream keys.
 *   **Cloudflare & Custom Domain Display:** Mask your VPS IP by configuring a custom domain to output in your OBS configuration instructions.
 

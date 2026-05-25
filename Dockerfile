@@ -1,17 +1,29 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.30.1
+ENV NGINX_VERSION nginx-1.28.0
 ENV NGINX_RTMP_MODULE_VERSION 1.2.2
+
+ENV STUNNEL_VERSION 5.78
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends python3 python3-pip && \
+    apt-get install -y --no-install-recommends python3 python3-pip make gcc wget && \
     pip3 install --break-system-packages flask gunicorn && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
+
+# Build Stunnel from source
+RUN wget https://www.stunnel.org/downloads/stunnel-${STUNNEL_VERSION}.tar.gz && \
+    tar -xzf stunnel-${STUNNEL_VERSION}.tar.gz && \
+    cd stunnel-${STUNNEL_VERSION} && \
+    ./configure && \
+    make && make install && \
+    cd .. && rm -rf stunnel-${STUNNEL_VERSION}* && \
+    groupadd -r stunnel4 && useradd -r -g stunnel4 stunnel4 && \
+    mkdir -p /var/log/stunnel4 && chown -R stunnel4:stunnel4 /var/log/stunnel4
 	
 # Download and decompress Nginx
 RUN mkdir -p /tmp/build/nginx && \

@@ -27,6 +27,13 @@ RTMP1_KEY=""
 OBS_KEY=""
 SERVER_DOMAIN=""
 CHUNK_SIZE="8192"
+STREAM_TITLE=""
+EPISODE_NUM=""
+AUTO_INCREMENT="n"
+ADD_DATE="n"
+TWITCH_CLIENT_ID=""
+TWITCH_OAUTH_TOKEN=""
+TWITCH_BROADCASTER_ID=""
 
 TIKTOK_V_URL=""
 TIKTOK_V_KEY=""
@@ -62,6 +69,13 @@ RTMP1_KEY="$RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
 SERVER_DOMAIN="$SERVER_DOMAIN"
 CHUNK_SIZE="$CHUNK_SIZE"
+STREAM_TITLE="$STREAM_TITLE"
+EPISODE_NUM="$EPISODE_NUM"
+AUTO_INCREMENT="$AUTO_INCREMENT"
+ADD_DATE="$ADD_DATE"
+TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
+TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
+TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
 
 TIKTOK_V_URL="$TIKTOK_V_URL"
 TIKTOK_V_KEY="$TIKTOK_V_KEY"
@@ -77,10 +91,10 @@ prompt_for_key() {
     local platform=$1
     local var_name=$2
     local current_value=${!var_name}
-    
+
     echo -e "Enter Stream Key for ${YELLOW}$platform${NC} (Type 'disable' to remove key, or leave blank to keep current: ${current_value:-None}): "
     read -r input
-    
+
     if [ "$input" == "disable" ] || [ "$input" == "DISABLE" ]; then
         printf -v "$var_name" "%s" ""
         save_config
@@ -109,10 +123,10 @@ configure_keys() {
         echo "11) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
-        
+
         case $choice in
-            1) 
-               prompt_for_key "Twitch Key" "TWITCH_KEY" 
+            1)
+               prompt_for_key "Twitch Key" "TWITCH_KEY"
                echo -e "Select Twitch Server:"
                echo "  1) Global Auto (rtmp://ingest.global-contribute.live-video.net/app/)"
                echo "  2) US East (rtmp://use10.contribute.live-video.net/app/)"
@@ -130,7 +144,7 @@ configure_keys() {
                    4) TWITCH_URL="rtmp://euc10.contribute.live-video.net/app/" ;;
                    5) TWITCH_URL="rtmp://euw10.contribute.live-video.net/app/" ;;
                    6) TWITCH_URL="rtmp://127.0.0.1:19356/app/" ;;
-                   7) 
+                   7)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -140,8 +154,8 @@ configure_keys() {
                esac
                save_config
                ;;
-            2) 
-               prompt_for_key "YouTube Key" "YOUTUBE_KEY" 
+            2)
+               prompt_for_key "YouTube Key" "YOUTUBE_KEY"
                echo -e "Select YouTube Server:"
                echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
                echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
@@ -155,7 +169,7 @@ configure_keys() {
                    2) YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
                    3) YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
                    4) YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
-                   5) 
+                   5)
                       echo -e "Enter Custom YouTube Server URL: "
                       read -r y_url
                       if [ ! -z "$y_url" ]; then
@@ -165,8 +179,8 @@ configure_keys() {
                esac
                save_config
                ;;
-            3) 
-               prompt_for_key "TikTok Key" "TIKTOK_KEY" 
+            3)
+               prompt_for_key "TikTok Key" "TIKTOK_KEY"
                echo -e "Select TikTok Server:"
                echo "  1) Global Secure Proxy (rtmps://push-rtmp-f5-ap-southeast-1.tiktokcdn.com/live)"
                echo "  2) Custom URL"
@@ -174,7 +188,7 @@ configure_keys() {
                read -r tk_opt
                case $tk_opt in
                    1) TIKTOK_URL="rtmp://127.0.0.1:19358/live/" ;;
-                   2) 
+                   2)
                       echo -e "Enter Custom TikTok Server URL: "
                       read -r tk_url
                       if [ ! -z "$tk_url" ]; then
@@ -187,8 +201,8 @@ configure_keys() {
             4) prompt_for_key "Facebook" "FACEBOOK_KEY" ;;
             5) prompt_for_key "Instagram" "INSTAGRAM_KEY" ;;
             6) prompt_for_key "Cloudflare" "CLOUDFLARE_KEY" ;;
-            7) 
-               prompt_for_key "Kick Key" "KICK_KEY" 
+            7)
+               prompt_for_key "Kick Key" "KICK_KEY"
                echo -e "Select Kick Server:"
                echo "  1) Global Secure Proxy (rtmps://fa723fc1b171.global-contribute.live-video.net/app/)"
                echo "  2) Custom URL"
@@ -196,7 +210,7 @@ configure_keys() {
                read -r k_opt
                case $k_opt in
                    1) KICK_URL="rtmp://127.0.0.1:19353/app/" ;;
-                   2) 
+                   2)
                       echo -e "Enter Custom Kick Server URL: "
                       read -r k_url
                       if [ ! -z "$k_url" ]; then
@@ -208,14 +222,14 @@ configure_keys() {
                ;;
             8) prompt_for_key "X (Twitter)" "X_KEY" ;;
             9) prompt_for_key "Trovo" "TROVO_KEY" ;;
-            10) 
+            10)
                echo -e "Enter Custom RTMP Server URL (Current: $RTMP1_URL): "
                read -r c_url
                if [ ! -z "$c_url" ]; then
                    RTMP1_URL="$c_url"
                    save_config
                fi
-               prompt_for_key "Custom RTMP Key" "RTMP1_KEY" 
+               prompt_for_key "Custom RTMP Key" "RTMP1_KEY"
                ;;
             11) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
@@ -242,10 +256,10 @@ configure_vertical() {
         echo "4) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
-        
+
         case $choice in
-            1) 
-               prompt_for_key "TikTok Vertical Key" "TIKTOK_V_KEY" 
+            1)
+               prompt_for_key "TikTok Vertical Key" "TIKTOK_V_KEY"
                echo -e "Select TikTok Vertical Server:"
                echo "  1) Global Secure Proxy (rtmps://push-rtmp-f5-ap-southeast-1.tiktokcdn.com/live)"
                echo "  2) Custom URL"
@@ -253,7 +267,7 @@ configure_vertical() {
                read -r tk_v_opt
                case $tk_v_opt in
                    1) TIKTOK_V_URL="rtmp://127.0.0.1:19358/live/" ;;
-                   2) 
+                   2)
                       echo -e "Enter Custom TikTok Vertical Server URL: "
                       read -r tk_v_url
                       if [ ! -z "$tk_v_url" ]; then
@@ -263,8 +277,8 @@ configure_vertical() {
                esac
                save_config
                ;;
-            2) 
-               prompt_for_key "Twitch Vertical Key" "TWITCH_V_KEY" 
+            2)
+               prompt_for_key "Twitch Vertical Key" "TWITCH_V_KEY"
                echo -e "Select Twitch Vertical Server:"
                echo "  1) Global Auto (rtmp://ingest.global-contribute.live-video.net/app/)"
                echo "  2) US East (rtmp://use10.contribute.live-video.net/app/)"
@@ -282,7 +296,7 @@ configure_vertical() {
                    4) TWITCH_V_URL="rtmp://euc10.contribute.live-video.net/app/" ;;
                    5) TWITCH_V_URL="rtmp://euw10.contribute.live-video.net/app/" ;;
                    6) TWITCH_V_URL="rtmp://127.0.0.1:19356/app/" ;;
-                   7) 
+                   7)
                       echo -e "Enter Custom Twitch Vertical Server URL: "
                       read -r t_v_url
                       if [ ! -z "$t_v_url" ]; then
@@ -292,8 +306,8 @@ configure_vertical() {
                esac
                save_config
                ;;
-            3) 
-               prompt_for_key "YouTube Vertical Key" "YOUTUBE_V_KEY" 
+            3)
+               prompt_for_key "YouTube Vertical Key" "YOUTUBE_V_KEY"
                echo -e "Select YouTube Vertical Server:"
                echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
                echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
@@ -307,7 +321,7 @@ configure_vertical() {
                    2) YOUTUBE_V_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
                    3) YOUTUBE_V_URL="rtmp://127.0.0.1:19355/live2/" ;;
                    4) YOUTUBE_V_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
-                   5) 
+                   5)
                       echo -e "Enter Custom YouTube Vertical Server URL: "
                       read -r y_v_url
                       if [ ! -z "$y_v_url" ]; then
@@ -332,7 +346,7 @@ configure_obs() {
     else
         SERVER_HOST=$(curl -s ifconfig.me || echo "<your_server_ip>")
     fi
-    
+
     echo -e "To stream to this server from OBS or another encoder:"
     echo -e "  ${YELLOW}Server URL:${NC} rtmp://${SERVER_HOST}:1935/live"
     echo ""
@@ -363,9 +377,9 @@ configure_reverse_proxy() {
     echo -e "This will update the OBS instructions to use your domain instead of your raw server IP."
     echo ""
     echo -e "${RED}IMPORTANT CLOUDFLARE WARNING:${NC}"
-    echo -e "Standard Cloudflare proxying (Orange Cloud) blocks RTMP traffic on port 1935."
-    echo -e "If using Cloudflare, you MUST set your DNS record to ${YELLOW}'DNS Only' (Grey Cloud)${NC}"
-    echo -e "otherwise your stream will fail to connect."
+    echo -e "Standard Cloudflare full proxying (Orange Cloud) ONLY supports HTTP traffic and automatically drops raw RTMP connections on port 1935."
+    echo -e "If using Cloudflare, you MUST set your DNS record to ${YELLOW}'DNS Only' (Grey Cloud)${NC} for streams to connect natively."
+    echo -e "If you wish to hide your domain's A record (full proxy), you cannot stream standard RTMP directly. You must set up advanced routing like Cloudflare Tunnels (cloudflared) or a VPN, which requires local software on your PC."
     echo ""
     echo -e "Current Custom Domain: ${SERVER_DOMAIN:-None}"
     echo -e "Enter new Domain (Type 'disable' to remove, or press Enter to keep current): "
@@ -381,6 +395,135 @@ configure_reverse_proxy() {
         echo -e "${GREEN}Custom Domain updated.${NC}"
         sleep 1
     fi
+}
+
+manage_titles() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== Manage Stream Titles ===${NC}"
+        echo -e "This feature allows you to update your stream title across platforms."
+        echo -e "1) Update Stream Title & Push"
+        echo -e "2) Configure Twitch API Credentials for Title Sync"
+        echo -e "3) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r title_choice
+
+        case $title_choice in
+            1)
+                clear
+                echo -e "${GREEN}=== Update Stream Title ===${NC}"
+                echo -e "Current Base Title: ${YELLOW}${STREAM_TITLE:-None}${NC}"
+                echo -e "Current Episode Number: ${YELLOW}${EPISODE_NUM:-None}${NC}"
+                echo -e "Auto-Increment Episode: ${YELLOW}${AUTO_INCREMENT}${NC}"
+                echo -e "Automatically Add Date: ${YELLOW}${ADD_DATE}${NC}"
+                echo ""
+
+                echo -e "Enter new Stream Title (Supports Emojis! 🚀) (press Enter to keep current): "
+                read -r title_input
+                if [ ! -z "$title_input" ]; then
+                    STREAM_TITLE="$title_input"
+                fi
+
+                echo -e "Enter Episode Number (optional, leave blank or type 'disable' to remove, press Enter to keep current): "
+                read -r ep_input
+                if [ "$ep_input" == "disable" ] || [ "$ep_input" == "DISABLE" ]; then
+                    EPISODE_NUM=""
+                elif [ ! -z "$ep_input" ]; then
+                    EPISODE_NUM="$ep_input"
+                fi
+
+                if [ ! -z "$EPISODE_NUM" ]; then
+                    echo -e "Enable auto-increment for episode number after pushing? (y/n) [Current: $AUTO_INCREMENT]: "
+                    read -r auto_input
+                    if [ "$auto_input" == "y" ] || [ "$auto_input" == "Y" ]; then
+                        AUTO_INCREMENT="y"
+                    elif [ "$auto_input" == "n" ] || [ "$auto_input" == "N" ]; then
+                        AUTO_INCREMENT="n"
+                    fi
+                else
+                    AUTO_INCREMENT="n"
+                fi
+
+                echo -e "Automatically append today's date to title? (y/n) [Current: $ADD_DATE]: "
+                read -r date_input
+                if [ "$date_input" == "y" ] || [ "$date_input" == "Y" ]; then
+                    ADD_DATE="y"
+                elif [ "$date_input" == "n" ] || [ "$date_input" == "N" ]; then
+                    ADD_DATE="n"
+                fi
+
+                save_config
+
+                # Format the final title
+                FINAL_TITLE="$STREAM_TITLE"
+
+                if [ "$ADD_DATE" == "y" ]; then
+                    CURRENT_DATE=$(date +"%Y-%m-%d")
+                    FINAL_TITLE="${FINAL_TITLE} / ${CURRENT_DATE}"
+                fi
+
+                if [ ! -z "$EPISODE_NUM" ]; then
+                    FINAL_TITLE="${FINAL_TITLE} / Episode ${EPISODE_NUM}"
+                fi
+
+                echo -e "\n${GREEN}Final Stream Title to push:${NC} $FINAL_TITLE"
+                echo -e "Pushing title to Twitch, YouTube, TikTok, and Kick..."
+
+                # Run the python script to attempt API updates
+                if [ -f "update_titles.py" ]; then
+                    if ! python3 -c "import requests" &> /dev/null; then
+                        echo -e "${YELLOW}Installing python3-requests for API integrations...${NC}"
+                        sudo apt-get update && sudo apt-get install -y python3-requests
+                    fi
+                    python3 update_titles.py "$FINAL_TITLE"
+                fi
+
+                if [ "$AUTO_INCREMENT" == "y" ] && [ ! -z "$EPISODE_NUM" ]; then
+                    EPISODE_NUM=$((EPISODE_NUM + 1))
+                    save_config
+                    echo -e "${YELLOW}Episode number auto-incremented to $EPISODE_NUM for next stream.${NC}"
+                fi
+
+                echo -e "\nPress Enter to return to menu..."
+                read -r
+                ;;
+            2)
+                clear
+                echo -e "${GREEN}=== Configure Twitch API Credentials ===${NC}"
+                echo -e "To automatically update your Twitch title, you need a Client ID, User OAuth Token (with channel:manage:broadcast scope), and Broadcaster ID."
+
+                echo -e "Enter Twitch Client ID (Current: ${YELLOW}${TWITCH_CLIENT_ID:-None}${NC}): "
+                read -r client_input
+                if [ "$client_input" == "disable" ] || [ "$client_input" == "DISABLE" ]; then
+                    TWITCH_CLIENT_ID=""
+                elif [ ! -z "$client_input" ]; then
+                    TWITCH_CLIENT_ID="$client_input"
+                fi
+
+                echo -e "Enter Twitch OAuth Token (Current: ${YELLOW}${TWITCH_OAUTH_TOKEN:-None}${NC}): "
+                read -r token_input
+                if [ "$token_input" == "disable" ] || [ "$token_input" == "DISABLE" ]; then
+                    TWITCH_OAUTH_TOKEN=""
+                elif [ ! -z "$token_input" ]; then
+                    TWITCH_OAUTH_TOKEN="$token_input"
+                fi
+
+                echo -e "Enter Twitch Broadcaster ID (Current: ${YELLOW}${TWITCH_BROADCASTER_ID:-None}${NC}): "
+                read -r bc_input
+                if [ "$bc_input" == "disable" ] || [ "$bc_input" == "DISABLE" ]; then
+                    TWITCH_BROADCASTER_ID=""
+                elif [ ! -z "$bc_input" ]; then
+                    TWITCH_BROADCASTER_ID="$bc_input"
+                fi
+
+                save_config
+                echo -e "${GREEN}Twitch API credentials updated.${NC}"
+                sleep 1
+                ;;
+            3) break ;;
+            *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
+        esac
+    done
 }
 
 configure_optimizations() {
@@ -420,14 +563,14 @@ build_and_run() {
         sleep 2
         return
     fi
-    
+
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t prism-rtmps .
-    
+
     echo -e "${GREEN}Stopping any existing container...${NC}"
     docker stop prism-rtmps 2>/dev/null || true
     docker rm prism-rtmps 2>/dev/null || true
-    
+
     echo -e "${GREEN}Starting container...${NC}"
     # Start the container
     docker run -d --name prism-rtmps \
@@ -476,7 +619,7 @@ view_logs() {
         sleep 2
         return
     fi
-    
+
     echo -e "${YELLOW}Showing logs for prism-rtmps... (Press Ctrl+C to exit)${NC}"
     docker logs -f prism-rtmps
     echo -e "Press Enter to return to menu..."
@@ -504,25 +647,27 @@ while true; do
     echo "3) Configure Vertical Streams"
     echo "4) Configure OBS Setup & Security Key"
     echo "5) Configure Reverse Proxy / Custom Domain"
-    echo "6) Configure Optimizations (Chunk Size)"
-    echo "7) Build & Start Server"
-    echo "8) Stop Server"
-    echo "9) View Logs"
-    echo "10) Quit"
+    echo "6) Manage Stream Titles"
+    echo "7) Configure Optimizations (Chunk Size)"
+    echo "8) Build & Start Server"
+    echo "9) Stop Server"
+    echo "10) View Logs"
+    echo "11) Quit"
     echo -e "Select an option: \c"
     read -r option
-    
+
     case $option in
         1) install_docker ;;
         2) configure_keys ;;
         3) configure_vertical ;;
         4) configure_obs ;;
         5) configure_reverse_proxy ;;
-        6) configure_optimizations ;;
-        7) build_and_run ;;
-        8) stop_container ;;
-        9) view_logs ;;
-        10) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        6) manage_titles ;;
+        7) configure_optimizations ;;
+        8) build_and_run ;;
+        9) stop_container ;;
+        10) view_logs ;;
+        11) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
