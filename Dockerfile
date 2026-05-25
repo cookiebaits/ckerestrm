@@ -10,7 +10,7 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends python3 python3-pip make gcc wget && \
     pip3 install --break-system-packages flask gunicorn && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev gettext && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev gettext libpcre3-dev zlib1g-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
@@ -50,7 +50,6 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
         --http-client-body-temp-path=/tmp/nginx-client-body \
         --with-http_ssl_module \
         --with-threads \
-        --with-ipv6 \
         --add-module=/tmp/build/nginx-rtmp-module/cookie-nginx-rtmp && \
     make -j $(getconf _NPROCESSORS_ONLN) CFLAGS="-Wno-error" && \
     make install && \

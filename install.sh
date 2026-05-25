@@ -574,8 +574,8 @@ build_and_run() {
     echo -e "${GREEN}Starting container...${NC}"
     # Start the container
     docker run -d --name prism-rtmps \
-        -p 1935:1935 \
-        -p 8081:8081 \
+        -p 0.0.0.0:1935:1935 \
+        -p 0.0.0.0:8081:8081 \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
