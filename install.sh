@@ -30,6 +30,10 @@ CHUNK_SIZE="8192"
 STREAM_TITLE=""
 EPISODE_NUM=""
 AUTO_INCREMENT="n"
+ADD_DATE="n"
+TWITCH_CLIENT_ID=""
+TWITCH_OAUTH_TOKEN=""
+TWITCH_BROADCASTER_ID=""
 
 TIKTOK_V_URL=""
 TIKTOK_V_KEY=""
@@ -68,6 +72,10 @@ CHUNK_SIZE="$CHUNK_SIZE"
 STREAM_TITLE="$STREAM_TITLE"
 EPISODE_NUM="$EPISODE_NUM"
 AUTO_INCREMENT="$AUTO_INCREMENT"
+ADD_DATE="$ADD_DATE"
+TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
+TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
+TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
 
 TIKTOK_V_URL="$TIKTOK_V_URL"
 TIKTOK_V_KEY="$TIKTOK_V_KEY"
@@ -390,68 +398,132 @@ configure_reverse_proxy() {
 }
 
 manage_titles() {
-    clear
-    echo -e "${GREEN}=== Manage Stream Titles ===${NC}"
-    echo -e "This feature allows you to update your stream title across platforms."
-    echo -e "Current Base Title: ${YELLOW}${STREAM_TITLE:-None}${NC}"
-    echo -e "Current Episode Number: ${YELLOW}${EPISODE_NUM:-None}${NC}"
-    echo -e "Auto-Increment Episode: ${YELLOW}${AUTO_INCREMENT}${NC}"
-    echo ""
+    while true; do
+        clear
+        echo -e "${GREEN}=== Manage Stream Titles ===${NC}"
+        echo -e "This feature allows you to update your stream title across platforms."
+        echo -e "1) Update Stream Title & Push"
+        echo -e "2) Configure Twitch API Credentials for Title Sync"
+        echo -e "3) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r title_choice
 
-    echo -e "Enter new Stream Title (press Enter to keep current): "
-    read -r title_input
-    if [ ! -z "$title_input" ]; then
-        STREAM_TITLE="$title_input"
-    fi
+        case $title_choice in
+            1)
+                clear
+                echo -e "${GREEN}=== Update Stream Title ===${NC}"
+                echo -e "Current Base Title: ${YELLOW}${STREAM_TITLE:-None}${NC}"
+                echo -e "Current Episode Number: ${YELLOW}${EPISODE_NUM:-None}${NC}"
+                echo -e "Auto-Increment Episode: ${YELLOW}${AUTO_INCREMENT}${NC}"
+                echo -e "Automatically Add Date: ${YELLOW}${ADD_DATE}${NC}"
+                echo ""
 
-    echo -e "Enter Episode Number (optional, leave blank or type 'disable' to remove, press Enter to keep current): "
-    read -r ep_input
-    if [ "$ep_input" == "disable" ] || [ "$ep_input" == "DISABLE" ]; then
-        EPISODE_NUM=""
-    elif [ ! -z "$ep_input" ]; then
-        EPISODE_NUM="$ep_input"
-    fi
+                echo -e "Enter new Stream Title (Supports Emojis! 🚀) (press Enter to keep current): "
+                read -r title_input
+                if [ ! -z "$title_input" ]; then
+                    STREAM_TITLE="$title_input"
+                fi
 
-    if [ ! -z "$EPISODE_NUM" ]; then
-        echo -e "Enable auto-increment for episode number after pushing? (y/n) [Current: $AUTO_INCREMENT]: "
-        read -r auto_input
-        if [ "$auto_input" == "y" ] || [ "$auto_input" == "Y" ]; then
-            AUTO_INCREMENT="y"
-        elif [ "$auto_input" == "n" ] || [ "$auto_input" == "N" ]; then
-            AUTO_INCREMENT="n"
-        fi
-    else
-        AUTO_INCREMENT="n"
-    fi
+                echo -e "Enter Episode Number (optional, leave blank or type 'disable' to remove, press Enter to keep current): "
+                read -r ep_input
+                if [ "$ep_input" == "disable" ] || [ "$ep_input" == "DISABLE" ]; then
+                    EPISODE_NUM=""
+                elif [ ! -z "$ep_input" ]; then
+                    EPISODE_NUM="$ep_input"
+                fi
 
-    save_config
+                if [ ! -z "$EPISODE_NUM" ]; then
+                    echo -e "Enable auto-increment for episode number after pushing? (y/n) [Current: $AUTO_INCREMENT]: "
+                    read -r auto_input
+                    if [ "$auto_input" == "y" ] || [ "$auto_input" == "Y" ]; then
+                        AUTO_INCREMENT="y"
+                    elif [ "$auto_input" == "n" ] || [ "$auto_input" == "N" ]; then
+                        AUTO_INCREMENT="n"
+                    fi
+                else
+                    AUTO_INCREMENT="n"
+                fi
 
-    # Format the final title
-    FINAL_TITLE="$STREAM_TITLE"
-    if [ ! -z "$EPISODE_NUM" ]; then
-        FINAL_TITLE="(Episode $EPISODE_NUM) $STREAM_TITLE"
-    fi
+                echo -e "Automatically append today's date to title? (y/n) [Current: $ADD_DATE]: "
+                read -r date_input
+                if [ "$date_input" == "y" ] || [ "$date_input" == "Y" ]; then
+                    ADD_DATE="y"
+                elif [ "$date_input" == "n" ] || [ "$date_input" == "N" ]; then
+                    ADD_DATE="n"
+                fi
 
-    echo -e "\n${GREEN}Final Stream Title to push:${NC} $FINAL_TITLE"
-    echo -e "Pushing title to Twitch, YouTube, TikTok, and Kick..."
+                save_config
 
-    # Run the python script to attempt API updates
-    if [ -f "update_titles.py" ]; then
-        if ! python3 -c "import requests" &> /dev/null; then
-            echo -e "${YELLOW}Installing python3-requests for API integrations...${NC}"
-            sudo apt-get update && sudo apt-get install -y python3-requests
-        fi
-        python3 update_titles.py "$FINAL_TITLE"
-    fi
+                # Format the final title
+                FINAL_TITLE="$STREAM_TITLE"
 
-    if [ "$AUTO_INCREMENT" == "y" ] && [ ! -z "$EPISODE_NUM" ]; then
-        EPISODE_NUM=$((EPISODE_NUM + 1))
-        save_config
-        echo -e "${YELLOW}Episode number auto-incremented to $EPISODE_NUM for next stream.${NC}"
-    fi
+                if [ "$ADD_DATE" == "y" ]; then
+                    CURRENT_DATE=$(date +"%Y-%m-%d")
+                    FINAL_TITLE="${FINAL_TITLE} / ${CURRENT_DATE}"
+                fi
 
-    echo -e "\nPress Enter to return to menu..."
-    read -r
+                if [ ! -z "$EPISODE_NUM" ]; then
+                    FINAL_TITLE="${FINAL_TITLE} / Episode ${EPISODE_NUM}"
+                fi
+
+                echo -e "\n${GREEN}Final Stream Title to push:${NC} $FINAL_TITLE"
+                echo -e "Pushing title to Twitch, YouTube, TikTok, and Kick..."
+
+                # Run the python script to attempt API updates
+                if [ -f "update_titles.py" ]; then
+                    if ! python3 -c "import requests" &> /dev/null; then
+                        echo -e "${YELLOW}Installing python3-requests for API integrations...${NC}"
+                        sudo apt-get update && sudo apt-get install -y python3-requests
+                    fi
+                    python3 update_titles.py "$FINAL_TITLE"
+                fi
+
+                if [ "$AUTO_INCREMENT" == "y" ] && [ ! -z "$EPISODE_NUM" ]; then
+                    EPISODE_NUM=$((EPISODE_NUM + 1))
+                    save_config
+                    echo -e "${YELLOW}Episode number auto-incremented to $EPISODE_NUM for next stream.${NC}"
+                fi
+
+                echo -e "\nPress Enter to return to menu..."
+                read -r
+                ;;
+            2)
+                clear
+                echo -e "${GREEN}=== Configure Twitch API Credentials ===${NC}"
+                echo -e "To automatically update your Twitch title, you need a Client ID, User OAuth Token (with channel:manage:broadcast scope), and Broadcaster ID."
+
+                echo -e "Enter Twitch Client ID (Current: ${YELLOW}${TWITCH_CLIENT_ID:-None}${NC}): "
+                read -r client_input
+                if [ "$client_input" == "disable" ] || [ "$client_input" == "DISABLE" ]; then
+                    TWITCH_CLIENT_ID=""
+                elif [ ! -z "$client_input" ]; then
+                    TWITCH_CLIENT_ID="$client_input"
+                fi
+
+                echo -e "Enter Twitch OAuth Token (Current: ${YELLOW}${TWITCH_OAUTH_TOKEN:-None}${NC}): "
+                read -r token_input
+                if [ "$token_input" == "disable" ] || [ "$token_input" == "DISABLE" ]; then
+                    TWITCH_OAUTH_TOKEN=""
+                elif [ ! -z "$token_input" ]; then
+                    TWITCH_OAUTH_TOKEN="$token_input"
+                fi
+
+                echo -e "Enter Twitch Broadcaster ID (Current: ${YELLOW}${TWITCH_BROADCASTER_ID:-None}${NC}): "
+                read -r bc_input
+                if [ "$bc_input" == "disable" ] || [ "$bc_input" == "DISABLE" ]; then
+                    TWITCH_BROADCASTER_ID=""
+                elif [ ! -z "$bc_input" ]; then
+                    TWITCH_BROADCASTER_ID="$bc_input"
+                fi
+
+                save_config
+                echo -e "${GREEN}Twitch API credentials updated.${NC}"
+                sleep 1
+                ;;
+            3) break ;;
+            *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
+        esac
+    done
 }
 
 configure_optimizations() {
