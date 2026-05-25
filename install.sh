@@ -245,7 +245,7 @@ configure_vertical() {
         if [ ! -z "$SERVER_DOMAIN" ]; then
             echo -e "  ${YELLOW}Vertical URL:${NC} rtmp://${SERVER_DOMAIN}:1935/vertical"
         else
-            SERVER_IP=$(curl -s ifconfig.me || echo "<your_server_ip>")
+            SERVER_IP=$(curl -4 -s ifconfig.me || curl -s ipv4.icanhazip.com || echo "<your_server_ip>")
             echo -e "  ${YELLOW}Vertical URL:${NC} rtmp://${SERVER_IP}:1935/vertical"
         fi
         echo -e "Stream Key: Use your OBS Master Key or one of the configured keys."
@@ -344,7 +344,7 @@ configure_obs() {
     if [ ! -z "$SERVER_DOMAIN" ]; then
         SERVER_HOST="$SERVER_DOMAIN"
     else
-        SERVER_HOST=$(curl -s ifconfig.me || echo "<your_server_ip>")
+        SERVER_HOST=$(curl -4 -s ifconfig.me || curl -s ipv4.icanhazip.com || echo "<your_server_ip>")
     fi
 
     echo -e "To stream to this server from OBS or another encoder:"
