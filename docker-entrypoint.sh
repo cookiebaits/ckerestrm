@@ -141,7 +141,7 @@ fi
 
 echo "Starting Stunnel..."
 # Start stunnel in the background
-/usr/local/bin/stunnel /etc/stunnel/stunnel.conf
+stunnel4 /etc/stunnel/stunnel.conf
 
 echo "Starting Nginx..."
 exec "$@" # Execute the CMD from Dockerfile (nginx -g 'daemon off;')
