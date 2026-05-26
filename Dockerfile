@@ -2,7 +2,7 @@ FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
 ENV NGINX_VERSION nginx-1.30.1
-ENV NGINX_RTMP_MODULE_VERSION 1.2.2
+ENV NGINX_RTMP_MODULE_REPO https://github.com/cookiebaits/cookie-nginx-rtmp.git
 
 ENV STUNNEL_VERSION 5.78
 
@@ -34,7 +34,7 @@ RUN mkdir -p /tmp/build/nginx && \
 # Download custom RTMP module
 RUN mkdir -p /tmp/build/nginx-rtmp-module && \
     cd /tmp/build/nginx-rtmp-module && \
-    git clone https://github.com/cookiebaits/cookie-nginx-rtmp.git
+    git clone ${NGINX_RTMP_MODULE_REPO}
 
 # Build and install Nginx
 # The default puts everything under /usr/local/nginx, so it's needed to change
