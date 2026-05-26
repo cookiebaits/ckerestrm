@@ -17,11 +17,11 @@ def update_twitch(title):
     client_id = env_vars.get("TWITCH_CLIENT_ID", "")
     token = env_vars.get("TWITCH_OAUTH_TOKEN", "")
     broadcaster_id = env_vars.get("TWITCH_BROADCASTER_ID", "")
-
+    
     if not (client_id and token and broadcaster_id):
         print("    [!] Twitch API credentials missing (Need Client ID, OAuth Token, Broadcaster ID). Update skipped.")
         return
-
+        
     print("    [*] Pushing to Twitch...")
     headers = {
         'Client-Id': client_id,
@@ -30,7 +30,7 @@ def update_twitch(title):
     }
     url = f"https://api.twitch.tv/helix/channels?broadcaster_id={broadcaster_id}"
     data = {"title": title}
-
+    
     try:
         response = requests.patch(url, headers=headers, json=data)
         if response.status_code == 204:
@@ -53,20 +53,20 @@ def main():
     if len(sys.argv) < 2:
         print("Error: No title provided.")
         sys.exit(1)
-
+        
     title = sys.argv[1]
-
+    
     print("\n---------------------------------------------------------")
     print(f"[*] Executing Title Update: \"{title}\"")
     print("---------------------------------------------------------")
-
+    
     # Execute API calls
     update_twitch(title)
     update_youtube(title)
-
+    
     print("    [!] Kick does not currently offer a public API for stream titles. Update skipped.")
     print("    [!] TikTok does not currently offer a public API for stream titles. Update skipped.")
-
+    
     print("\n[i] NOTE: For full automation, set TWITCH_CLIENT_ID, TWITCH_OAUTH_TOKEN, and TWITCH_BROADCASTER_ID")
     print("          in your rtmp_config.env file.")
     print("---------------------------------------------------------\n")
