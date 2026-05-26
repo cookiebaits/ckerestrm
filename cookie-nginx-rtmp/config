@@ -130,4 +130,3 @@ else
 fi
 
 USE_OPENSSL=YES
-

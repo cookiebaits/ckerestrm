@@ -906,5 +906,3 @@ ngx_rtmp_finalize_set_chunk_size(ngx_rtmp_session_t *s)
     }
     return NGX_OK;
 }
-
-

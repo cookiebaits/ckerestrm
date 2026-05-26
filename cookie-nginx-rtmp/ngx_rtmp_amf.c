@@ -642,4 +642,3 @@ ngx_rtmp_amf_write(ngx_rtmp_amf_ctx_t *ctx,
 
     return NGX_OK;
 }
-

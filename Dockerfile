@@ -1,7 +1,7 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.27.0
+ENV NGINX_VERSION nginx-1.30.2
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip git && \
@@ -18,9 +18,7 @@ RUN mkdir -p /tmp/build/nginx && \
     tar -zxf ${NGINX_VERSION}.tar.gz
 
 # Download RTMP module
-RUN mkdir -p /tmp/build/nginx-rtmp-module && \
-    cd /tmp/build/nginx-rtmp-module && \
-    git clone https://github.com/cookiebaits/cookie-nginx-rtmp.git
+COPY cookie-nginx-rtmp /tmp/build/nginx-rtmp-module/cookie-nginx-rtmp
 
 # Build and install Nginx
 # The default puts everything under /usr/local/nginx, so it's needed to change

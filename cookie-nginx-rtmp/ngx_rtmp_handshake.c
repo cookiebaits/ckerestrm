@@ -628,4 +628,3 @@ ngx_rtmp_client_handshake(ngx_rtmp_session_t *s, unsigned async)
 
     ngx_rtmp_handshake_send(c->write);
 }
-
