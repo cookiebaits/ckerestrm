@@ -24,6 +24,29 @@ RTMP1_KEY=""
 OBS_KEY=""
 CHUNK_SIZE="8192"
 
+# Vertical Stream Defaults
+YOUTUBE_VERTICAL_URL="rtmp://x.rtmp.youtube.com/live2/"
+YOUTUBE_VERTICAL_KEY=""
+TWITCH_VERTICAL_URL="rtmp://ingest.global-contribute.live-video.net/app/"
+TWITCH_VERTICAL_KEY=""
+TIKTOK_VERTICAL_URL="rtmp://127.0.0.1:19358/tiktok/"
+TIKTOK_VERTICAL_KEY=""
+KICK_VERTICAL_URL="rtmp://127.0.0.1:19353/kick/"
+KICK_VERTICAL_KEY=""
+RTMP_VERTICAL_URL=""
+RTMP_VERTICAL_KEY=""
+
+# Title Management Defaults
+STREAM_BASE_TITLE=""
+EPISODE_COUNT=1
+AUTO_INCREMENT_EPISODE="true"
+AUTO_DATE="true"
+
+# API Credentials for Title Updates
+TWITCH_CLIENT_ID=""
+TWITCH_OAUTH_TOKEN=""
+TWITCH_BROADCASTER_ID=""
+
 CONFIG_FILE="rtmp_config.env"
 
 # Load saved configuration if it exists
@@ -47,6 +70,23 @@ RTMP1_URL="$RTMP1_URL"
 RTMP1_KEY="$RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
 CHUNK_SIZE="$CHUNK_SIZE"
+YOUTUBE_VERTICAL_URL="$YOUTUBE_VERTICAL_URL"
+YOUTUBE_VERTICAL_KEY="$YOUTUBE_VERTICAL_KEY"
+TWITCH_VERTICAL_URL="$TWITCH_VERTICAL_URL"
+TWITCH_VERTICAL_KEY="$TWITCH_VERTICAL_KEY"
+TIKTOK_VERTICAL_URL="$TIKTOK_VERTICAL_URL"
+TIKTOK_VERTICAL_KEY="$TIKTOK_VERTICAL_KEY"
+KICK_VERTICAL_URL="$KICK_VERTICAL_URL"
+KICK_VERTICAL_KEY="$KICK_VERTICAL_KEY"
+RTMP_VERTICAL_URL="$RTMP_VERTICAL_URL"
+RTMP_VERTICAL_KEY="$RTMP_VERTICAL_KEY"
+STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
+EPISODE_COUNT="$EPISODE_COUNT"
+AUTO_INCREMENT_EPISODE="$AUTO_INCREMENT_EPISODE"
+AUTO_DATE="$AUTO_DATE"
+TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
+TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
+TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -161,13 +201,138 @@ configure_keys() {
     done
 }
 
+configure_vertical() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== Configure Vertical Stream Keys ===${NC}"
+        echo "1) YouTube Vertical (Current: ${YOUTUBE_VERTICAL_KEY:-None})"
+        echo "2) Twitch Vertical (Current: ${TWITCH_VERTICAL_KEY:-None})"
+        echo "3) TikTok Vertical (Current: ${TIKTOK_VERTICAL_KEY:-None})"
+        echo "4) Kick Vertical (Current: ${KICK_VERTICAL_KEY:-None})"
+        echo "5) Custom RTMP Vertical (Current URL: ${RTMP_VERTICAL_URL:-None})"
+        echo "6) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r choice
+
+        case $choice in
+            1)
+               prompt_for_key "YouTube Vertical" "YOUTUBE_VERTICAL_KEY"
+               echo -e "Select YouTube Server:"
+               echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
+               echo "  2) Secure Primary (rtmps://a.rtmps.youtube.com/live2/)"
+               echo -e "Option (Current URL: $YOUTUBE_VERTICAL_URL): \c"
+               read -r y_opt
+               case $y_opt in
+                   1) YOUTUBE_VERTICAL_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
+                   2) YOUTUBE_VERTICAL_URL="rtmps://a.rtmps.youtube.com/live2/" ;;
+               esac
+               save_config
+               ;;
+            2)
+               prompt_for_key "Twitch Vertical" "TWITCH_VERTICAL_KEY"
+               echo -e "Select Twitch Server:"
+               echo "  1) Global Auto (rtmp://ingest.global-contribute.live-video.net/app/)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $TWITCH_VERTICAL_URL): \c"
+               read -r t_opt
+               case $t_opt in
+                   1) TWITCH_VERTICAL_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
+                   2)
+                      echo -e "Enter Custom Twitch Server URL: "
+                      read -r t_url
+                      if [ ! -z "$t_url" ]; then
+                          TWITCH_VERTICAL_URL="$t_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            3) prompt_for_key "TikTok Vertical" "TIKTOK_VERTICAL_KEY" ;;
+            4)
+               prompt_for_key "Kick Vertical" "KICK_VERTICAL_KEY"
+               echo -e "Enter Kick Vertical Server URL (Current: $KICK_VERTICAL_URL): "
+               read -r k_url
+               if [ ! -z "$k_url" ]; then
+                   KICK_VERTICAL_URL="$k_url"
+                   save_config
+               fi
+               ;;
+            5)
+               echo -e "Enter Custom Vertical RTMP Server URL (Current: $RTMP_VERTICAL_URL): "
+               read -r c_url
+               if [ ! -z "$c_url" ]; then
+                   RTMP_VERTICAL_URL="$c_url"
+                   save_config
+               fi
+               prompt_for_key "Custom Vertical RTMP Key" "RTMP_VERTICAL_KEY"
+               ;;
+            6) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
+
+configure_titles() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== Stream Title & Episode Management ===${NC}"
+        echo "1) Base Title (Current: ${STREAM_BASE_TITLE:-None})"
+        echo "2) Episode Count (Current: ${EPISODE_COUNT})"
+        echo "3) Auto-Increment Episode (Current: ${AUTO_INCREMENT_EPISODE})"
+        echo "4) Append Today's Date (Current: ${AUTO_DATE})"
+        echo "5) Configure Twitch API Credentials (Optional for Title Updates)"
+        echo "6) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r choice
+
+        case $choice in
+            1)
+                echo -e "Enter Base Stream Title: "
+                read -r input
+                STREAM_BASE_TITLE="$input"
+                save_config
+                ;;
+            2)
+                echo -e "Enter Current Episode Number: "
+                read -r input
+                if [[ "$input" =~ ^[0-9]+$ ]]; then
+                    EPISODE_COUNT="$input"
+                    save_config
+                else
+                    echo -e "${RED}Invalid number.${NC}"; sleep 1
+                fi
+                ;;
+            3)
+                if [ "$AUTO_INCREMENT_EPISODE" == "true" ]; then AUTO_INCREMENT_EPISODE="false"; else AUTO_INCREMENT_EPISODE="true"; fi
+                save_config
+                ;;
+            4)
+                if [ "$AUTO_DATE" == "true" ]; then AUTO_DATE="false"; else AUTO_DATE="true"; fi
+                save_config
+                ;;
+            5)
+                echo -e "Enter Twitch Client ID: "
+                read -r input; [ ! -z "$input" ] && TWITCH_CLIENT_ID="$input"
+                echo -e "Enter Twitch OAuth Token: "
+                read -r input; [ ! -z "$input" ] && TWITCH_OAUTH_TOKEN="$input"
+                echo -e "Enter Twitch Broadcaster ID: "
+                read -r input; [ ! -z "$input" ] && TWITCH_BROADCASTER_ID="$input"
+                save_config
+                ;;
+            6) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
+
 configure_obs() {
     clear
     echo -e "${GREEN}=== OBS Configuration ===${NC}"
     # Determine the public IP if possible, or fallback to placeholder
-    SERVER_IP=$(curl -s ifconfig.me || echo "<your_server_ip>")
+    SERVER_IP=$(curl -s -4 ifconfig.me || curl -s -4 ipv4.icanhazip.com || echo "<your_server_ip>")
     echo -e "To stream to this server from OBS or another encoder:"
-    echo -e "  ${YELLOW}Server URL:${NC} rtmp://${SERVER_IP}:1935/live"
+    echo -e "  ${YELLOW}Horizontal Server URL:${NC} rtmp://${SERVER_IP}:1935/live"
+    echo -e "  ${YELLOW}Vertical Server URL:  ${NC} rtmp://${SERVER_IP}:1935/vertical"
     echo ""
     echo -e "For security, PrismRTMPS requires a matching stream key to accept your stream."
     echo -e "You must either use one of the destination keys you already configured (e.g., your Twitch or YouTube key),"
@@ -227,6 +392,12 @@ build_and_run() {
         return
     fi
 
+    echo -e "${GREEN}Preparing data directory...${NC}"
+    mkdir -p data
+    if [ ! -f data/episode_count.txt ]; then
+        echo "$EPISODE_COUNT" > data/episode_count.txt
+    fi
+
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t prism-rtmps .
 
@@ -239,6 +410,7 @@ build_and_run() {
     docker run -d --name prism-rtmps \
         -p 1935:1935 \
         -p 8081:8081 \
+        -v "$(pwd)/data:/app/data" \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
@@ -254,12 +426,34 @@ build_and_run() {
         -e RTMP1_KEY="$RTMP1_KEY" \
         -e OBS_KEY="$OBS_KEY" \
         -e CHUNK_SIZE="$CHUNK_SIZE" \
+        -e YOUTUBE_VERTICAL_URL="$YOUTUBE_VERTICAL_URL" \
+        -e YOUTUBE_VERTICAL_KEY="$YOUTUBE_VERTICAL_KEY" \
+        -e TWITCH_VERTICAL_URL="$TWITCH_VERTICAL_URL" \
+        -e TWITCH_VERTICAL_KEY="$TWITCH_VERTICAL_KEY" \
+        -e TIKTOK_VERTICAL_URL="$TIKTOK_VERTICAL_URL" \
+        -e TIKTOK_VERTICAL_KEY="$TIKTOK_VERTICAL_KEY" \
+        -e KICK_VERTICAL_URL="$KICK_VERTICAL_URL" \
+        -e KICK_VERTICAL_KEY="$KICK_VERTICAL_KEY" \
+        -e RTMP_VERTICAL_URL="$RTMP_VERTICAL_URL" \
+        -e RTMP_VERTICAL_KEY="$RTMP_VERTICAL_KEY" \
+        -e STREAM_BASE_TITLE="$STREAM_BASE_TITLE" \
+        -e EPISODE_COUNT="$EPISODE_COUNT" \
+        -e AUTO_INCREMENT_EPISODE="$AUTO_INCREMENT_EPISODE" \
+        -e AUTO_DATE="$AUTO_DATE" \
+        -e TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID" \
+        -e TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN" \
+        -e TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
+        SERVER_IP=$(curl -s -4 ifconfig.me || curl -s -4 ipv4.icanhazip.com || echo "<your_server_ip>")
         echo -e "${GREEN}Container 'prism-rtmps' is running!${NC}"
-        echo -e "You can stream to: rtmp://<your_server_ip>:1935/live"
-        echo -e "Stats available at: http://<your_server_ip>:8081/stat"
+        echo -e "-------------------------------------------------------"
+        echo -e "  ${YELLOW}Horizontal RTMP:${NC} rtmp://${SERVER_IP}:1935/live"
+        echo -e "  ${YELLOW}Vertical RTMP:  ${NC} rtmp://${SERVER_IP}:1935/vertical"
+        echo -e "  ${YELLOW}Stream Key:     ${NC} ${OBS_KEY:-<one_of_your_destination_keys>}"
+        echo -e "-------------------------------------------------------"
+        echo -e "Stats available at: http://${SERVER_IP}:8081/stat"
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
@@ -293,29 +487,33 @@ stop_container() {
 
 while true; do
     clear
-    echo -e "${GREEN}=====================================${NC}"
-    echo -e "${GREEN}     PrismRTMPS Quick Installer      ${NC}"
-    echo -e "${GREEN}=====================================${NC}"
+    echo -e "${GREEN}===============================================${NC}"
+    echo -e "${GREEN}  PrismRTMPS - Vertical & Horizontal Multi-RTMP${NC}"
+    echo -e "${GREEN}===============================================${NC}"
     echo "1) Install Docker (if not installed)"
-    echo "2) Configure Stream Keys"
-    echo "3) Configure OBS Setup & Security Key"
-    echo "4) Configure Optimizations (Chunk Size)"
-    echo "5) Build & Start Server"
-    echo "6) Stop Server"
-    echo "7) View Logs"
-    echo "8) Quit"
+    echo "2) Configure Horizontal Stream Keys"
+    echo "3) Configure Vertical Stream Keys"
+    echo "4) Configure Stream Title & Episodes"
+    echo "5) Configure OBS Setup & Security Key"
+    echo "6) Configure Optimizations (Chunk Size)"
+    echo "7) Build & Start Server"
+    echo "8) Stop Server"
+    echo "9) View Logs"
+    echo "10) Quit"
     echo -e "Select an option: \c"
     read -r option
 
     case $option in
         1) install_docker ;;
         2) configure_keys ;;
-        3) configure_obs ;;
-        4) configure_optimizations ;;
-        5) build_and_run ;;
-        6) stop_container ;;
-        7) view_logs ;;
-        8) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        3) configure_vertical ;;
+        4) configure_titles ;;
+        5) configure_obs ;;
+        6) configure_optimizations ;;
+        7) build_and_run ;;
+        8) stop_container ;;
+        9) view_logs ;;
+        10) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
