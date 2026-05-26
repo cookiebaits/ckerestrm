@@ -111,6 +111,13 @@ add_push "RTMP1"      "RTMP1_KEY"      "RTMP1_URL"      "rtmp1"
 add_push "RTMP2"      "RTMP2_KEY"      "RTMP2_URL"      "rtmp2"
 add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
 
+# Vertical Pushes
+add_push "Youtube Vertical"   "YOUTUBE_VERTICAL_KEY"   "YOUTUBE_VERTICAL_URL"   "youtube_vertical"
+add_push "Twitch Vertical"    "TWITCH_VERTICAL_KEY"    "TWITCH_VERTICAL_URL"    "twitch_vertical"
+add_push "TikTok Vertical"    "TIKTOK_VERTICAL_KEY"    "TIKTOK_VERTICAL_URL"    "tiktok_vertical"
+add_push "Kick Vertical"      "KICK_VERTICAL_KEY"      "KICK_VERTICAL_URL"      "kick_vertical"
+add_push "RTMP Vertical"      "RTMP_VERTICAL_KEY"      "RTMP_VERTICAL_URL"      "rtmp_vertical"
+
 
 if [ $ENV_OK -eq 1 ]; then
     echo "Generating final Nginx configuration..."

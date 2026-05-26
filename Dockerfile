@@ -1,12 +1,11 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.26.2
-ENV NGINX_RTMP_MODULE_VERSION 1.2.2
+ENV NGINX_VERSION nginx-1.27.0
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --break-system-packages flask gunicorn && \
+    apt-get install -y --no-install-recommends python3 python3-pip git && \
+    pip3 install --break-system-packages flask gunicorn requests && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -18,12 +17,10 @@ RUN mkdir -p /tmp/build/nginx && \
     wget -O ${NGINX_VERSION}.tar.gz https://nginx.org/download/${NGINX_VERSION}.tar.gz && \
     tar -zxf ${NGINX_VERSION}.tar.gz
 
-# Download and decompress RTMP module
+# Download RTMP module
 RUN mkdir -p /tmp/build/nginx-rtmp-module && \
     cd /tmp/build/nginx-rtmp-module && \
-    wget -O nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz https://github.com/arut/nginx-rtmp-module/archive/v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    tar -zxf nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
-    cd nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}
+    git clone https://github.com/cookiebaits/cookie-nginx-rtmp.git
 
 # Build and install Nginx
 # The default puts everything under /usr/local/nginx, so it's needed to change
@@ -38,9 +35,10 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
         --http-log-path=/var/log/nginx/access.log \
         --http-client-body-temp-path=/tmp/nginx-client-body \
         --with-http_ssl_module \
+        --with-http_realip_module \
         --with-threads \
         --with-ipv6 \
-        --add-module=/tmp/build/nginx-rtmp-module/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION} && \
+        --add-module=/tmp/build/nginx-rtmp-module/cookie-nginx-rtmp && \
     make -j $(getconf _NPROCESSORS_ONLN) CFLAGS="-Wno-error" && \
     make install && \
     mkdir /var/lock/nginx && \
@@ -50,9 +48,16 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
 RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log
 
+# Create data directory for persistence
+RUN mkdir -p /app/data
+
 # Set up config file
 COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Copy mime.types and stat.xsl from Nginx source
+RUN cp /tmp/build/nginx/${NGINX_VERSION}/conf/mime.types /etc/nginx/mime.types && \
+    cp /tmp/build/nginx-rtmp-module/cookie-nginx-rtmp/stat.xsl /usr/local/nginx/html/stat.xsl
 
 # Copy the validation server
 COPY stream_validator.py /stream_validator.py
@@ -109,6 +114,24 @@ ENV RTMP2_KEY ""
 #Rtmp3
 ENV RTMP3_URL ""
 ENV RTMP3_KEY ""
+
+# Vertical Stream Destinations
+ENV YOUTUBE_VERTICAL_URL rtmp://x.rtmp.youtube.com/live2/
+ENV YOUTUBE_VERTICAL_KEY ""
+ENV TWITCH_VERTICAL_URL rtmp://ingest.global-contribute.live-video.net/app/
+ENV TWITCH_VERTICAL_KEY ""
+ENV TIKTOK_VERTICAL_URL rtmp://127.0.0.1:19358/tiktok/
+ENV TIKTOK_VERTICAL_KEY ""
+ENV KICK_VERTICAL_URL rtmp://127.0.0.1:19353/kick/
+ENV KICK_VERTICAL_KEY ""
+ENV RTMP_VERTICAL_URL ""
+ENV RTMP_VERTICAL_KEY ""
+
+# Title Management
+ENV STREAM_BASE_TITLE ""
+ENV EPISODE_COUNT 1
+ENV AUTO_INCREMENT_EPISODE "true"
+ENV AUTO_DATE "true"
 
 #Trovo
 ENV TROVO_URL rtmp://livepush.trovo.live/live/
