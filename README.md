@@ -46,11 +46,9 @@ You'd need a VPS server. Key considerations:
     ssh root@<your_server_ip_address>
     ```
 
-*   2- **Clone the repository:**
+*   2- **Clone the repository & Set permissions:**
     ```bash
-    git clone https://github.com/cookiebaits/prism-rtmps.git
-    cd prism-rtmps
-    chmod +x install.sh
+    git clone https://github.com/cookiebaits/prism-rtmps.git && cd prism-rtmps && chmod +x install.sh
     ```
 
 *   3- **Run the Interactive Installer:**
