@@ -274,25 +274,41 @@ configure_vertical() {
 
 configure_titles() {
     while true; do
+        local api_ready="false"
+        if [ ! -z "$TWITCH_CLIENT_ID" ] && [ ! -z "$TWITCH_OAUTH_TOKEN" ] && [ ! -z "$TWITCH_BROADCASTER_ID" ]; then
+            api_ready="true"
+        fi
+
         clear
         echo -e "${GREEN}=== Stream Title & Episode Management ===${NC}"
-        echo "1) Base Title (Current: ${STREAM_BASE_TITLE:-None})"
-        echo "2) Episode Count (Current: ${EPISODE_COUNT})"
-        echo "3) Auto-Increment Episode (Current: ${AUTO_INCREMENT_EPISODE})"
-        echo "4) Append Today's Date (Current: ${AUTO_DATE})"
-        echo "5) Configure Twitch API Credentials (Optional for Title Updates)"
+        if [ "$api_ready" == "true" ]; then
+            echo -e "Status: ${GREEN}ACTIVE${NC}"
+            echo "1) Base Title (Current: ${STREAM_BASE_TITLE:-None})"
+            echo "2) Episode Count (Current: ${EPISODE_COUNT})"
+            echo "3) Auto-Increment Episode (Current: ${AUTO_INCREMENT_EPISODE})"
+            echo "4) Append Today's Date (Current: ${AUTO_DATE})"
+        else
+            echo -e "Status: ${RED}DISABLED (Twitch API Credentials Required)${NC}"
+            echo "1) Base Title [LOCKED]"
+            echo "2) Episode Count [LOCKED]"
+            echo "3) Auto-Increment Episode [LOCKED]"
+            echo "4) Append Today's Date [LOCKED]"
+        fi
+        echo "5) Configure Twitch API Credentials"
         echo "6) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
 
         case $choice in
             1)
+                if [ "$api_ready" == "false" ]; then echo -e "${RED}Please configure API first.${NC}"; sleep 1; continue; fi
                 echo -e "Enter Base Stream Title: "
                 read -r input
                 STREAM_BASE_TITLE="$input"
                 save_config
                 ;;
             2)
+                if [ "$api_ready" == "false" ]; then echo -e "${RED}Please configure API first.${NC}"; sleep 1; continue; fi
                 echo -e "Enter Current Episode Number: "
                 read -r input
                 if [[ "$input" =~ ^[0-9]+$ ]]; then
@@ -303,19 +319,21 @@ configure_titles() {
                 fi
                 ;;
             3)
+                if [ "$api_ready" == "false" ]; then echo -e "${RED}Please configure API first.${NC}"; sleep 1; continue; fi
                 if [ "$AUTO_INCREMENT_EPISODE" == "true" ]; then AUTO_INCREMENT_EPISODE="false"; else AUTO_INCREMENT_EPISODE="true"; fi
                 save_config
                 ;;
             4)
+                if [ "$api_ready" == "false" ]; then echo -e "${RED}Please configure API first.${NC}"; sleep 1; continue; fi
                 if [ "$AUTO_DATE" == "true" ]; then AUTO_DATE="false"; else AUTO_DATE="true"; fi
                 save_config
                 ;;
             5)
-                echo -e "Enter Twitch Client ID: "
+                echo -e "Enter Twitch Client ID (current: ${TWITCH_CLIENT_ID:-None}): "
                 read -r input; [ ! -z "$input" ] && TWITCH_CLIENT_ID="$input"
-                echo -e "Enter Twitch OAuth Token: "
+                echo -e "Enter Twitch OAuth Token (current: ${TWITCH_OAUTH_TOKEN:-None}): "
                 read -r input; [ ! -z "$input" ] && TWITCH_OAUTH_TOKEN="$input"
-                echo -e "Enter Twitch Broadcaster ID: "
+                echo -e "Enter Twitch Broadcaster ID (current: ${TWITCH_BROADCASTER_ID:-None}): "
                 read -r input; [ ! -z "$input" ] && TWITCH_BROADCASTER_ID="$input"
                 save_config
                 ;;
@@ -493,7 +511,13 @@ while true; do
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Horizontal Stream Keys"
     echo "3) Configure Vertical Stream Keys"
-    echo "4) Configure Stream Title & Episodes"
+
+    if [ ! -z "$TWITCH_CLIENT_ID" ] && [ ! -z "$TWITCH_OAUTH_TOKEN" ] && [ ! -z "$TWITCH_BROADCASTER_ID" ]; then
+        echo "4) Configure Stream Title & Episodes (Active)"
+    else
+        echo "4) Configure Stream Title & Episodes (LOCKED - API Required)"
+    fi
+
     echo "5) Configure OBS Setup & Security Key"
     echo "6) Configure Optimizations (Chunk Size)"
     echo "7) Build & Start Server"

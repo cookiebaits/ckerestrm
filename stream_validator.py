@@ -2,12 +2,44 @@ from flask import Flask, request, Response
 import os
 import logging
 from urllib.parse import parse_qs
+import time
+from datetime import datetime
+import requests
+import threading
 
 app = Flask(__name__)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+DATA_DIR = "/app/data"
+EPISODE_FILE = os.path.join(DATA_DIR, "episode_count.txt")
+
+# Ensure data directory exists
+if not os.path.exists(DATA_DIR):
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except:
+        pass
+
+def load_episode_count():
+    if os.path.exists(EPISODE_FILE):
+        try:
+            with open(EPISODE_FILE, 'r') as f:
+                content = f.read().strip()
+                if content:
+                    return int(content)
+        except Exception as e:
+            app.logger.error(f"Failed to load episode count: {e}")
+    return int(os.getenv('EPISODE_COUNT', '1'))
+
+def save_episode_count(count):
+    try:
+        with open(EPISODE_FILE, 'w') as f:
+            f.write(str(count))
+    except Exception as e:
+        app.logger.error(f"Failed to save episode count: {e}")
 
 # Configuration from environment
 DESTINATION_KEYS = {
@@ -40,40 +72,116 @@ for d in [DESTINATION_KEYS, VERTICAL_KEYS]:
         if key_value:
             VALID_KEYS.add(key_value)
 
-@app.route('/validate', methods=['POST'])
-def validate():
-    client_ip = request.remote_addr
-    app.logger.info(f"Validation attempt received from {client_ip}")
+# Title Management State
+TITLE_CONFIG = {
+    'base_title': os.getenv('STREAM_BASE_TITLE', ''),
+    'episode_count': load_episode_count(),
+    'auto_increment': os.getenv('AUTO_INCREMENT_EPISODE', 'true').lower() == 'true',
+    'auto_date': os.getenv('AUTO_DATE', 'true').lower() == 'true',
+}
 
-    # Extract data from POST body
+# Twitch API credentials
+TWITCH_CREDS = {
+    'client_id': os.getenv('TWITCH_CLIENT_ID', ''),
+    'token': os.getenv('TWITCH_OAUTH_TOKEN', ''),
+    'broadcaster_id': os.getenv('TWITCH_BROADCASTER_ID', ''),
+}
+
+def is_title_mgmt_active():
+    return all(TWITCH_CREDS.values())
+
+def get_formatted_title():
+    parts = []
+    if TITLE_CONFIG['base_title']:
+        parts.append(TITLE_CONFIG['base_title'])
+
+    if TITLE_CONFIG['episode_count'] > 0:
+        parts.append(f"Episode #{TITLE_CONFIG['episode_count']}")
+
+    if TITLE_CONFIG['auto_date']:
+        parts.append(datetime.now().strftime("%Y-%m-%d"))
+
+    return " / ".join(parts)
+
+def update_external_titles_worker():
+    if not is_title_mgmt_active():
+        return
+
+    title = get_formatted_title()
+    app.logger.info(f"Background thread: Updating stream titles to: {title}")
+
+    headers = {
+        'Client-Id': TWITCH_CREDS['client_id'],
+        'Authorization': f"Bearer {TWITCH_CREDS['token']}",
+        'Content-Type': 'application/json'
+    }
+    url = f"https://api.twitch.tv/helix/channels?broadcaster_id={TWITCH_CREDS['broadcaster_id']}"
+    data = {"title": title}
+    try:
+        res = requests.patch(url, headers=headers, json=data, timeout=10)
+        if res.status_code == 204:
+            app.logger.info("Twitch title updated successfully.")
+        else:
+            app.logger.error(f"Twitch API error: {res.status_code} - {res.text}")
+    except Exception as e:
+        app.logger.error(f"Failed to update Twitch title: {e}")
+
+def trigger_title_update():
+    thread = threading.Thread(target=update_external_titles_worker)
+    thread.daemon = True
+    thread.start()
+
+@app.route('/on_publish', methods=['POST'])
+def on_publish():
+    app.logger.info(f"on_publish request received from {request.remote_addr}")
     raw_data = request.get_data(as_text=True)
     parsed_data = parse_qs(raw_data)
 
-    # Nginx-RTMP sends 'name' (stream key) in the POST body
     stream_key_attempt = parsed_data.get('name', [None])[0]
-    app_name = parsed_data.get('app', ['unknown'])[0]
+    app_name = parsed_data.get('app', ['live'])[0]
 
     if not stream_key_attempt:
-        app.logger.warning(f"REJECTED: No stream key found in POST body from {client_ip}. Body content: {raw_data}")
+        stream_key_attempt = request.args.get('name') or request.args.get('key')
+
+    if not stream_key_attempt:
+        app.logger.warning("REJECTED: No stream key found.")
         return Response('Missing stream key', status=403)
 
     if not VALID_KEYS:
-        app.logger.error(f"REJECTED: No valid keys configured on server. Cannot validate any stream.")
-        return Response('No valid keys on server', status=500)
+        return Response('No keys on server', status=403)
 
     if stream_key_attempt in VALID_KEYS:
-        app.logger.info(f"SUCCESS: Valid key accepted for app '{app_name}' from {client_ip}.")
+        app.logger.info(f"VALID: Key accepted for app '{app_name}' from {request.remote_addr}.")
+        if app_name == 'live' and is_title_mgmt_active():
+            trigger_title_update()
         return Response('OK', status=200)
     else:
-        # Log a snippet of the failed key for identification (first 4 chars)
         obscured_key = (stream_key_attempt[:4] + "...") if len(stream_key_attempt) > 4 else "****"
-        app.logger.warning(f"REJECTED: Invalid key from {client_ip}. Key used: {obscured_key}")
+        app.logger.warning(f"INVALID: Key rejected from {request.remote_addr}. Key: {obscured_key}")
         return Response('Invalid stream key', status=403)
+
+@app.route('/on_publish_done', methods=['POST'])
+def on_publish_done():
+    raw_data = request.get_data(as_text=True)
+    parsed_data = parse_qs(raw_data)
+    app_name = parsed_data.get('app', ['live'])[0]
+
+    app.logger.info(f"on_publish_done: Stream finished on app '{app_name}'.")
+
+    if app_name == 'live' and is_title_mgmt_active() and TITLE_CONFIG['auto_increment']:
+        TITLE_CONFIG['episode_count'] += 1
+        save_episode_count(TITLE_CONFIG['episode_count'])
+        app.logger.info(f"Incremented episode count to {TITLE_CONFIG['episode_count']} and saved.")
+
+    return Response('OK', status=200)
+
+@app.route('/validate', methods=['POST'])
+def validate():
+    return on_publish()
 
 @app.route('/health', methods=['GET'])
 def health_check():
     return Response('OK', status=200)
 
 if __name__ == '__main__':
-    # Listen on all interfaces
     app.run(host='0.0.0.0', port=8080, debug=False)
