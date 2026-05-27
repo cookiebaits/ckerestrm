@@ -1,7 +1,7 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.30.2
+ENV NGINX_VERSION=nginx-1.30.1
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip git && \
@@ -39,7 +39,9 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
         --add-module=/tmp/build/nginx-rtmp-module/cookie-nginx-rtmp && \
     make -j $(getconf _NPROCESSORS_ONLN) CFLAGS="-Wno-error" && \
     make install && \
-    mkdir /var/lock/nginx && \
+    mkdir -p /var/lock/nginx /etc/nginx /usr/local/nginx/html && \
+    cp conf/mime.types /etc/nginx/mime.types && \
+    cp /tmp/build/nginx-rtmp-module/cookie-nginx-rtmp/stat.xsl /usr/local/nginx/html/stat.xsl && \
     rm -rf /tmp/build
 
 # Forward logs to Docker
@@ -52,10 +54,6 @@ RUN mkdir -p /app/data
 # Set up config file
 COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
-
-# Copy mime.types and stat.xsl from Nginx source
-RUN cp /tmp/build/nginx/${NGINX_VERSION}/conf/mime.types /etc/nginx/mime.types && \
-    cp /tmp/build/nginx-rtmp-module/cookie-nginx-rtmp/stat.xsl /usr/local/nginx/html/stat.xsl
 
 # Copy the validation server
 COPY stream_validator.py /stream_validator.py
@@ -82,71 +80,71 @@ COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
 COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
 
 #Youtube
-ENV YOUTUBE_URL rtmp://x.rtmp.youtube.com/live2/
-ENV YOUTUBE_KEY ""
+ENV YOUTUBE_URL=rtmp://x.rtmp.youtube.com/live2/
+ENV YOUTUBE_KEY=""
 
 #Facebook
-ENV FACEBOOK_URL rtmp://127.0.0.1:19350/rtmp/
-ENV FACEBOOK_KEY ""
+ENV FACEBOOK_URL=rtmp://127.0.0.1:19350/rtmp/
+ENV FACEBOOK_KEY=""
 
 #Instagram
-ENV INSTAGRAM_URL rtmp://127.0.0.1:19351/rtmp/
-ENV INSTAGRAM_KEY ""
+ENV INSTAGRAM_URL=rtmp://127.0.0.1:19351/rtmp/
+ENV INSTAGRAM_KEY=""
 
 #Cloudflare
-ENV CLOUDFLARE_URL rtmp://127.0.0.1:19352/live/
-ENV CLOUDFLARE_KEY ""
+ENV CLOUDFLARE_URL=rtmp://127.0.0.1:19352/live/
+ENV CLOUDFLARE_KEY=""
 
 #Twitch
-ENV TWITCH_URL rtmp://ingest.global-contribute.live-video.net/app/
-ENV TWITCH_KEY ""
+ENV TWITCH_URL=rtmp://ingest.global-contribute.live-video.net/app/
+ENV TWITCH_KEY=""
 
 #Rtmp1
-ENV RTMP1_URL ""
-ENV RTMP1_KEY ""
+ENV RTMP1_URL=""
+ENV RTMP1_KEY=""
 
 #Rtmp2
-ENV RTMP2_URL ""
-ENV RTMP2_KEY ""
+ENV RTMP2_URL=""
+ENV RTMP2_KEY=""
 
 #Rtmp3
-ENV RTMP3_URL ""
-ENV RTMP3_KEY ""
+ENV RTMP3_URL=""
+ENV RTMP3_KEY=""
 
 # Vertical Stream Destinations
-ENV YOUTUBE_VERTICAL_URL rtmp://x.rtmp.youtube.com/live2/
-ENV YOUTUBE_VERTICAL_KEY ""
-ENV TWITCH_VERTICAL_URL rtmp://ingest.global-contribute.live-video.net/app/
-ENV TWITCH_VERTICAL_KEY ""
-ENV TIKTOK_VERTICAL_URL rtmp://127.0.0.1:19358/tiktok/
-ENV TIKTOK_VERTICAL_KEY ""
-ENV KICK_VERTICAL_URL rtmp://127.0.0.1:19353/kick/
-ENV KICK_VERTICAL_KEY ""
-ENV RTMP_VERTICAL_URL ""
-ENV RTMP_VERTICAL_KEY ""
+ENV YOUTUBE_VERTICAL_URL=rtmp://x.rtmp.youtube.com/live2/
+ENV YOUTUBE_VERTICAL_KEY=""
+ENV TWITCH_VERTICAL_URL=rtmp://ingest.global-contribute.live-video.net/app/
+ENV TWITCH_VERTICAL_KEY=""
+ENV TIKTOK_VERTICAL_URL=rtmp://127.0.0.1:19358/tiktok/
+ENV TIKTOK_VERTICAL_KEY=""
+ENV KICK_VERTICAL_URL=rtmp://127.0.0.1:19353/kick/
+ENV KICK_VERTICAL_KEY=""
+ENV RTMP_VERTICAL_URL=""
+ENV RTMP_VERTICAL_KEY=""
 
 # Title Management
-ENV STREAM_BASE_TITLE ""
-ENV EPISODE_COUNT 1
-ENV AUTO_INCREMENT_EPISODE "true"
-ENV AUTO_DATE "true"
+ENV STREAM_BASE_TITLE=""
+ENV EPISODE_COUNT=1
+ENV AUTO_INCREMENT_EPISODE="true"
+ENV AUTO_DATE="true"
 
 #Trovo
-ENV TROVO_URL rtmp://livepush.trovo.live/live/
-ENV TROVO_KEY ""
+ENV TROVO_URL=rtmp://livepush.trovo.live/live/
+ENV TROVO_KEY=""
 
 #Kick
-ENV KICK_URL rtmp://127.0.0.1:19353/kick/
-ENV KICK_KEY ""
+ENV KICK_URL=rtmp://127.0.0.1:19353/kick/
+ENV KICK_KEY=""
 
-ENV X_URL rtmp://127.0.0.1:19354/x/
-ENV X_KEY ""
+ENV X_URL=rtmp://127.0.0.1:19354/x/
+ENV X_KEY=""
 
-ENV OBS_KEY ""
+ENV OBS_KEY=""
 
-ENV CHUNK_SIZE "8192"
+ENV CHUNK_SIZE="8192"
 
-ENV DEBUG ""
+ENV DEBUG=""
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 

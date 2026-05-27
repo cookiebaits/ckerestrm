@@ -1,0 +1,58 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.42kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/buildpack-deps:bookworm
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [ 1/20] FROM docker.io/library/buildpack-deps:bookworm@sha256:a9aa5e5f526f48f28e1b3b5c4e16064eceafde0a59959d81ca4ec9982ad15963
+#4 resolve docker.io/library/buildpack-deps:bookworm@sha256:a9aa5e5f526f48f28e1b3b5c4e16064eceafde0a59959d81ca4ec9982ad15963 0.0s done
+#4 CACHED
+
+#5 [internal] load build context
+#5 transferring context: 5.62kB 0.0s done
+#5 DONE 0.0s
+
+#6 [ 2/20] RUN apt-get update &&     apt-get install -y --no-install-recommends python3 python3-pip git &&     pip3 install --break-system-packages flask gunicorn requests &&     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext &&     apt-get clean &&     rm -rf /var/lib/apt/lists/* &&     pip3 cache purge
+#6 ERROR: process "/bin/sh -c apt-get update &&     apt-get install -y --no-install-recommends python3 python3-pip git &&     pip3 install --break-system-packages flask gunicorn requests &&     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext &&     apt-get clean &&     rm -rf /var/lib/apt/lists/* &&     pip3 cache purge" did not complete successfully: mount source: "overlay", target: "/var/lib/docker/buildkit/containerd-overlayfs/cachemounts/buildkit1955584996", fstype: overlay, flags: 0, data: "workdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/13/work,upperdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/13/fs,lowerdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/7/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/6/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/5/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/4/fs,index=off,redirect_dir=off", err: invalid argument
+------
+ > [ 2/20] RUN apt-get update &&     apt-get install -y --no-install-recommends python3 python3-pip git &&     pip3 install --break-system-packages flask gunicorn requests &&     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext &&     apt-get clean &&     rm -rf /var/lib/apt/lists/* &&     pip3 cache purge:
+------
+
+ [33m17 warnings found (use docker --debug to expand):
+[0m - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "TWITCH_VERTICAL_KEY") (line 118)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "TIKTOK_VERTICAL_KEY") (line 120)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "KICK_KEY") (line 138)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "OBS_KEY") (line 143)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "INSTAGRAM_KEY") (line 92)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "RTMP2_KEY") (line 108)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "KICK_VERTICAL_KEY") (line 122)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "FACEBOOK_KEY") (line 88)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "RTMP1_KEY") (line 104)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "RTMP_VERTICAL_KEY") (line 124)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "TROVO_KEY") (line 134)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "X_KEY") (line 141)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "TWITCH_KEY") (line 100)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "RTMP3_KEY") (line 112)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "YOUTUBE_KEY") (line 84)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "CLOUDFLARE_KEY") (line 96)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "YOUTUBE_VERTICAL_KEY") (line 116)
+Dockerfile:6
+--------------------
+   5 |     
+   6 | >>> RUN apt-get update && \
+   7 | >>>     apt-get install -y --no-install-recommends python3 python3-pip git && \
+   8 | >>>     pip3 install --break-system-packages flask gunicorn requests && \
+   9 | >>>     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
+  10 | >>>     apt-get clean && \
+  11 | >>>     rm -rf /var/lib/apt/lists/* && \
+  12 | >>>     pip3 cache purge
+  13 |     	
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c apt-get update &&     apt-get install -y --no-install-recommends python3 python3-pip git &&     pip3 install --break-system-packages flask gunicorn requests &&     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext &&     apt-get clean &&     rm -rf /var/lib/apt/lists/* &&     pip3 cache purge" did not complete successfully: mount source: "overlay", target: "/var/lib/docker/buildkit/containerd-overlayfs/cachemounts/buildkit1955584996", fstype: overlay, flags: 0, data: "workdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/13/work,upperdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/13/fs,lowerdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/7/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/6/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/5/fs:/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/4/fs,index=off,redirect_dir=off", err: invalid argument

@@ -339,3 +339,4 @@ ngx_rtmp_finalize_session(ngx_rtmp_session_t *s)
 
     ngx_post_event(e, &ngx_posted_events);
 }
+
