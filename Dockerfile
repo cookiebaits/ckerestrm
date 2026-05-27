@@ -39,7 +39,9 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
         --add-module=/tmp/build/nginx-rtmp-module/cookie-nginx-rtmp && \
     make -j $(getconf _NPROCESSORS_ONLN) CFLAGS="-Wno-error" && \
     make install && \
-    mkdir /var/lock/nginx && \
+    mkdir -p /var/lock/nginx /etc/nginx /usr/local/nginx/html && \
+    cp /tmp/build/nginx/${NGINX_VERSION}/conf/mime.types /etc/nginx/mime.types && \
+    cp /tmp/build/nginx-rtmp-module/cookie-nginx-rtmp/stat.xsl /usr/local/nginx/html/stat.xsl && \
     rm -rf /tmp/build
 
 # Forward logs to Docker
@@ -52,10 +54,6 @@ RUN mkdir -p /app/data
 # Set up config file
 COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
-
-# Copy mime.types and stat.xsl from Nginx source
-RUN cp /tmp/build/nginx/${NGINX_VERSION}/conf/mime.types /etc/nginx/mime.types && \
-    cp /tmp/build/nginx-rtmp-module/cookie-nginx-rtmp/stat.xsl /usr/local/nginx/html/stat.xsl
 
 # Copy the validation server
 COPY stream_validator.py /stream_validator.py
