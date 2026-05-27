@@ -48,11 +48,11 @@ def validate():
     # Extract data from POST body
     raw_data = request.get_data(as_text=True)
     parsed_data = parse_qs(raw_data)
-
+    
     # Nginx-RTMP sends 'name' (stream key) in the POST body
     stream_key_attempt = parsed_data.get('name', [None])[0]
     app_name = parsed_data.get('app', ['unknown'])[0]
-
+    
     if not stream_key_attempt:
         app.logger.warning(f"REJECTED: No stream key found in POST body from {client_ip}. Body content: {raw_data}")
         return Response('Missing stream key', status=403)

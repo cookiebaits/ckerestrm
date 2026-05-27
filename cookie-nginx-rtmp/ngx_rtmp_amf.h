@@ -68,3 +68,4 @@ ngx_int_t ngx_rtmp_amf_write(ngx_rtmp_amf_ctx_t *ctx,
 
 
 #endif /* _NGX_RTMP_AMF_H_INCLUDED_ */
+
