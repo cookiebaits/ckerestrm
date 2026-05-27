@@ -48,12 +48,12 @@ You'd need a VPS server. Key considerations:
 
 *   2- **Clone the repository & Set permissions:**
     ```bash
-    git clone https://github.com/cookiebaits/prism-rtmps.git && cd prism-rtmps && chmod +x install.sh
+    git clone https://github.com/cookiebaits/prism-rtmps.git && cd prism-rtmps && chmod +x install.sh && ./install.sh
     ```
 
 *   3- **Run the Interactive Installer:**
     ```bash
-    ./install.sh
+  [Automatically integrated in the previous step now] for manual execution ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
     *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
