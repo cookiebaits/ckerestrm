@@ -88,19 +88,19 @@ def get_formatted_title():
     parts = []
     if TITLE_CONFIG['base_title']:
         parts.append(TITLE_CONFIG['base_title'])
-    
+
     if TITLE_CONFIG['episode_count'] > 0:
         parts.append(f"Episode #{TITLE_CONFIG['episode_count']}")
-    
+
     if TITLE_CONFIG['auto_date']:
         parts.append(datetime.now().strftime("%Y-%m-%d"))
-    
+
     return " / ".join(parts)
 
 def update_external_titles():
     title = get_formatted_title()
     app.logger.info(f"Updating stream titles to: {title}")
-    
+
     # Twitch Update
     if TWITCH_CREDS['client_id'] and TWITCH_CREDS['token'] and TWITCH_CREDS['broadcaster_id']:
         headers = {
@@ -145,13 +145,13 @@ def on_publish():
 def on_publish_done():
     app_name = request.args.get('app', 'live')
     app.logger.info(f"Stream finished on app '{app_name}'.")
-    
+
     # Only increment for the primary app to avoid double increment in dual-stream setups
     if app_name == 'live' and TITLE_CONFIG['auto_increment']:
         TITLE_CONFIG['episode_count'] += 1
         save_episode_count(TITLE_CONFIG['episode_count'])
         app.logger.info(f"Incremented episode count to {TITLE_CONFIG['episode_count']} and saved to disk.")
-        
+
     return Response('OK', status=200)
 
 @app.route('/validate', methods=['POST'])
