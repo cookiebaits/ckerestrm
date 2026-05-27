@@ -75,35 +75,35 @@ rtmp {
         application facebook {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=facebook;
+            on_publish http://127.0.0.1:8080/validate;
             push ${FACEBOOK_URL}${FACEBOOK_KEY};
         }
 		
         application twitch {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=twitch;
+            on_publish http://127.0.0.1:8080/validate;
             push ${TWITCH_URL}${TWITCH_KEY};
         }
 
         application youtube {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=youtube;
+            on_publish http://127.0.0.1:8080/validate;
             push ${YOUTUBE_URL}${YOUTUBE_KEY};
         }
 
         application kick {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=kick;
+            on_publish http://127.0.0.1:8080/validate;
             push ${KICK_URL}${KICK_KEY};
         }
 
         application x {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=x;
+            on_publish http://127.0.0.1:8080/validate;
             push ${X_URL}${X_KEY};
         }
 
@@ -111,8 +111,7 @@ rtmp {
         application live {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=live;
-            on_publish_done http://127.0.0.1:8080/on_publish_done?key=$name&app=live;
+            on_publish http://127.0.0.1:8080/validate;
             
             #youtube
             #facebook
@@ -130,8 +129,7 @@ rtmp {
         application vertical {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=vertical;
-            on_publish_done http://127.0.0.1:8080/on_publish_done?key=$name&app=vertical;
+            on_publish http://127.0.0.1:8080/validate;
 
             #youtube_vertical
             #twitch_vertical
