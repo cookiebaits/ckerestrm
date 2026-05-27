@@ -5,7 +5,6 @@ from urllib.parse import parse_qs
 import time
 from datetime import datetime
 import requests
-import threading
 
 app = Flask(__name__)
 logging.basicConfig(
@@ -19,7 +18,7 @@ EPISODE_FILE = os.path.join(DATA_DIR, "episode_count.txt")
 # Ensure data directory exists
 if not os.path.exists(DATA_DIR):
     try:
-        os.makedirs(DATA_DIR, exist_ok=True)
+        os.makedirs(DATA_DIR)
     except:
         pass
 
@@ -27,9 +26,7 @@ def load_episode_count():
     if os.path.exists(EPISODE_FILE):
         try:
             with open(EPISODE_FILE, 'r') as f:
-                content = f.read().strip()
-                if content:
-                    return int(content)
+                return int(f.read().strip())
         except Exception as e:
             app.logger.error(f"Failed to load episode count: {e}")
     return int(os.getenv('EPISODE_COUNT', '1'))
@@ -42,6 +39,7 @@ def save_episode_count(count):
         app.logger.error(f"Failed to save episode count: {e}")
 
 # Configuration from environment
+VALID_KEYS = []
 DESTINATION_KEYS = {
     'youtube': os.getenv('YOUTUBE_KEY', ''),
     'twitch': os.getenv('TWITCH_KEY', ''),
@@ -66,11 +64,10 @@ VERTICAL_KEYS = {
     'rtmp_vertical': os.getenv('RTMP_VERTICAL_KEY', ''),
 }
 
-VALID_KEYS = set()
 for d in [DESTINATION_KEYS, VERTICAL_KEYS]:
-    for key_value in d.values():
-        if key_value:
-            VALID_KEYS.add(key_value)
+    for key_name, key_value in d.items():
+        if key_value and key_value not in VALID_KEYS:
+            VALID_KEYS.append(key_value)
 
 # Title Management State
 TITLE_CONFIG = {
@@ -80,99 +77,81 @@ TITLE_CONFIG = {
     'auto_date': os.getenv('AUTO_DATE', 'true').lower() == 'true',
 }
 
-# Twitch API credentials
+# Twitch API credentials for title updates
 TWITCH_CREDS = {
     'client_id': os.getenv('TWITCH_CLIENT_ID', ''),
     'token': os.getenv('TWITCH_OAUTH_TOKEN', ''),
     'broadcaster_id': os.getenv('TWITCH_BROADCASTER_ID', ''),
 }
 
-def is_title_mgmt_active():
-    return all(TWITCH_CREDS.values())
-
 def get_formatted_title():
     parts = []
     if TITLE_CONFIG['base_title']:
         parts.append(TITLE_CONFIG['base_title'])
-    
+
     if TITLE_CONFIG['episode_count'] > 0:
         parts.append(f"Episode #{TITLE_CONFIG['episode_count']}")
-    
+
     if TITLE_CONFIG['auto_date']:
         parts.append(datetime.now().strftime("%Y-%m-%d"))
-    
+
     return " / ".join(parts)
 
-def update_external_titles_worker():
-    if not is_title_mgmt_active():
-        return
-
+def update_external_titles():
     title = get_formatted_title()
-    app.logger.info(f"Background thread: Updating stream titles to: {title}")
-    
-    headers = {
-        'Client-Id': TWITCH_CREDS['client_id'],
-        'Authorization': f"Bearer {TWITCH_CREDS['token']}",
-        'Content-Type': 'application/json'
-    }
-    url = f"https://api.twitch.tv/helix/channels?broadcaster_id={TWITCH_CREDS['broadcaster_id']}"
-    data = {"title": title}
-    try:
-        res = requests.patch(url, headers=headers, json=data, timeout=10)
-        if res.status_code == 204:
-            app.logger.info("Twitch title updated successfully.")
-        else:
-            app.logger.error(f"Twitch API error: {res.status_code} - {res.text}")
-    except Exception as e:
-        app.logger.error(f"Failed to update Twitch title: {e}")
+    app.logger.info(f"Updating stream titles to: {title}")
 
-def trigger_title_update():
-    thread = threading.Thread(target=update_external_titles_worker)
-    thread.daemon = True
-    thread.start()
+    # Twitch Update
+    if TWITCH_CREDS['client_id'] and TWITCH_CREDS['token'] and TWITCH_CREDS['broadcaster_id']:
+        headers = {
+            'Client-Id': TWITCH_CREDS['client_id'],
+            'Authorization': f"Bearer {TWITCH_CREDS['token']}",
+            'Content-Type': 'application/json'
+        }
+        url = f"https://api.twitch.tv/helix/channels?broadcaster_id={TWITCH_CREDS['broadcaster_id']}"
+        data = {"title": title}
+        try:
+            res = requests.patch(url, headers=headers, json=data, timeout=5)
+            if res.status_code == 204:
+                app.logger.info("Twitch title updated successfully.")
+            else:
+                app.logger.error(f"Twitch API error: {res.status_code} - {res.text}")
+        except Exception as e:
+            app.logger.error(f"Failed to update Twitch title: {e}")
 
 @app.route('/on_publish', methods=['POST'])
 def on_publish():
-    app.logger.info(f"on_publish request received from {request.remote_addr}")
     raw_data = request.get_data(as_text=True)
     parsed_data = parse_qs(raw_data)
-    
-    stream_key_attempt = parsed_data.get('name', [None])[0]
-    app_name = parsed_data.get('app', ['live'])[0]
-    
-    if not stream_key_attempt:
-        stream_key_attempt = request.args.get('name') or request.args.get('key')
-    
-    if not stream_key_attempt:
-        app.logger.warning("REJECTED: No stream key found.")
-        return Response('Missing stream key', status=403)
+    stream_key_attempt = parsed_data.get('name', [''])[0]
+    app_name = request.args.get('app', 'live')
+    client_ip = request.remote_addr
 
     if not VALID_KEYS:
-        return Response('No keys on server', status=403)
+        app.logger.warning(f"REJECTED key from {client_ip}. No valid keys configured.")
+        return Response('No stream keys configured', status=403)
 
     if stream_key_attempt in VALID_KEYS:
-        app.logger.info(f"VALID: Key accepted for app '{app_name}' from {request.remote_addr}.")
-        if app_name == 'live' and is_title_mgmt_active():
-            trigger_title_update()
+        app.logger.info(f"VALID key accepted for app '{app_name}' from {client_ip}.")
+        # Update titles on new stream start (only for the primary horizontal app to avoid duplicates)
+        if app_name == 'live':
+            update_external_titles()
         return Response('OK', status=200)
     else:
-        obscured_key = (stream_key_attempt[:4] + "...") if len(stream_key_attempt) > 4 else "****"
-        app.logger.warning(f"INVALID: Key rejected from {request.remote_addr}. Key: {obscured_key}")
+        app.logger.warning(f"INVALID key rejected from {client_ip}.")
         return Response('Invalid stream key', status=403)
 
 @app.route('/on_publish_done', methods=['POST'])
 def on_publish_done():
-    raw_data = request.get_data(as_text=True)
-    parsed_data = parse_qs(raw_data)
-    app_name = parsed_data.get('app', ['live'])[0]
-    
-    app.logger.info(f"on_publish_done: Stream finished on app '{app_name}'.")
-    
-    if app_name == 'live' and is_title_mgmt_active() and TITLE_CONFIG['auto_increment']:
+    app_name = request.args.get('app', 'live')
+    app.logger.info(f"Stream finished on app '{app_name}'.")
+
+    # Only increment for the primary app to avoid double increment in dual-stream setups
+    if app_name == 'live' and TITLE_CONFIG['auto_increment']:
         TITLE_CONFIG['episode_count'] += 1
         save_episode_count(TITLE_CONFIG['episode_count'])
-        app.logger.info(f"Incremented episode count to {TITLE_CONFIG['episode_count']} and saved.")
-        
+        app.logger.info(f"Incremented episode count to {TITLE_CONFIG['episode_count']} and saved to disk.")
+
     return Response('OK', status=200)
 
 @app.route('/validate', methods=['POST'])
@@ -184,4 +163,4 @@ def health_check():
     return Response('OK', status=200)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    app.run(host='127.0.0.1', port=8080, debug=False)

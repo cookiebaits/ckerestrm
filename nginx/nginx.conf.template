@@ -71,39 +71,43 @@ rtmp {
         drop_idle_publisher 10s;
         deny play all; # Prevent unauthorized viewing
 
-        # Specific platform applications (Horizontal)
+        # Facebook Application
         application facebook {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${FACEBOOK_URL}${FACEBOOK_KEY};
         }
 		
+        # Twitch Application
         application twitch {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${TWITCH_URL}${TWITCH_KEY};
         }
 
+        # YouTube Application
         application youtube {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${YOUTUBE_URL}${YOUTUBE_KEY};
         }
 
+        # Kick Application
         application kick {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${KICK_URL}${KICK_KEY};
         }
 
+        # X Application
         application x {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${X_URL}${X_KEY};
         }
 
@@ -111,8 +115,8 @@ rtmp {
         application live {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate;
-            on_publish_done http://127.0.0.1:8080/on_publish_done;
+            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=live;
+            on_publish_done http://127.0.0.1:8080/on_publish_done?key=$name&app=live;
             
             #youtube
             #facebook
@@ -130,8 +134,8 @@ rtmp {
         application vertical {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate;
-            on_publish_done http://127.0.0.1:8080/on_publish_done;
+            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=vertical;
+            on_publish_done http://127.0.0.1:8080/on_publish_done?key=$name&app=vertical;
 
             #youtube_vertical
             #twitch_vertical

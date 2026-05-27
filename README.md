@@ -27,12 +27,6 @@ You stream **one** high-quality feed to your PrismRTMPS server, and it will:
 
 This fork also includes performance tuning (optimized `chunk_size`), updated core components for better stability and security, and active maintenance.
 
-### Key New Features (v3.4+)
-*   **Vertical Streaming Support:** Optimized for use with the **OBS Aitum Vertical plugin**. Push a second, independent vertical feed to specialized targets (TikTok, YouTube Vertical, Twitch Vertical) alongside your horizontal stream.
-*   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
-*   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
-*   **Nginx 1.30.1 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
-
 ## Prequisites
 
 You'd need a VPS server. Key considerations:
@@ -46,9 +40,11 @@ You'd need a VPS server. Key considerations:
     ssh root@<your_server_ip_address>
     ```
 
-*   2- **Clone the repository & Set permissions:**
+*   2- **Clone the repository:**
     ```bash
-    git clone https://github.com/cookiebaits/prism-rtmps.git && cd prism-rtmps && chmod +x install.sh
+    git clone https://github.com/cookiebaits/prism-rtmps.git
+    cd prism-rtmps
+    chmod +x install.sh
     ```
 
 *   3- **Run the Interactive Installer:**
@@ -61,9 +57,9 @@ You'd need a VPS server. Key considerations:
 
 *   4- **Configure OBS (or other streaming software):**
     *   Service: `Custom...`
-    *   **Horizontal Server:** `rtmp://<your_vps_ip_address>:1935/live`
-    *   **Vertical Server:** `rtmp://<your_vps_ip_address>:1935/vertical` (For Aitum Vertical)
-    *   Stream Key: **Use ONE of the actual stream keys you configured during the setup process** (or the custom Master OBS Key if you set one).
+    *   Server: `rtmp://<your_vps_ip_address>:1935/live`
+        *(The application path is `/live` by default in this fork for simplicity and predictability)*
+    *   Stream Key: **Use ONE of the actual stream keys you configured during the setup process.** This is how PrismRTMPS validates your stream.
 
 *   5- **Begin streaming from OBS!**
 
