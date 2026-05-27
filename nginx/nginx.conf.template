@@ -55,7 +55,7 @@ rtmp {
         }
 
         # Generic live application for multi-streaming
-        application live {
+        application ${APP_NAME} {
             live on;
             record off;
             on_publish http://127.0.0.1:8080/validate?key=$name;
