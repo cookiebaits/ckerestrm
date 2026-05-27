@@ -5,6 +5,7 @@ from urllib.parse import parse_qs
 import time
 from datetime import datetime
 import requests
+import threading
 
 app = Flask(__name__)
 logging.basicConfig(
@@ -18,7 +19,7 @@ EPISODE_FILE = os.path.join(DATA_DIR, "episode_count.txt")
 # Ensure data directory exists
 if not os.path.exists(DATA_DIR):
     try:
-        os.makedirs(DATA_DIR)
+        os.makedirs(DATA_DIR, exist_ok=True)
     except:
         pass
 
@@ -39,7 +40,6 @@ def save_episode_count(count):
         app.logger.error(f"Failed to save episode count: {e}")
 
 # Configuration from environment
-VALID_KEYS = []
 DESTINATION_KEYS = {
     'youtube': os.getenv('YOUTUBE_KEY', ''),
     'twitch': os.getenv('TWITCH_KEY', ''),
@@ -64,10 +64,11 @@ VERTICAL_KEYS = {
     'rtmp_vertical': os.getenv('RTMP_VERTICAL_KEY', ''),
 }
 
+VALID_KEYS = set()
 for d in [DESTINATION_KEYS, VERTICAL_KEYS]:
-    for key_name, key_value in d.items():
-        if key_value and key_value not in VALID_KEYS:
-            VALID_KEYS.append(key_value)
+    for key_value in d.values():
+        if key_value:
+            VALID_KEYS.add(key_value)
 
 # Title Management State
 TITLE_CONFIG = {
@@ -97,9 +98,9 @@ def get_formatted_title():
 
     return " / ".join(parts)
 
-def update_external_titles():
+def update_external_titles_worker():
     title = get_formatted_title()
-    app.logger.info(f"Updating stream titles to: {title}")
+    app.logger.info(f"Background thread: Updating stream titles to: {title}")
 
     # Twitch Update
     if TWITCH_CREDS['client_id'] and TWITCH_CREDS['token'] and TWITCH_CREDS['broadcaster_id']:
@@ -111,7 +112,7 @@ def update_external_titles():
         url = f"https://api.twitch.tv/helix/channels?broadcaster_id={TWITCH_CREDS['broadcaster_id']}"
         data = {"title": title}
         try:
-            res = requests.patch(url, headers=headers, json=data, timeout=5)
+            res = requests.patch(url, headers=headers, json=data, timeout=10)
             if res.status_code == 204:
                 app.logger.info("Twitch title updated successfully.")
             else:
@@ -119,11 +120,23 @@ def update_external_titles():
         except Exception as e:
             app.logger.error(f"Failed to update Twitch title: {e}")
 
+def trigger_title_update():
+    thread = threading.Thread(target=update_external_titles_worker)
+    thread.daemon = True
+    thread.start()
+
 @app.route('/on_publish', methods=['POST'])
 def on_publish():
+    # Try to get stream key from POST body (form-urlencoded) or query string
     raw_data = request.get_data(as_text=True)
     parsed_data = parse_qs(raw_data)
-    stream_key_attempt = parsed_data.get('name', [''])[0]
+
+    stream_key_attempt = parsed_data.get('name', [None])[0]
+    if not stream_key_attempt:
+        stream_key_attempt = request.args.get('key')
+    if not stream_key_attempt:
+        stream_key_attempt = request.args.get('name')
+
     app_name = request.args.get('app', 'live')
     client_ip = request.remote_addr
 
@@ -133,12 +146,12 @@ def on_publish():
 
     if stream_key_attempt in VALID_KEYS:
         app.logger.info(f"VALID key accepted for app '{app_name}' from {client_ip}.")
-        # Update titles on new stream start (only for the primary horizontal app to avoid duplicates)
+        # Update titles on new stream start (only for primary app to avoid duplicates)
         if app_name == 'live':
-            update_external_titles()
+            trigger_title_update()
         return Response('OK', status=200)
     else:
-        app.logger.warning(f"INVALID key rejected from {client_ip}.")
+        app.logger.warning(f"INVALID key rejected from {client_ip}. Key used: {stream_key_attempt[:4]}...")
         return Response('Invalid stream key', status=403)
 
 @app.route('/on_publish_done', methods=['POST'])
@@ -146,7 +159,7 @@ def on_publish_done():
     app_name = request.args.get('app', 'live')
     app.logger.info(f"Stream finished on app '{app_name}'.")
 
-    # Only increment for the primary app to avoid double increment in dual-stream setups
+    # Only increment for the primary app to avoid double increment
     if app_name == 'live' and TITLE_CONFIG['auto_increment']:
         TITLE_CONFIG['episode_count'] += 1
         save_episode_count(TITLE_CONFIG['episode_count'])
@@ -163,4 +176,4 @@ def health_check():
     return Response('OK', status=200)
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8080, debug=False)
+    app.run(host='0.0.0.0', port=8080, debug=False)
