@@ -204,7 +204,7 @@ ngx_rtmp_log_var_msec_getdata(ngx_rtmp_session_t *s, u_char *buf,
     ngx_time_t  *tp;
 
     tp = ngx_timeofday();
-    
+
     return ngx_sprintf(buf, "%T.%03M", tp->sec, tp->msec);
 }
 
