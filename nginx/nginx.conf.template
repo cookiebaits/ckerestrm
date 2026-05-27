@@ -71,43 +71,39 @@ rtmp {
         drop_idle_publisher 10s;
         deny play all; # Prevent unauthorized viewing
 
-        # Facebook Application
+        # Specific platform applications (Horizontal)
         application facebook {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
+            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=facebook;
             push ${FACEBOOK_URL}${FACEBOOK_KEY};
         }
 		
-        # Twitch Application
         application twitch {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
+            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=twitch;
             push ${TWITCH_URL}${TWITCH_KEY};
         }
 
-        # YouTube Application
         application youtube {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
+            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=youtube;
             push ${YOUTUBE_URL}${YOUTUBE_KEY};
         }
 
-        # Kick Application
         application kick {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
+            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=kick;
             push ${KICK_URL}${KICK_KEY};
         }
 
-        # X Application
         application x {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
+            on_publish http://127.0.0.1:8080/on_publish?key=$name&app=x;
             push ${X_URL}${X_KEY};
         }
 
