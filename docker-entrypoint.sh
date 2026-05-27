@@ -107,16 +107,13 @@ add_push "Twitch"     "TWITCH_KEY"     "TWITCH_URL"     "twitch"
 add_push "Kick"       "KICK_KEY"       "KICK_URL"       "kick"
 add_push "X (Twitter)" "X_KEY"          "X_URL"          "x"
 add_push "Trovo"      "TROVO_KEY"      "TROVO_URL"      "trovo"
+add_push "TikTok"     "TIKTOK_KEY"     "TIKTOK_URL"     "tiktok"
 add_push "RTMP1"      "RTMP1_KEY"      "RTMP1_URL"      "rtmp1"
 add_push "RTMP2"      "RTMP2_KEY"      "RTMP2_URL"      "rtmp2"
 add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
-
-# Vertical Pushes
-add_push "Youtube Vertical"   "YOUTUBE_VERTICAL_KEY"   "YOUTUBE_VERTICAL_URL"   "youtube_vertical"
-add_push "Twitch Vertical"    "TWITCH_VERTICAL_KEY"    "TWITCH_VERTICAL_URL"    "twitch_vertical"
-add_push "TikTok Vertical"    "TIKTOK_VERTICAL_KEY"    "TIKTOK_VERTICAL_URL"    "tiktok_vertical"
-add_push "Kick Vertical"      "KICK_VERTICAL_KEY"      "KICK_VERTICAL_URL"      "kick_vertical"
-add_push "RTMP Vertical"      "RTMP_VERTICAL_KEY"      "RTMP_VERTICAL_URL"      "rtmp_vertical"
+add_push "TikTok Vertical"  "TIKTOK_V_KEY"   "TIKTOK_V_URL"   "tiktok_v"
+add_push "Twitch Vertical"  "TWITCH_V_KEY"   "TWITCH_V_URL"   "twitch_v"
+add_push "YouTube Vertical" "YOUTUBE_V_KEY"  "YOUTUBE_V_URL"  "youtube_v"
 
 
 if [ $ENV_OK -eq 1 ]; then
