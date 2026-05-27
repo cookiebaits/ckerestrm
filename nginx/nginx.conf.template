@@ -38,14 +38,6 @@ rtmp {
             push ${YOUTUBE_URL}${YOUTUBE_KEY};
         }
 
-        # TikTok Application
-        application tiktok {
-            live on;
-            record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
-            push ${TIKTOK_URL}${TIKTOK_KEY};
-        }
-
         # Kick Application
         application kick {
             live on;
@@ -62,17 +54,6 @@ rtmp {
             push ${X_URL}${X_KEY};
         }
 
-        # Vertical application for simultaneous vertical multi-streaming
-        application vertical {
-            live on;
-            record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
-            
-            #tiktok_v
-            #twitch_v
-            #youtube_v
-        }
-
         # Generic live application for multi-streaming
         application live {
             live on;
@@ -86,7 +67,6 @@ rtmp {
             #kick
             #x
             #twitch
-            #tiktok
         }
     }
 }
