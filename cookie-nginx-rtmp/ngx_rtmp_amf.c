@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) Roman Arutyunyan
  */
@@ -28,6 +27,7 @@ ngx_rtmp_amf_reverse_copy(void *dst, void* src, size_t len)
 }
 
 #define NGX_RTMP_AMF_DEBUG_SIZE 16
+#define NGX_RTMP_AMF_MAX_RECURSION 128
 
 #ifdef NGX_DEBUG
 static void
@@ -192,6 +192,7 @@ ngx_rtmp_amf_read_object(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
         if (maxlen > sizeof(name)) {
             return NGX_ERROR;
         }
+
         /* read key */
         switch (ngx_rtmp_amf_get(ctx, buf, 2)) {
         case NGX_DONE:
@@ -315,6 +316,12 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
     u_char                      buf[8];
     uint32_t                    max_index;
 
+    if (ctx->depth++ >= NGX_RTMP_AMF_MAX_RECURSION) {
+        ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
+                      "AMF read recursion limit exceeded");
+        return NGX_ERROR;
+    }
+
     for(n = 0; n < nelts; ++n) {
 
         if (elts && elts->type & NGX_RTMP_AMF_TYPELESS) {
@@ -325,11 +332,13 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
             switch (ngx_rtmp_amf_get(ctx, &type8, 1)) {
                 case NGX_DONE:
                     if (elts && elts->type & NGX_RTMP_AMF_OPTIONAL) {
-                        return NGX_OK;
+                        rc = NGX_OK;
+                        goto done;
                     }
                     /* fall through */
                 case NGX_ERROR:
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
             }
             type = type8;
             data = (elts &&
@@ -349,20 +358,23 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
         switch (type) {
             case NGX_RTMP_AMF_NUMBER:
                 if (ngx_rtmp_amf_get(ctx, buf, 8) != NGX_OK) {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 ngx_rtmp_amf_reverse_copy(data, buf, 8);
                 break;
 
             case NGX_RTMP_AMF_BOOLEAN:
                 if (ngx_rtmp_amf_get(ctx, data, 1) != NGX_OK) {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 break;
 
             case NGX_RTMP_AMF_STRING:
                 if (ngx_rtmp_amf_get(ctx, buf, 2) != NGX_OK) {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 ngx_rtmp_amf_reverse_copy(&len, buf, 2);
 
@@ -371,8 +383,10 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
 
                 } else if (elts->len <= len) {
                     rc = ngx_rtmp_amf_get(ctx, data, elts->len - 1);
-                    if (rc != NGX_OK)
-                        return NGX_ERROR;
+                    if (rc != NGX_OK) {
+                        rc = NGX_ERROR;
+                        goto done;
+                    }
                     ((char*)data)[elts->len - 1] = 0;
                     rc = ngx_rtmp_amf_get(ctx, NULL, len - elts->len + 1);
 
@@ -382,7 +396,8 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
                 }
 
                 if (rc != NGX_OK) {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
 
                 break;
@@ -393,7 +408,8 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
 
             case NGX_RTMP_AMF_MIXED_ARRAY:
                 if (ngx_rtmp_amf_get(ctx, &max_index, 4) != NGX_OK) {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 /* fall through */
 
@@ -402,7 +418,8 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
                     data && elts ? elts->len / sizeof(ngx_rtmp_amf_elt_t) : 0
                     ) != NGX_OK)
                 {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 break;
 
@@ -411,7 +428,8 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
                     data && elts ? elts->len / sizeof(ngx_rtmp_amf_elt_t) : 0
                     ) != NGX_OK)
                 {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 break;
 
@@ -420,35 +438,41 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
                     data && elts ? elts->len / sizeof(ngx_rtmp_amf_elt_t) : 0
                     ) != NGX_OK)
                 {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 break;
 
             case NGX_RTMP_AMF_INT8:
                 if (ngx_rtmp_amf_get(ctx, data, 1) != NGX_OK) {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 break;
 
             case NGX_RTMP_AMF_INT16:
                 if (ngx_rtmp_amf_get(ctx, buf, 2) != NGX_OK) {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 ngx_rtmp_amf_reverse_copy(data, buf, 2);
                 break;
 
             case NGX_RTMP_AMF_INT32:
                 if (ngx_rtmp_amf_get(ctx, buf, 4) != NGX_OK) {
-                    return NGX_ERROR;
+                    rc = NGX_ERROR;
+                    goto done;
                 }
                 ngx_rtmp_amf_reverse_copy(data, buf, 4);
                 break;
 
             case NGX_RTMP_AMF_END:
-                return NGX_OK;
+                rc = NGX_OK;
+                goto done;
 
             default:
-                return NGX_ERROR;
+                rc = NGX_ERROR;
+                goto done;
         }
 
         if (elts) {
@@ -456,7 +480,11 @@ ngx_rtmp_amf_read(ngx_rtmp_amf_ctx_t *ctx, ngx_rtmp_amf_elt_t *elts,
         }
     }
 
-    return NGX_OK;
+    rc = NGX_OK;
+
+done:
+    --ctx->depth;
+    return rc;
 }
 
 
@@ -641,4 +669,3 @@ ngx_rtmp_amf_write(ngx_rtmp_amf_ctx_t *ctx,
 
     return NGX_OK;
 }
-
