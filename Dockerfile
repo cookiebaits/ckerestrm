@@ -38,11 +38,13 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
         --http-log-path=/var/log/nginx/access.log \
         --http-client-body-temp-path=/tmp/nginx-client-body \
         --with-http_ssl_module \
+        --with-http_realip_module \
         --with-threads \
-        --with-ipv6 \
         --add-module=/tmp/build/nginx-rtmp-module/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION} && \
     make -j $(getconf _NPROCESSORS_ONLN) CFLAGS="-Wno-error" && \
     make install && \
+    cp /tmp/build/nginx-rtmp-module/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}/stat.xsl /usr/local/nginx/html/stat.xsl && \
+    cp /tmp/build/nginx/${NGINX_VERSION}/conf/mime.types /etc/nginx/mime.types && \
     mkdir /var/lock/nginx && \
     rm -rf /tmp/build
 

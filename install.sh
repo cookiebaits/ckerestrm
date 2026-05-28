@@ -169,7 +169,7 @@ configure_obs() {
     clear
     echo -e "${GREEN}=== OBS Configuration ===${NC}"
     # Determine the public IP if possible, or fallback to placeholder
-    SERVER_IP=$(curl -s ifconfig.me || echo "<your_server_ip>")
+    SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
 
     # Use Domain if set, otherwise IP
     DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
@@ -191,31 +191,47 @@ configure_obs() {
     fi
 
     echo ""
-    echo -e "--- Reverse Proxy / Domain (P1) ---"
-    echo -e "Current Domain: ${SERVER_DOMAIN:-None (Using IP)}"
-    echo -e "Enter your domain or Cloudflare reverse proxy (e.g. stream.yourdomain.com):"
-    echo -e "(Leave blank to keep current, type 'disable' to use IP)"
-    read -r dom_input
-    if [ "$dom_input" == "disable" ]; then
-        SERVER_DOMAIN=""
-        echo -e "${GREEN}Domain disabled, using IP.${NC}"
-    elif [ ! -z "$dom_input" ]; then
-        SERVER_DOMAIN="$dom_input"
-        echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
-        echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
-    fi
-
-    echo ""
-    echo -e "--- Custom Application Name (P3) ---"
+    echo -e "--- Custom Application Name ---"
     echo -e "Current Path: /${APP_NAME}"
     echo -e "Enter new RTMP Path/Application name (e.g. cookies):"
     echo -e "(Leave blank to keep current):"
     read -r app_input
     if [ ! -z "$app_input" ]; then
-        APP_NAME="$app_input"
-        echo -e "${GREEN}Application name updated to: $APP_NAME${NC}"
+        # Basic sanitization: remove everything except alphanumeric
+        app_input=$(echo "$app_input" | sed 's/[^a-zA-Z0-9]//g')
+        if [ ! -z "$app_input" ]; then
+            APP_NAME="$app_input"
+            echo -e "${GREEN}Application name updated to: $APP_NAME${NC}"
+        else
+             echo -e "${RED}Invalid application name. Keeping current: $APP_NAME${NC}"
+        fi
     fi
 
+    save_config
+    sleep 2
+}
+
+configure_domain() {
+    clear
+    echo -e "${GREEN}=== Domain / Reverse Proxy Configuration ===${NC}"
+    echo -e "Current Domain: ${SERVER_DOMAIN:-None (Using IP)}"
+    echo -e "Enter your domain or Cloudflare reverse proxy (e.g. stream.yourdomain.com):"
+    echo -e "(Leave blank to keep current, type 'disable' to use IP)"
+    read -r dom_input
+    if [ "$dom_input" == "disable" ] || [ "$dom_input" == "DISABLE" ]; then
+        SERVER_DOMAIN=""
+        echo -e "${GREEN}Domain disabled, using IP.${NC}"
+    elif [ ! -z "$dom_input" ]; then
+        # Basic sanitization for domain
+        dom_input=$(echo "$dom_input" | sed 's/[^a-zA-Z0-9.-]//g')
+        if [ ! -z "$dom_input" ]; then
+            SERVER_DOMAIN="$dom_input"
+            echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
+            echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
+        else
+            echo -e "${RED}Invalid domain name. Keeping current.${NC}"
+        fi
+    fi
     save_config
     sleep 2
 }
@@ -239,7 +255,7 @@ install_docker() {
     if ! command -v docker &> /dev/null; then
         echo -e "${YELLOW}Docker not found. Installing...${NC}"
         # Basic docker install via official script
-        curl -fsSL https://get.docker.com -o get-docker.sh
+        curl -4 -fsSL https://get.docker.com -o get-docker.sh
         sudo sh get-docker.sh
         sudo systemctl start docker
         sudo systemctl enable docker
@@ -289,7 +305,7 @@ build_and_run() {
         prism-rtmps
 
     if [ $? -eq 0 ]; then
-        SERVER_IP=$(curl -s ifconfig.me || echo "<your_server_ip>")
+        SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
         DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
         echo -e "${GREEN}Container 'prism-rtmps' is running!${NC}"
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
@@ -308,27 +324,34 @@ view_logs() {
         return
     fi
 
-    echo -e "${YELLOW}Showing logs for prism-rtmps... (Press Ctrl+C to exit)${NC}"
-    docker logs -f prism-rtmps
+    echo -e "${YELLOW}Showing logs for prism-rtmps... (Press Ctrl+C to exit log view)${NC}"
+    # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
+    (trap 'exit 0' INT; docker logs -f prism-rtmps)
 
-    echo -e "\n${GREEN}=== Log Options ===${NC}"
-    echo "1) Return to Main Menu"
-    echo "2) Clear Logs and Return"
-    echo -e "Select an option: \c"
-    read -r log_opt
+    while true; do
+        echo -e "\n${GREEN}=== Log Options ===${NC}"
+        echo "1) Return to Main Menu"
+        echo "2) Clear Logs"
+        echo -e "Select an option: \c"
+        read -r log_opt
 
-    if [ "$log_opt" == "2" ]; then
-        echo -e "${YELLOW}Clearing logs...${NC}"
-        # Truncate internal logs
-        docker exec prism-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log' 2>/dev/null || true
-        # Truncate Docker's own log file for the container
-        LOG_PATH=$(docker inspect --format='{{.LogPath}}' prism-rtmps 2>/dev/null)
-        if [ ! -z "$LOG_PATH" ]; then
-            sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
-        fi
-        echo -e "${GREEN}Logs cleared.${NC}"
-        sleep 1
-    fi
+        case $log_opt in
+            1) break ;;
+            2)
+                echo -e "${YELLOW}Clearing logs...${NC}"
+                # Truncate internal logs
+                docker exec prism-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log' 2>/dev/null || true
+                # Truncate Docker's own log file for the container
+                LOG_PATH=$(docker inspect --format='{{.LogPath}}' prism-rtmps 2>/dev/null)
+                if [ ! -z "$LOG_PATH" ]; then
+                    sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
+                fi
+                echo -e "${GREEN}Logs cleared.${NC}"
+                sleep 1
+                ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
 }
 
 stop_container() {
@@ -350,11 +373,12 @@ while true; do
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys"
     echo "3) Configure OBS Setup & Security Key"
-    echo "4) Configure Optimizations (Chunk Size)"
-    echo "5) Build & Start Server"
-    echo "6) Stop Server"
-    echo "7) View Logs"
-    echo "8) Quit"
+    echo "4) Configure Domain / Reverse Proxy (Optional)"
+    echo "5) Configure Optimizations (Chunk Size)"
+    echo "6) Build & Start Server"
+    echo "7) Stop Server"
+    echo "8) View Logs"
+    echo "9) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -362,11 +386,12 @@ while true; do
         1) install_docker ;;
         2) configure_keys ;;
         3) configure_obs ;;
-        4) configure_optimizations ;;
-        5) build_and_run ;;
-        6) stop_container ;;
-        7) view_logs ;;
-        8) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        4) configure_domain ;;
+        5) configure_optimizations ;;
+        6) build_and_run ;;
+        7) stop_container ;;
+        8) view_logs ;;
+        9) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
