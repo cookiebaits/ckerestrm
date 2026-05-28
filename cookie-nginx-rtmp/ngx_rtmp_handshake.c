@@ -192,7 +192,7 @@ static void
 ngx_rtmp_fill_random_buffer(ngx_buf_t *b)
 {
     for (; b->last != b->end; ++b->last) {
-        *b->last = (u_char) rand();
+        *b->last = (u_char) ngx_random();
     }
 }
 
