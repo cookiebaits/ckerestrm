@@ -18,8 +18,14 @@ RUN mkdir -p /tmp/build/nginx && \
     wget -O ${NGINX_VERSION}.tar.gz https://nginx.org/download/${NGINX_VERSION}.tar.gz && \
     tar -zxf ${NGINX_VERSION}.tar.gz
 
-# Build and install Nginx with CookieRTMP
-COPY CookieRTMP /tmp/build/CookieRTMP
+# Download and decompress RTMP module
+RUN mkdir -p /tmp/build/nginx-rtmp-module && \
+    cd /tmp/build/nginx-rtmp-module && \
+    wget -O nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz https://github.com/arut/nginx-rtmp-module/archive/v${NGINX_RTMP_MODULE_VERSION}.tar.gz && \
+    tar -zxf nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}.tar.gz
+
+# Merge CookieRTMP (security enhancements) into the standard module
+COPY CookieRTMP/ /tmp/build/nginx-rtmp-module/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}/
 
 RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
     ./configure \
@@ -33,12 +39,10 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
         --with-http_ssl_module \
         --with-http_realip_module \
         --with-threads \
-        --add-module=/tmp/build/CookieRTMP && \
+        --add-module=/tmp/build/nginx-rtmp-module/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION} && \
     make -j $(getconf _NPROCESSORS_ONLN) CFLAGS="-Wno-error" && \
     make install && \
-    # Download stat.xsl if missing from CookieRTMP
-    (cp /tmp/build/CookieRTMP/stat.xsl /usr/local/nginx/html/stat.xsl 2>/dev/null || \
-     wget -O /usr/local/nginx/html/stat.xsl https://raw.githubusercontent.com/arut/nginx-rtmp-module/master/stat.xsl) && \
+    cp /tmp/build/nginx-rtmp-module/nginx-rtmp-module-${NGINX_RTMP_MODULE_VERSION}/stat.xsl /usr/local/nginx/html/stat.xsl && \
     cp /tmp/build/nginx/${NGINX_VERSION}/conf/mime.types /etc/nginx/mime.types && \
     mkdir -p /var/lock/nginx && \
     rm -rf /tmp/build
