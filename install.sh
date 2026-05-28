@@ -13,7 +13,8 @@ YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/"
 YOUTUBE_KEY=""
 FACEBOOK_KEY=""
 INSTAGRAM_KEY=""
-CLOUDFLARE_KEY=""
+TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/"
+TIKTOK_KEY=""
 TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/"
 TWITCH_KEY=""
 KICK_KEY=""
@@ -39,7 +40,8 @@ YOUTUBE_URL="$YOUTUBE_URL"
 YOUTUBE_KEY="$YOUTUBE_KEY"
 FACEBOOK_KEY="$FACEBOOK_KEY"
 INSTAGRAM_KEY="$INSTAGRAM_KEY"
-CLOUDFLARE_KEY="$CLOUDFLARE_KEY"
+TIKTOK_URL="$TIKTOK_URL"
+TIKTOK_KEY="$TIKTOK_KEY"
 TWITCH_URL="$TWITCH_URL"
 TWITCH_KEY="$TWITCH_KEY"
 KICK_KEY="$KICK_KEY"
@@ -79,11 +81,11 @@ configure_keys() {
         clear
         echo -e "${GREEN}=== Configure Stream Keys ===${NC}"
         echo "1) YouTube (Current: ${YOUTUBE_KEY:-None})"
-        echo "2) Facebook (Current: ${FACEBOOK_KEY:-None})"
-        echo "3) Instagram (Current: ${INSTAGRAM_KEY:-None})"
-        echo "4) Cloudflare (Current: ${CLOUDFLARE_KEY:-None})"
-        echo "5) Twitch (Current: ${TWITCH_KEY:-None})"
-        echo "6) Kick (Current: ${KICK_KEY:-None})"
+        echo "2) Twitch (Current: ${TWITCH_KEY:-None})"
+        echo "3) Kick (Current: ${KICK_KEY:-None})"
+        echo "4) TikTok (Current: ${TIKTOK_KEY:-None})"
+        echo "5) Facebook (Current: ${FACEBOOK_KEY:-None})"
+        echo "6) Instagram (Current: ${INSTAGRAM_KEY:-None})"
         echo "7) X (Twitter) (Current: ${X_KEY:-None})"
         echo "8) Trovo (Current: ${TROVO_KEY:-None})"
         echo "9) Custom RTMP (Current URL: ${RTMP1_URL:-None})"
@@ -117,10 +119,7 @@ configure_keys() {
                esac
                save_config
                ;;
-            2) prompt_for_key "Facebook" "FACEBOOK_KEY" ;;
-            3) prompt_for_key "Instagram" "INSTAGRAM_KEY" ;;
-            4) prompt_for_key "Cloudflare" "CLOUDFLARE_KEY" ;;
-            5)
+            2)
                prompt_for_key "Twitch Key" "TWITCH_KEY"
                echo -e "Select Twitch Server:"
                echo "  1) Global Auto (rtmp://ingest.global-contribute.live-video.net/app/)"
@@ -147,7 +146,10 @@ configure_keys() {
                esac
                save_config
                ;;
-            6) prompt_for_key "Kick" "KICK_KEY" ;;
+            3) prompt_for_key "Kick" "KICK_KEY" ;;
+            4) prompt_for_key "TikTok" "TIKTOK_KEY" ;;
+            5) prompt_for_key "Facebook" "FACEBOOK_KEY" ;;
+            6) prompt_for_key "Instagram" "INSTAGRAM_KEY" ;;
             7) prompt_for_key "X (Twitter)" "X_KEY" ;;
             8) prompt_for_key "Trovo" "TROVO_KEY" ;;
             9)
@@ -291,7 +293,8 @@ build_and_run() {
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
         -e FACEBOOK_KEY="$FACEBOOK_KEY" \
         -e INSTAGRAM_KEY="$INSTAGRAM_KEY" \
-        -e CLOUDFLARE_KEY="$CLOUDFLARE_KEY" \
+        -e TIKTOK_URL="$TIKTOK_URL" \
+        -e TIKTOK_KEY="$TIKTOK_KEY" \
         -e TWITCH_URL="$TWITCH_URL" \
         -e TWITCH_KEY="$TWITCH_KEY" \
         -e KICK_KEY="$KICK_KEY" \

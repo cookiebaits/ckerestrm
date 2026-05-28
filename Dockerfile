@@ -71,8 +71,8 @@ COPY stunnel/facebook.conf /etc/stunnel/conf.d/facebook.conf
 #Instagram Stunnel Port 19351
 COPY stunnel/instagram.conf /etc/stunnel/conf.d/instagram.conf
 
-#Cloudflare Stunnel Port 19352
-COPY stunnel/cloudflare.conf /etc/stunnel/conf.d/cloudflare.conf
+#Tiktok Stunnel Port 19358
+COPY stunnel/tiktok.conf /etc/stunnel/conf.d/tiktok.conf
 
 #Kick Stunnel Port 19353
 COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
@@ -92,9 +92,9 @@ ENV FACEBOOK_KEY ""
 ENV INSTAGRAM_URL rtmp://127.0.0.1:19351/rtmp/
 ENV INSTAGRAM_KEY ""
 
-#Cloudflare
-ENV CLOUDFLARE_URL rtmp://127.0.0.1:19352/live/
-ENV CLOUDFLARE_KEY ""
+#Tiktok
+ENV TIKTOK_URL rtmp://127.0.0.1:19358/s_v/
+ENV TIKTOK_KEY ""
 
 #Twitch
 ENV TWITCH_URL rtmp://ingest.global-contribute.live-video.net/app/

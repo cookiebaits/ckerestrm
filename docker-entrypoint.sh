@@ -102,7 +102,7 @@ add_push() {
 add_push "Youtube"    "YOUTUBE_KEY"    "YOUTUBE_URL"    "youtube"
 add_push "Facebook"   "FACEBOOK_KEY"   "FACEBOOK_URL"   "facebook"
 add_push "Instagram"  "INSTAGRAM_KEY"  "INSTAGRAM_URL"  "instagram"
-add_push "Cloudflare" "CLOUDFLARE_KEY" "CLOUDFLARE_URL" "cloudflare"
+add_push "TikTok"     "TIKTOK_KEY"     "TIKTOK_URL"     "tiktok"
 add_push "Twitch"     "TWITCH_KEY"     "TWITCH_URL"     "twitch"
 add_push "Kick"       "KICK_KEY"       "KICK_URL"       "kick"
 add_push "X (Twitter)" "X_KEY"          "X_URL"          "x"
