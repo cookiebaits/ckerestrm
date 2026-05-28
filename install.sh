@@ -22,6 +22,8 @@ TROVO_KEY=""
 RTMP1_URL=""
 RTMP1_KEY=""
 OBS_KEY=""
+APP_NAME="live"
+SERVER_DOMAIN=""
 CHUNK_SIZE="8192"
 
 CONFIG_FILE="rtmp_config.env"
@@ -46,6 +48,8 @@ TROVO_KEY="$TROVO_KEY"
 RTMP1_URL="$RTMP1_URL"
 RTMP1_KEY="$RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
+APP_NAME="$APP_NAME"
+SERVER_DOMAIN="$SERVER_DOMAIN"
 CHUNK_SIZE="$CHUNK_SIZE"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
@@ -166,27 +170,54 @@ configure_obs() {
     echo -e "${GREEN}=== OBS Configuration ===${NC}"
     # Determine the public IP if possible, or fallback to placeholder
     SERVER_IP=$(curl -s ifconfig.me || echo "<your_server_ip>")
+
+    # Use Domain if set, otherwise IP
+    DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
+
     echo -e "To stream to this server from OBS or another encoder:"
-    echo -e "  ${YELLOW}Server URL:${NC} rtmp://${SERVER_IP}:1935/live"
+    echo -e "  ${YELLOW}Server URL:${NC} rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
     echo ""
-    echo -e "For security, PrismRTMPS requires a matching stream key to accept your stream."
-    echo -e "You must either use one of the destination keys you already configured (e.g., your Twitch or YouTube key),"
-    echo -e "or you can create a custom, specific OBS Master Key here."
-    echo ""
+    echo -e "--- Security Key ---"
+    echo -e "PrismRTMPS requires a matching stream key to accept your stream."
     echo -e "Current Custom OBS Key: ${OBS_KEY:-None}"
     echo -e "Enter new Custom OBS Key (Type 'disable' to remove, or press Enter to keep current): "
-    read -r input
-    if [ "$input" == "disable" ] || [ "$input" == "DISABLE" ]; then
+    read -r obs_input
+    if [ "$obs_input" == "disable" ] || [ "$obs_input" == "DISABLE" ]; then
         OBS_KEY=""
-        save_config
         echo -e "${GREEN}Custom OBS Key removed.${NC}"
-        sleep 1
-    elif [ ! -z "$input" ]; then
-        OBS_KEY="$input"
-        save_config
+    elif [ ! -z "$obs_input" ]; then
+        OBS_KEY="$obs_input"
         echo -e "${GREEN}Custom OBS Key updated.${NC}"
-        sleep 1
     fi
+
+    echo ""
+    echo -e "--- Reverse Proxy / Domain (P1) ---"
+    echo -e "Current Domain: ${SERVER_DOMAIN:-None (Using IP)}"
+    echo -e "Enter your domain or Cloudflare reverse proxy (e.g. stream.yourdomain.com):"
+    echo -e "(Leave blank to keep current, type 'disable' to use IP)"
+    read -r dom_input
+    if [ "$dom_input" == "disable" ]; then
+        SERVER_DOMAIN=""
+        echo -e "${GREEN}Domain disabled, using IP.${NC}"
+    elif [ ! -z "$dom_input" ]; then
+        SERVER_DOMAIN="$dom_input"
+        echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
+        echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
+    fi
+
+    echo ""
+    echo -e "--- Custom Application Name (P3) ---"
+    echo -e "Current Path: /${APP_NAME}"
+    echo -e "Enter new RTMP Path/Application name (e.g. cookies):"
+    echo -e "(Leave blank to keep current):"
+    read -r app_input
+    if [ ! -z "$app_input" ]; then
+        APP_NAME="$app_input"
+        echo -e "${GREEN}Application name updated to: $APP_NAME${NC}"
+    fi
+
+    save_config
+    sleep 2
 }
 
 configure_optimizations() {
@@ -253,13 +284,16 @@ build_and_run() {
         -e RTMP1_URL="$RTMP1_URL" \
         -e RTMP1_KEY="$RTMP1_KEY" \
         -e OBS_KEY="$OBS_KEY" \
+        -e APP_NAME="$APP_NAME" \
         -e CHUNK_SIZE="$CHUNK_SIZE" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
+        SERVER_IP=$(curl -s ifconfig.me || echo "<your_server_ip>")
+        DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
         echo -e "${GREEN}Container 'prism-rtmps' is running!${NC}"
-        echo -e "You can stream to: rtmp://<your_server_ip>:1935/live"
-        echo -e "Stats available at: http://<your_server_ip>:8081/stat"
+        echo -e "You can stream to: rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
+        echo -e "Stats available at: http://${DISPLAY_HOST}:8081/stat"
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
@@ -276,8 +310,25 @@ view_logs() {
 
     echo -e "${YELLOW}Showing logs for prism-rtmps... (Press Ctrl+C to exit)${NC}"
     docker logs -f prism-rtmps
-    echo -e "Press Enter to return to menu..."
-    read -r
+
+    echo -e "\n${GREEN}=== Log Options ===${NC}"
+    echo "1) Return to Main Menu"
+    echo "2) Clear Logs and Return"
+    echo -e "Select an option: \c"
+    read -r log_opt
+
+    if [ "$log_opt" == "2" ]; then
+        echo -e "${YELLOW}Clearing logs...${NC}"
+        # Truncate internal logs
+        docker exec prism-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log' 2>/dev/null || true
+        # Truncate Docker's own log file for the container
+        LOG_PATH=$(docker inspect --format='{{.LogPath}}' prism-rtmps 2>/dev/null)
+        if [ ! -z "$LOG_PATH" ]; then
+            sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
+        fi
+        echo -e "${GREEN}Logs cleared.${NC}"
+        sleep 1
+    fi
 }
 
 stop_container() {
