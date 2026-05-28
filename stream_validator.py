@@ -21,7 +21,7 @@ DESTINATION_KEYS = {
     'x': os.getenv('X_KEY', ''),
     'facebook': os.getenv('FACEBOOK_KEY', ''),
     'instagram': os.getenv('INSTAGRAM_KEY', ''),
-    'cloudflare': os.getenv('CLOUDFLARE_KEY', ''),
+    'tiktok': os.getenv('TIKTOK_KEY', ''),
     'rtmp1': os.getenv('RTMP1_KEY', ''),
     'rtmp2': os.getenv('RTMP2_KEY', ''),
     'rtmp3': os.getenv('RTMP3_KEY', ''),
