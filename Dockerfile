@@ -1,7 +1,7 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.30.2
+ENV NGINX_VERSION nginx-1.27.4
 ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 
 RUN apt-get update && \
