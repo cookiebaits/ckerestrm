@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) Roman Arutyunyan
  */
@@ -589,10 +588,26 @@ ngx_int_t ngx_rtmp_send_sample_access(ngx_rtmp_session_t *s);
 #define NGX_RTMP_VIDEO_INTER_FRAME          2
 #define NGX_RTMP_VIDEO_DISPOSABLE_FRAME     3
 
+/* Enhanced RTMP */
+#define NGX_RTMP_VIDEO_IS_ENHANCED(b)         ((b) & 0x80)
+#define NGX_RTMP_VIDEO_ENHANCED_FRAME_TYPE(b) (((b) >> 4) & 0x07)
+#define NGX_RTMP_VIDEO_ENHANCED_PACKET_TYPE(b) ((b) & 0x0f)
+
+#define NGX_RTMP_VIDEO_ENHANCED_TYPE_HEADER   0
+#define NGX_RTMP_VIDEO_ENHANCED_TYPE_DATA     1
+
+#define NGX_RTMP_VIDEO_FOURCC_HEVC            0x68766331 /* '\''hvc1'\'' */
+#define NGX_RTMP_VIDEO_FOURCC_AV1             0x61763031 /* '\''av01'\'' */
+#define NGX_RTMP_VIDEO_FOURCC_VP9             0x76703039 /* '\''vp09'\'' */
+
 
 static ngx_inline ngx_int_t
 ngx_rtmp_get_video_frame_type(ngx_chain_t *in)
 {
+    if (NGX_RTMP_VIDEO_IS_ENHANCED(in->buf->pos[0])) {
+        return NGX_RTMP_VIDEO_ENHANCED_FRAME_TYPE(in->buf->pos[0]);
+    }
+
     return (in->buf->pos[0] & 0xf0) >> 4;
 }
 
@@ -600,6 +615,11 @@ ngx_rtmp_get_video_frame_type(ngx_chain_t *in)
 static ngx_inline ngx_int_t
 ngx_rtmp_is_codec_header(ngx_chain_t *in)
 {
+    if (NGX_RTMP_VIDEO_IS_ENHANCED(in->buf->pos[0])) {
+        return NGX_RTMP_VIDEO_ENHANCED_PACKET_TYPE(in->buf->pos[0]) ==
+               NGX_RTMP_VIDEO_ENHANCED_TYPE_HEADER;
+    }
+
     return in->buf->pos + 1 < in->buf->last && in->buf->pos[1] == 0;
 }
 

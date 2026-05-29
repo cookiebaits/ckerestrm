@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) Roman Arutyunyan
  */
@@ -122,6 +121,13 @@ video_codecs[] = {
     "On2-VP6-Alpha",
     "ScreenVideo2",
     "H264",
+    "",
+    "",
+    "",
+    "",
+    "HEVC",
+    "AV1",
+    "VP9"
 };
 
 
@@ -226,7 +232,29 @@ ngx_rtmp_codec_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
             ctx->sample_rate = sample_rates[(fmt & 0x0c) >> 2];
         }
     } else {
-        ctx->video_codec_id = (fmt & 0x0f);
+        if (NGX_RTMP_VIDEO_IS_ENHANCED(fmt)) {
+            if (in->buf->last - in->buf->pos < 5) {
+                return NGX_OK;
+            }
+            uint32_t fourcc = (in->buf->pos[1] << 24) | (in->buf->pos[2] << 16) |
+                              (in->buf->pos[3] << 8) | in->buf->pos[4];
+
+            switch (fourcc) {
+                case NGX_RTMP_VIDEO_FOURCC_HEVC:
+                    ctx->video_codec_id = NGX_RTMP_VIDEO_HEVC;
+                    break;
+                case NGX_RTMP_VIDEO_FOURCC_AV1:
+                    ctx->video_codec_id = NGX_RTMP_VIDEO_AV1;
+                    break;
+                case NGX_RTMP_VIDEO_FOURCC_VP9:
+                    ctx->video_codec_id = NGX_RTMP_VIDEO_VP9;
+                    break;
+                default:
+                    ctx->video_codec_id = 0;
+            }
+        } else {
+            ctx->video_codec_id = (fmt & 0x0f);
+        }
     }
 
     /* save AVC/AAC header */
@@ -248,7 +276,10 @@ ngx_rtmp_codec_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
             ngx_rtmp_codec_parse_aac_header(s, in);
         }
     } else {
-        if (ctx->video_codec_id == NGX_RTMP_VIDEO_H264) {
+        if (ctx->video_codec_id == NGX_RTMP_VIDEO_H264 ||
+            ctx->video_codec_id == NGX_RTMP_VIDEO_HEVC ||
+            ctx->video_codec_id == NGX_RTMP_VIDEO_AV1 ||
+            ctx->video_codec_id == NGX_RTMP_VIDEO_VP9) {
             header = &ctx->avc_header;
             ngx_rtmp_codec_parse_avc_header(s, in);
         }
@@ -306,7 +337,7 @@ ngx_rtmp_codec_parse_aac_header(ngx_rtmp_session_t *s, ngx_chain_t *in)
     ctx->aac_chan_conf = (ngx_uint_t) ngx_rtmp_bit_read(&br, 4);
 
     if (ctx->aac_profile == 5 || ctx->aac_profile == 29) {
-        
+
         if (ctx->aac_profile == 29) {
             ctx->aac_ps = 1;
         }
@@ -343,7 +374,7 @@ ngx_rtmp_codec_parse_aac_header(ngx_rtmp_session_t *s, ngx_chain_t *in)
            5 bits: object type
            if (object type == 31)
              6 bits + 32: object type
-             
+
        var bits: AOT Specific Config
      */
 
@@ -370,6 +401,11 @@ ngx_rtmp_codec_parse_avc_header(ngx_rtmp_session_t *s, ngx_chain_t *in)
     ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_codec_module);
 
     ngx_rtmp_bit_init_reader(&br, in->buf->pos, in->buf->last);
+
+    if (NGX_RTMP_VIDEO_IS_ENHANCED(in->buf->pos[0])) {
+        ngx_rtmp_bit_read(&br, 40);
+        return;
+    }
 
     ngx_rtmp_bit_read(&br, 48);
 
@@ -413,7 +449,7 @@ ngx_rtmp_codec_parse_avc_header(ngx_rtmp_session_t *s, ngx_chain_t *in)
     {
         /* chroma format idc */
         cf_idc = (ngx_uint_t) ngx_rtmp_bit_read_golomb(&br);
-        
+
         if (cf_idc == 3) {
 
             /* separate color plane */
@@ -581,7 +617,7 @@ ngx_rtmp_codec_reconstruct_meta(ngx_rtmp_session_t *s)
 
         { NGX_RTMP_AMF_STRING,
           ngx_string("Server"),
-          "NGINX RTMP (github.com/arut/nginx-rtmp-module)", 0 },
+          "CookieRTMP (Enhanced RTMP Support)", 0 },
 
         { NGX_RTMP_AMF_NUMBER,
           ngx_string("width"),
@@ -865,7 +901,7 @@ ngx_rtmp_codec_meta_data(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
             ? 0 : v.audio_codec_id_n == 0
             ? NGX_RTMP_AUDIO_UNCOMPRESSED : (ngx_uint_t) v.audio_codec_id_n);
     ngx_memcpy(ctx->profile, v.profile, sizeof(v.profile));
-    ngx_memcpy(ctx->level, v.level, sizeof(v.level));
+    ngx_memcpy(ctx->level, v.level, sizeof(ctx->level));
 
     ngx_log_debug8(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
             "codec: data frame: "

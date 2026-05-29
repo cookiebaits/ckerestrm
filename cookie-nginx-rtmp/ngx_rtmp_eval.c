@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) Roman Arutyunyan
  */
@@ -62,17 +61,21 @@ static void
 ngx_rtmp_eval_append(ngx_buf_t *b, void *data, size_t len, ngx_log_t *log)
 {
     size_t  buf_len;
+    u_char *new_start;
 
     if (b->last + len > b->end) {
         buf_len = 2 * (b->last - b->pos) + len;
+        if (buf_len > 4096) buf_len = 4096;
+        if (b->last + len > b->pos + buf_len) return;
 
-        b->start = ngx_alloc(buf_len, log);
-        if (b->start == NULL) {
+        new_start = ngx_alloc(buf_len, log);
+        if (new_start == NULL) {
             return;
         }
 
-        b->last = ngx_cpymem(b->start, b->pos, b->last - b->pos);
-        b->pos = b->start;
+        b->last = ngx_cpymem(new_start, b->pos, b->last - b->pos);
+        ngx_free(b->start);
+        b->pos = b->start = new_start;
         b->end = b->start + buf_len;
     }
 

@@ -55,6 +55,7 @@ typedef struct {
     ngx_rtmp_amf_alloc_pt               alloc;
     void                               *arg;
     ngx_log_t                          *log;
+    ngx_uint_t                          depth;
 } ngx_rtmp_amf_ctx_t;
 
 
