@@ -29,6 +29,7 @@ RTMP1_URL=""
 RTMP1_KEY=""
 OBS_KEY=""
 APP_NAME="live"
+ACCEPTED_IP=""
 SERVER_DOMAIN=""
 CHUNK_SIZE="8192"
 
@@ -61,6 +62,7 @@ RTMP1_URL="$RTMP1_URL"
 RTMP1_KEY="$RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
 APP_NAME="$APP_NAME"
+ACCEPTED_IP="$ACCEPTED_IP"
 SERVER_DOMAIN="$SERVER_DOMAIN"
 CHUNK_SIZE="$CHUNK_SIZE"
 ENV_EOF
@@ -293,6 +295,11 @@ configure_obs() {
     echo -e "To stream to this server from OBS or another encoder:"
     echo -e "  ${YELLOW}Server URL:${NC} rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
     echo ""
+    echo -e "--- Combined Chat ---"
+    echo -e "You can use the combined chat as a browser source in OBS:"
+    echo -e "  ${YELLOW}URL:${NC} http://${DISPLAY_HOST}:8081/chat.html?twitch=YOUR_CHANNEL&youtube=YOUR_VIDEO_ID"
+    echo -e "  (Replace YOUR_CHANNEL and YOUR_VIDEO_ID as needed)"
+    echo ""
     echo -e "--- Security Key ---"
     echo -e "PrismRTMPS requires a matching stream key to accept your stream."
     echo -e "Current Custom OBS Key: ${OBS_KEY:-None}"
@@ -347,6 +354,24 @@ configure_domain() {
         else
             echo -e "${RED}Invalid domain name. Keeping current.${NC}"
         fi
+    fi
+    save_config
+    sleep 2
+}
+
+configure_whitelist() {
+    clear
+    echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
+    echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
+    echo ""
+    echo -e "Enter IP address to whitelist (Leave blank to keep current, type 'disable' to allow all):"
+    read -r ip_input
+    if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
+        ACCEPTED_IP=""
+        echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
+    elif [ ! -z "$ip_input" ]; then
+        ACCEPTED_IP="$ip_input"
+        echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
     fi
     save_config
     sleep 2
@@ -423,6 +448,7 @@ build_and_run() {
         -e RTMP1_KEY="$RTMP1_KEY" \
         -e OBS_KEY="$OBS_KEY" \
         -e APP_NAME="$APP_NAME" \
+        -e ACCEPTED_IP="$ACCEPTED_IP" \
         -e CHUNK_SIZE="$CHUNK_SIZE" \
         prism-rtmps
 
@@ -503,12 +529,13 @@ while true; do
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys"
     echo "3) Configure OBS Setup & Security Key"
-    echo "4) Configure Domain / Reverse Proxy (Optional)"
-    echo "5) Configure Optimizations (Chunk Size)"
-    echo "6) Build & Start Server"
-    echo "7) Stop Server"
-    echo "8) View Logs"
-    echo "9) Quit"
+    echo "4) Configure IP Whitelist (Optional)"
+    echo "5) Configure Domain / Reverse Proxy (Optional)"
+    echo "6) Configure Optimizations (Chunk Size)"
+    echo "7) Build & Start Server"
+    echo "8) Stop Server"
+    echo "9) View Logs"
+    echo "10) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -516,12 +543,13 @@ while true; do
         1) install_docker ;;
         2) configure_keys ;;
         3) configure_obs ;;
-        4) configure_domain ;;
-        5) configure_optimizations ;;
-        6) build_and_run ;;
-        7) stop_container ;;
-        8) view_logs ;;
-        9) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        4) configure_whitelist ;;
+        5) configure_domain ;;
+        6) configure_optimizations ;;
+        7) build_and_run ;;
+        8) stop_container ;;
+        9) view_logs ;;
+        10) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done

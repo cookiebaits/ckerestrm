@@ -1,6 +1,7 @@
 import sys
 import os
 import requests
+from datetime import datetime
 
 # Load config securely if present
 env_vars = {}
@@ -19,10 +20,8 @@ def update_twitch(title):
     broadcaster_id = env_vars.get("TWITCH_BROADCASTER_ID", "")
     
     if not (client_id and token and broadcaster_id):
-        print("    [!] Twitch API credentials missing (Need Client ID, OAuth Token, Broadcaster ID). Update skipped.")
         return
         
-    print("    [*] Pushing to Twitch...")
     headers = {
         'Client-Id': client_id,
         'Authorization': f'Bearer {token}',
@@ -32,44 +31,43 @@ def update_twitch(title):
     data = {"title": title}
     
     try:
-        response = requests.patch(url, headers=headers, json=data)
-        if response.status_code == 204:
-            print("    [+] Twitch Title updated successfully!")
-        else:
-            print(f"    [-] Twitch API Error: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"    [-] Failed to connect to Twitch: {e}")
+        requests.patch(url, headers=headers, json=data)
+    except:
+        pass
 
 def update_youtube(title):
-    yt_api_key = env_vars.get("YOUTUBE_API_KEY", "")
-    # YouTube requires OAuth2 for broadcast updates, making simple API key calls complex.
-    # This acts as a functional stub requiring full google-auth client implementation if token exists.
-    if not yt_api_key:
-        print("    [!] YouTube API Token missing. Update skipped.")
-        return
-    print("    [-] YouTube Data API v3 requires full OAuth2 User Consent flow (google-auth). Cannot proceed with simple token.")
+    # Stub - Requires full OAuth2
+    pass
 
 def main():
-    if len(sys.argv) < 2:
-        print("Error: No title provided.")
-        sys.exit(1)
-        
-    title = sys.argv[1]
+    auto_title = env_vars.get("AUTO_TITLE", "off")
+    if auto_title != "on":
+        return
+
+    static_title = env_vars.get("STATIC_TITLE", "Streaming")
+    episode = env_vars.get("EPISODE_COUNT", "1")
+    date_str = datetime.now().strftime("%Y-%m-%d")
     
-    print("\n---------------------------------------------------------")
-    print(f"[*] Executing Title Update: \"{title}\"")
-    print("---------------------------------------------------------")
+    full_title = f"{static_title} | Ep.{episode} | {date_str}"
     
-    # Execute API calls
-    update_twitch(title)
-    update_youtube(title)
+    update_twitch(full_title)
+    update_youtube(full_title)
     
-    print("    [!] Kick does not currently offer a public API for stream titles. Update skipped.")
-    print("    [!] TikTok does not currently offer a public API for stream titles. Update skipped.")
-    
-    print("\n[i] NOTE: For full automation, set TWITCH_CLIENT_ID, TWITCH_OAUTH_TOKEN, and TWITCH_BROADCASTER_ID")
-    print("          in your rtmp_config.env file.")
-    print("---------------------------------------------------------\n")
+    # Increment episode count in config file
+    try:
+        new_episode = int(episode) + 1
+        lines = []
+        with open('rtmp_config.env', 'r') as f:
+            lines = f.readlines()
+
+        with open('rtmp_config.env', 'w') as f:
+            for line in lines:
+                if line.startswith('EPISODE_COUNT='):
+                    f.write(f'EPISODE_COUNT="{new_episode}"\n')
+                else:
+                    f.write(line)
+    except:
+        pass
 
 if __name__ == "__main__":
     main()
