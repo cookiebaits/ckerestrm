@@ -1,1 +1,5 @@
 rtmp_config.env
+*.log
+.DS_Store
+__pycache__/
+*.swp

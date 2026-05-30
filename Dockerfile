@@ -52,7 +52,6 @@ RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
 
 # Set up config file
 COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
 # Copy the validation server
 COPY stream_validator.py /stream_validator.py
