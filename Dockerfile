@@ -6,7 +6,7 @@ ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --break-system-packages flask gunicorn && \
+    pip3 install --break-system-packages flask gunicorn requests && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -125,6 +125,12 @@ ENV OBS_KEY ""
 ENV APP_NAME "live"
 
 ENV ACCEPTED_IP ""
+
+ENV STATIC_TITLE ""
+ENV AUTO_TITLE "off"
+ENV TWITCH_CLIENT_ID ""
+ENV TWITCH_OAUTH_TOKEN ""
+ENV TWITCH_BROADCASTER_ID ""
 
 ENV CHUNK_SIZE "8192"
 
