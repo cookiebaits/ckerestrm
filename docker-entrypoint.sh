@@ -111,6 +111,10 @@ add_push "RTMP1"      "RTMP1_KEY"      "RTMP1_URL"      "rtmp1"
 add_push "RTMP2"      "RTMP2_KEY"      "RTMP2_URL"      "rtmp2"
 add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
 
+export ACCEPTED_IP
+
+
+
 
 if [ $ENV_OK -eq 1 ]; then
     echo "Generating final Nginx configuration..."
