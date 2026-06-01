@@ -29,8 +29,6 @@ DESTINATION_KEYS = {
     'obs': os.getenv('OBS_KEY', ''),
 }
 
-ACCEPTED_IP = os.getenv('ACCEPTED_IP', '')
-
 # Populate VALID_KEYS with only the keys that are actually set (non-empty)
 for key_name, key_value in DESTINATION_KEYS.items():
     if key_value: # Only add if the environment variable was set and is not empty
@@ -42,9 +40,6 @@ if VALID_KEYS:
     app.logger.info(f"Stream validator starting. Valid incoming keys (from OBS) can be any of: {obscured_keys}")
 else:
     app.logger.warning("Stream validator starting. No destination keys found in environment. No streams will be accepted.")
-
-if ACCEPTED_IP:
-    app.logger.info(f"IP Whitelist active. Only allowing: {ACCEPTED_IP}")
 # --- End Reverted Logic ---
 
 
@@ -56,19 +51,9 @@ def validate():
 
     # Extract the stream key from the 'name' parameter (this is the key set in OBS)
     stream_key_attempt = parsed_data.get('name', [''])[0]
-
-    # Try to get real IP from Nginx if it's passing it
-    client_ip = request.headers.get('X-Real-IP', request.remote_addr)
-    # Check query params too just in case Nginx is configured to pass it there
-    if not client_ip or client_ip == '127.0.0.1':
-        client_ip = parsed_data.get('addr', [request.remote_addr])[0]
+    client_ip = request.remote_addr
 
     app.logger.debug(f"Received stream key attempt: '{stream_key_attempt}' from {client_ip}")
-
-    # --- IP Whitelist Check ---
-    if ACCEPTED_IP and client_ip != ACCEPTED_IP:
-        app.logger.warning(f"REJECTED IP: {client_ip}. Does not match whitelist: {ACCEPTED_IP}")
-        return Response('IP not whitelisted', status=403)
 
     # --- Reverted Validation Check ---
     # Check if the attempted key exists in the list of configured destination keys
