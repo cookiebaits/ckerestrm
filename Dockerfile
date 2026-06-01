@@ -1,12 +1,12 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.30.2
+ENV NGINX_VERSION nginx-1.26.2
 ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --break-system-packages flask gunicorn && \
+    pip3 install --break-system-packages flask gunicorn requests && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -20,6 +20,7 @@ RUN mkdir -p /tmp/build/nginx && \
 
 # Copy RTMP module
 COPY cookie-nginx-rtmp /tmp/build/cookie-nginx-rtmp
+COPY chat.html /tmp/build/chat.html
 
 # Build and install Nginx
 # The default puts everything under /usr/local/nginx, so it's needed to change
@@ -40,6 +41,7 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
     make -j $(getconf _NPROCESSORS_ONLN) CFLAGS="-Wno-error" && \
     make install && \
     cp /tmp/build/cookie-nginx-rtmp/stat.xsl /usr/local/nginx/html/stat.xsl && \
+    cp /tmp/build/chat.html /usr/local/nginx/html/chat.html && \
     cp /tmp/build/nginx/${NGINX_VERSION}/conf/mime.types /etc/nginx/mime.types && \
     mkdir /var/lock/nginx && \
     rm -rf /tmp/build
@@ -50,7 +52,6 @@ RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
 
 # Set up config file
 COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
 # Copy the validation server
 COPY stream_validator.py /stream_validator.py
@@ -122,6 +123,14 @@ ENV X_KEY ""
 ENV OBS_KEY ""
 
 ENV APP_NAME "live"
+
+ENV ACCEPTED_IP ""
+
+ENV STATIC_TITLE ""
+ENV AUTO_TITLE "off"
+ENV TWITCH_CLIENT_ID ""
+ENV TWITCH_OAUTH_TOKEN ""
+ENV TWITCH_BROADCASTER_ID ""
 
 ENV CHUNK_SIZE "8192"
 
