@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 NGINX_TEMPLATE=/etc/nginx/nginx.conf.template
 NGINX_CONF=/etc/nginx/nginx.conf
@@ -78,11 +79,6 @@ add_push "RTMP2"      "RTMP2_KEY"      "RTMP2_URL"      "rtmp2"
 add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
 
 export ACCEPTED_IP
-export STATIC_TITLE
-export AUTO_TITLE
-export TWITCH_CLIENT_ID
-export TWITCH_OAUTH_TOKEN
-export TWITCH_BROADCASTER_ID
 export APP_NAME
 
 EXPORT_VARS=$(printf '${%s} ' $(env | cut -d= -f1))

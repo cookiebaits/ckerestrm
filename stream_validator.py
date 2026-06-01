@@ -2,9 +2,7 @@ from flask import Flask, request, Response
 import os
 import logging
 from urllib.parse import parse_qs
-import requests
 import time # Added for health check
-import threading
 
 app = Flask(__name__)
 logging.basicConfig(
@@ -33,9 +31,6 @@ DESTINATION_KEYS = {
 
 ACCEPTED_IP = os.getenv('ACCEPTED_IP', '')
 
-# --- Title Management ---
-EPISODE_FILE = '/app/data/episode_count.txt'
-
 # Populate VALID_KEYS with only the keys that are actually set (non-empty)
 for key_name, key_value in DESTINATION_KEYS.items():
     if key_value: # Only add if the environment variable was set and is not empty
@@ -52,55 +47,6 @@ if ACCEPTED_IP:
     app.logger.info(f"IP Whitelist active. Only allowing: {ACCEPTED_IP}")
 # --- End Reverted Logic ---
 
-def get_episode_count():
-    if not os.path.exists(EPISODE_FILE):
-        return "1"
-    try:
-        with open(EPISODE_FILE, 'r') as f:
-            return f.read().strip() or "1"
-    except:
-        return "1"
-
-def increment_episode_count():
-    try:
-        count = int(get_episode_count())
-        with open(EPISODE_FILE, 'w') as f:
-            f.write(str(count + 1))
-    except:
-        pass
-
-def update_stream_titles():
-    twitch_client_id = os.getenv('TWITCH_CLIENT_ID', '')
-    twitch_token = os.getenv('TWITCH_OAUTH_TOKEN', '')
-    twitch_broadcaster_id = os.getenv('TWITCH_BROADCASTER_ID', '')
-    static_title = os.getenv('STATIC_TITLE', '')
-
-    if not (twitch_client_id and twitch_token and twitch_broadcaster_id and static_title):
-        return
-
-    episode = get_episode_count()
-    date_str = time.strftime("%Y-%m-%d")
-    full_title = f"{static_title} | Ep.{episode} | {date_str}"
-
-    # Update Twitch
-    url = f"https://api.twitch.tv/helix/channels?broadcaster_id={twitch_broadcaster_id}"
-    headers = {
-        'Client-Id': twitch_client_id,
-        'Authorization': f'Bearer {twitch_token}',
-        'Content-Type': 'application/json'
-    }
-
-    def do_update():
-        try:
-            res = requests.patch(url, headers=headers, json={"title": full_title}, timeout=5)
-            if res.status_code == 204:
-                app.logger.info(f"Updated Twitch title: {full_title}")
-            else:
-                app.logger.error(f"Twitch title update failed: {res.status_code} {res.text}")
-        except Exception as e:
-            app.logger.error(f"Twitch title update error: {e}")
-
-    threading.Thread(target=do_update).start()
 
 @app.route('/validate', methods=['POST'])
 def validate():
@@ -131,21 +77,11 @@ def validate():
 
     if stream_key_attempt and stream_key_attempt in VALID_KEYS:
         app.logger.info(f"VALID key accepted from {client_ip}. Key matches one of the configured destination keys.")
-        # Trigger title update
-        update_stream_titles()
         return Response('OK', status=200)
     else:
         obscured_attempt = stream_key_attempt[:2] + '...' + stream_key_attempt[-2:] if len(stream_key_attempt) > 4 else '****'
         app.logger.warning(f"INVALID key rejected from {client_ip}. Attempted key '{obscured_attempt}' is not among the configured destination keys.")
         return Response('Invalid stream key', status=403)
-
-@app.route('/publish_done', methods=['POST'])
-def publish_done():
-    # Only increment if it was the main app (to avoid double increment with vertical)
-    app_name = request.args.get('app', '')
-    if app_name == os.getenv('APP_NAME', 'live'):
-        increment_episode_count()
-    return Response('OK', status=200)
 
 @app.route('/health', methods=['GET'])
 def health_check():

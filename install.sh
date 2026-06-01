@@ -30,14 +30,14 @@ RTMP1_KEY=""
 OBS_KEY=""
 APP_NAME="live"
 ACCEPTED_IP=""
-STATIC_TITLE="Streaming with PrismRTMPS"
-AUTO_TITLE="off"
 SERVER_DOMAIN=""
 CHUNK_SIZE="8192"
 
-TWITCH_CLIENT_ID=""
-TWITCH_OAUTH_TOKEN=""
-TWITCH_BROADCASTER_ID=""
+# Combined Chat Settings
+CHAT_TWITCH=""
+CHAT_YOUTUBE=""
+CHAT_KICK=""
+CHAT_TIKTOK=""
 
 CONFIG_FILE="rtmp_config.env"
 
@@ -69,11 +69,10 @@ RTMP1_KEY="$RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
 APP_NAME="$APP_NAME"
 ACCEPTED_IP="$ACCEPTED_IP"
-STATIC_TITLE="$STATIC_TITLE"
-AUTO_TITLE="$AUTO_TITLE"
-TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
-TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
-TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
+CHAT_TWITCH="$CHAT_TWITCH"
+CHAT_YOUTUBE="$CHAT_YOUTUBE"
+CHAT_KICK="$CHAT_KICK"
+CHAT_TIKTOK="$CHAT_TIKTOK"
 SERVER_DOMAIN="$SERVER_DOMAIN"
 CHUNK_SIZE="$CHUNK_SIZE"
 ENV_EOF
@@ -388,46 +387,60 @@ configure_whitelist() {
     sleep 2
 }
 
-configure_titles() {
+configure_chat() {
     while true; do
         clear
-        echo -e "${GREEN}=== Stream Title Manager (Twitch) ===${NC}"
-        echo -e "Current Static Title: ${YELLOW}$STATIC_TITLE${NC}"
-        echo -e "Auto-Update on Start: ${YELLOW}$AUTO_TITLE${NC}"
+        echo -e "${GREEN}=== Combined Chat Configuration ===${NC}"
+        echo "Enter Channel Names/IDs for browser source embeds:"
         echo ""
-        echo "1) Set Static Title"
-        echo "2) Toggle Auto-Update (Current: $AUTO_TITLE)"
-        echo "3) Configure Twitch API (Required for Titles)"
-        echo "4) Back to Main Menu"
+        echo "1) Twitch Channel (Current: ${CHAT_TWITCH:-None})"
+        echo "2) YouTube Video ID (Current: ${CHAT_YOUTUBE:-None})"
+        echo "3) Kick Channel (Current: ${CHAT_KICK:-None})"
+        echo "4) TikTok Channel (Current: ${CHAT_TIKTOK:-None})"
+        echo "5) Show Browser Source URL"
+        echo "6) Back to Main Menu"
         echo -e "Select an option: \c"
-        read -r t_choice
+        read -r chat_opt
 
-        case $t_choice in
+        case $chat_opt in
             1)
-                echo -e "Enter new Static Title:"
-                read -r title_input
-                if [ ! -z "$title_input" ]; then
-                    STATIC_TITLE="$title_input"
-                    save_config
-                fi
+                echo -e "Enter Twitch Channel Name:"
+                read -r chat_input
+                CHAT_TWITCH="$chat_input"
+                save_config
                 ;;
             2)
-                if [ "$AUTO_TITLE" == "on" ]; then AUTO_TITLE="off"; else AUTO_TITLE="on"; fi
+                echo -e "Enter YouTube Video ID (from URL v=XXXX):"
+                read -r chat_input
+                CHAT_YOUTUBE="$chat_input"
                 save_config
                 ;;
             3)
-                echo -e "Enter Twitch Client ID:"
-                read -r t_cid
-                if [ ! -z "$t_cid" ]; then TWITCH_CLIENT_ID="$t_cid"; fi
-                echo -e "Enter Twitch OAuth Token:"
-                read -r t_token
-                if [ ! -z "$t_token" ]; then TWITCH_OAUTH_TOKEN="$t_token"; fi
-                echo -e "Enter Twitch Broadcaster ID:"
-                read -r t_bid
-                if [ ! -z "$t_bid" ]; then TWITCH_BROADCASTER_ID="$t_bid"; fi
+                echo -e "Enter Kick Channel Name:"
+                read -r chat_input
+                CHAT_KICK="$chat_input"
                 save_config
                 ;;
-            4) break ;;
+            4)
+                echo -e "Enter TikTok Username (without @):"
+                read -r chat_input
+                CHAT_TIKTOK="$chat_input"
+                save_config
+                ;;
+            5)
+                SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
+                DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
+                CHAT_URL="http://${DISPLAY_HOST}:8081/chat.html?"
+                if [ ! -z "$CHAT_TWITCH" ]; then CHAT_URL="${CHAT_URL}twitch=${CHAT_TWITCH}&"; fi
+                if [ ! -z "$CHAT_YOUTUBE" ]; then CHAT_URL="${CHAT_URL}youtube=${CHAT_YOUTUBE}&"; fi
+                if [ ! -z "$CHAT_KICK" ]; then CHAT_URL="${CHAT_URL}kick=${CHAT_KICK}&"; fi
+                if [ ! -z "$CHAT_TIKTOK" ]; then CHAT_URL="${CHAT_URL}tiktok=${CHAT_TIKTOK}&"; fi
+                echo -e "\n${YELLOW}OBS Browser Source URL:${NC}"
+                echo -e "${GREEN}${CHAT_URL%&}${NC}"
+                echo -e "\nPress Enter to continue..."
+                read -r
+                ;;
+            6) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -484,7 +497,6 @@ build_and_run() {
         -p 1935:1935 \
         -p 8081:8081 \
         --restart unless-stopped \
-        -v "$(pwd)/data:/app/data" \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
         -e FACEBOOK_URL="$FACEBOOK_URL" \
@@ -506,11 +518,6 @@ build_and_run() {
         -e OBS_KEY="$OBS_KEY" \
         -e APP_NAME="$APP_NAME" \
         -e ACCEPTED_IP="$ACCEPTED_IP" \
-        -e STATIC_TITLE="$STATIC_TITLE" \
-        -e AUTO_TITLE="$AUTO_TITLE" \
-        -e TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID" \
-        -e TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN" \
-        -e TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID" \
         -e CHUNK_SIZE="$CHUNK_SIZE" \
         prism-rtmps
 
@@ -592,7 +599,7 @@ while true; do
     echo "2) Configure Stream Keys"
     echo "3) Configure OBS Setup & Security Key"
     echo "4) Configure IP Whitelist (Optional)"
-    echo "5) Configure Titles & Episodes (Optional)"
+    echo "5) Configure Combined Chat (Optional)"
     echo "6) Configure Domain / Reverse Proxy (Optional)"
     echo "7) Configure Optimizations (Chunk Size)"
     echo "8) Build & Start Server"
@@ -607,7 +614,7 @@ while true; do
         2) configure_keys ;;
         3) configure_obs ;;
         4) configure_whitelist ;;
-        5) configure_titles ;;
+        5) configure_chat ;;
         6) configure_domain ;;
         7) configure_optimizations ;;
         8) build_and_run ;;
