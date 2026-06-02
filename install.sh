@@ -33,20 +33,8 @@ V_YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/"
 V_YOUTUBE_KEY=""
 V_TWITCH_URL="rtmp://127.0.0.1:19353/app/"
 V_TWITCH_KEY=""
-V_KICK_URL="rtmp://127.0.0.1:19356/kick/"
-V_KICK_KEY=""
 V_TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/"
 V_TIKTOK_KEY=""
-V_FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/"
-V_FACEBOOK_KEY=""
-V_INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/"
-V_INSTAGRAM_KEY=""
-V_X_URL="rtmp://127.0.0.1:19354/x/"
-V_X_KEY=""
-V_TROVO_URL="rtmp://livepush.trovo.live/live/"
-V_TROVO_KEY=""
-V_RTMP1_URL=""
-V_RTMP1_KEY=""
 
 OBS_KEY=""
 APP_NAME="live"
@@ -91,10 +79,10 @@ V_YOUTUBE_URL="$V_YOUTUBE_URL"
 V_YOUTUBE_KEY="$V_YOUTUBE_KEY"
 V_TWITCH_URL="$V_TWITCH_URL"
 V_TWITCH_KEY="$V_TWITCH_KEY"
-V_KICK_URL="$V_KICK_URL"
-V_KICK_KEY="$V_KICK_KEY"
 V_TIKTOK_URL="$V_TIKTOK_URL"
 V_TIKTOK_KEY="$V_TIKTOK_KEY"
+V_KICK_URL="$V_KICK_URL"
+V_KICK_KEY="$V_KICK_KEY"
 V_FACEBOOK_URL="$V_FACEBOOK_URL"
 V_FACEBOOK_KEY="$V_FACEBOOK_KEY"
 V_INSTAGRAM_URL="$V_INSTAGRAM_URL"
@@ -183,15 +171,29 @@ configure_keys() {
             2)
                prompt_for_key "Twitch Key" "TWITCH_KEY"
                echo -e "Select Twitch Server:"
-               echo "  1) Standard (rtmp://ingest.global-contribute.live-video.net/app/)"
-               echo "  2) Secure (rtmps://ingest.global-contribute.live-video.net:443 -> via Stunnel)"
-               echo "  3) Custom URL"
+               echo "  1) Global (rtmp://ingest.global-contribute.live-video.net/app/)"
+               echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
+               echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
+               echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
+               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
+               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
+               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
+               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
+               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
+               echo "  10) Custom URL"
                echo -e "Option (Current URL: $TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
                    1) TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
                    2) TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
-                   3)
+                   3) TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
+                   4) TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
+                   5) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
+                   6) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
+                   7) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
+                   8) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
+                   9) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
+                   10)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -336,6 +338,7 @@ configure_vertical_keys() {
     while true; do
         clear
         echo -e "${GREEN}=== Configure Vertical Stream Keys ===${NC}"
+        echo -e "${YELLOW}Note: Vertical is officially supported on: YouTube, Twitch and TikTok.${NC}"
         echo "1) YouTube (Current: ${V_YOUTUBE_KEY:-None})"
         echo "2) Twitch (Current: ${V_TWITCH_KEY:-None})"
         echo "3) Kick (Current: ${V_KICK_KEY:-None})"
@@ -345,7 +348,8 @@ configure_vertical_keys() {
         echo "7) X (Twitter) (Current: ${V_X_KEY:-None})"
         echo "8) Trovo (Current: ${V_TROVO_KEY:-None})"
         echo "9) Custom RTMP (Current URL: ${V_RTMP1_URL:-None})"
-        echo "10) Back to Main Menu"
+        echo "10) Mirror Horizontal Keys (Auto-fill from Horizontal)"
+        echo "11) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
 
@@ -354,18 +358,14 @@ configure_vertical_keys() {
                prompt_for_key "YouTube Vertical Key" "V_YOUTUBE_KEY"
                echo -e "Select YouTube Server:"
                echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
-               echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
-               echo "  3) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
-               echo "  4) Secure Backup (rtmps://b.rtmps.youtube.com/live2?backup=1 -> via Stunnel)"
-               echo "  5) Custom URL"
+               echo "  2) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
+               echo "  3) Custom URL"
                echo -e "Option (Current URL: $V_YOUTUBE_URL): \c"
                read -r y_opt
                case $y_opt in
                    1) V_YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
-                   2) V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
-                   3) V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
-                   4) V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
-                   5)
+                   2) V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
+                   3)
                       echo -e "Enter Custom YouTube Server URL: "
                       read -r y_url
                       if [ ! -z "$y_url" ]; then
@@ -378,15 +378,29 @@ configure_vertical_keys() {
             2)
                prompt_for_key "Twitch Vertical Key" "V_TWITCH_KEY"
                echo -e "Select Twitch Server:"
-               echo "  1) Standard (rtmp://ingest.global-contribute.live-video.net/app/)"
-               echo "  2) Secure (rtmps://ingest.global-contribute.live-video.net:443 -> via Stunnel)"
-               echo "  3) Custom URL"
+               echo "  1) Global (rtmp://ingest.global-contribute.live-video.net/app/)"
+               echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
+               echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
+               echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
+               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
+               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
+               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
+               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
+               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
+               echo "  10) Custom URL"
                echo -e "Option (Current URL: $V_TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
                    1) V_TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
                    2) V_TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
-                   3)
+                   3) V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
+                   4) V_TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
+                   5) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
+                   6) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
+                   7) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
+                   8) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
+                   9) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
+                   10)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -397,7 +411,7 @@ configure_vertical_keys() {
                save_config
                ;;
             3)
-               prompt_for_key "Kick Vertical Key" "V_KICK_KEY"
+               prompt_for_key "Kick Vertical" "V_KICK_KEY"
                echo -e "Select Kick Server:"
                echo "  1) Standard (rtmp://live.kick.com/app/)"
                echo "  2) Secure (rtmps://fa723fc1b171.global-contribute.live-video.net:443 -> via Stunnel)"
@@ -437,7 +451,7 @@ configure_vertical_keys() {
                save_config
                ;;
             5)
-               prompt_for_key "Facebook Vertical Key" "V_FACEBOOK_KEY"
+               prompt_for_key "Facebook Vertical" "V_FACEBOOK_KEY"
                echo -e "Select Facebook Server:"
                echo "  1) Secure (rtmps://live-api-s.facebook.com:443 -> via Stunnel)"
                echo "  2) Custom URL"
@@ -456,7 +470,7 @@ configure_vertical_keys() {
                save_config
                ;;
             6)
-               prompt_for_key "Instagram Vertical Key" "V_INSTAGRAM_KEY"
+               prompt_for_key "Instagram Vertical" "V_INSTAGRAM_KEY"
                echo -e "Select Instagram Server:"
                echo "  1) Secure (rtmps://live-upload.instagram.com:443 -> via Stunnel)"
                echo "  2) Custom URL"
@@ -475,7 +489,7 @@ configure_vertical_keys() {
                save_config
                ;;
             7)
-               prompt_for_key "X Vertical Key" "V_X_KEY"
+               prompt_for_key "X Vertical" "V_X_KEY"
                echo -e "Select X Server:"
                echo "  1) Secure (rtmps://va.pscp.tv:443 -> via Stunnel)"
                echo "  2) Custom URL"
@@ -494,7 +508,7 @@ configure_vertical_keys() {
                save_config
                ;;
             8)
-               prompt_for_key "Trovo Vertical Key" "V_TROVO_KEY"
+               prompt_for_key "Trovo Vertical" "V_TROVO_KEY"
                echo -e "Select Trovo Server:"
                echo "  1) Primary (rtmp://livepush.trovo.live/live/)"
                echo "  2) Custom URL"
@@ -521,7 +535,31 @@ configure_vertical_keys() {
                fi
                prompt_for_key "Custom RTMP Vertical Key" "V_RTMP1_KEY"
                ;;
-            10) break ;;
+            10)
+               echo -e "${YELLOW}Mirroring Horizontal keys...${NC}"
+               V_YOUTUBE_KEY="$YOUTUBE_KEY"
+               V_YOUTUBE_URL="$YOUTUBE_URL"
+               V_TWITCH_KEY="$TWITCH_KEY"
+               V_TWITCH_URL="$TWITCH_URL"
+               V_TIKTOK_KEY="$TIKTOK_KEY"
+               V_TIKTOK_URL="$TIKTOK_URL"
+               V_KICK_KEY="$KICK_KEY"
+               V_KICK_URL="$KICK_URL"
+               V_FACEBOOK_KEY="$FACEBOOK_KEY"
+               V_FACEBOOK_URL="$FACEBOOK_URL"
+               V_INSTAGRAM_KEY="$INSTAGRAM_KEY"
+               V_INSTAGRAM_URL="$INSTAGRAM_URL"
+               V_X_KEY="$X_KEY"
+               V_X_URL="$X_URL"
+               V_TROVO_KEY="$TROVO_KEY"
+               V_TROVO_URL="$TROVO_URL"
+               V_RTMP1_KEY="$RTMP1_KEY"
+               V_RTMP1_URL="$RTMP1_URL"
+               save_config
+               echo -e "${GREEN}Mirrored.${NC}"
+               sleep 1
+               ;;
+            5) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -599,24 +637,6 @@ configure_domain() {
         else
             echo -e "${RED}Invalid domain name. Keeping current.${NC}"
         fi
-    fi
-    save_config
-    sleep 2
-}
-
-configure_whitelist() {
-    clear
-    echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
-    echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
-    echo ""
-    echo -e "Enter IP address to whitelist (Leave blank to keep current, type 'disable' to allow all):"
-    read -r ip_input
-    if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
-        ACCEPTED_IP=""
-        echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
-    elif [ ! -z "$ip_input" ]; then
-        ACCEPTED_IP="$ip_input"
-        echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
     fi
     save_config
     sleep 2
@@ -719,6 +739,38 @@ build_and_run() {
         return
     fi
 
+    # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok)
+    if [ ! -z "$YOUTUBE_KEY" ] && [ -z "$V_YOUTUBE_KEY" ]; then
+        V_YOUTUBE_KEY="$YOUTUBE_KEY"
+        V_YOUTUBE_URL="$YOUTUBE_URL"
+    fi
+    if [ ! -z "$TWITCH_KEY" ] && [ -z "$V_TWITCH_KEY" ]; then
+        V_TWITCH_KEY="$TWITCH_KEY"
+        V_TWITCH_URL="$TWITCH_URL"
+    fi
+    if [ ! -z "$TIKTOK_KEY" ] && [ -z "$V_TIKTOK_KEY" ]; then
+        V_TIKTOK_KEY="$TIKTOK_KEY"
+        V_TIKTOK_URL="$TIKTOK_URL"
+    fi
+
+    # Check if any keys are set
+    ANY_KEY_SET=0
+    for key in "$YOUTUBE_KEY" "$FACEBOOK_KEY" "$INSTAGRAM_KEY" "$TIKTOK_KEY" "$TWITCH_KEY" "$KICK_KEY" "$X_KEY" "$TROVO_KEY" "$RTMP1_KEY" \
+               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY"; do
+        if [ ! -z "$key" ]; then
+            ANY_KEY_SET=1
+            break
+        fi
+    done
+
+    if [ "$ANY_KEY_SET" -eq 0 ]; then
+        echo -e "${RED}No stream keys (Horizontal or Vertical) have been configured.${NC}"
+        echo -e "${YELLOW}Aborting installation as per configuration rules.${NC}"
+        echo -e "Press Enter to return to menu..."
+        read -r
+        return
+    fi
+
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t prism-rtmps .
 
@@ -734,19 +786,14 @@ build_and_run() {
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
-        -e FACEBOOK_URL="$FACEBOOK_URL" \
         -e FACEBOOK_KEY="$FACEBOOK_KEY" \
-        -e INSTAGRAM_URL="$INSTAGRAM_URL" \
         -e INSTAGRAM_KEY="$INSTAGRAM_KEY" \
         -e TIKTOK_URL="$TIKTOK_URL" \
         -e TIKTOK_KEY="$TIKTOK_KEY" \
         -e TWITCH_URL="$TWITCH_URL" \
         -e TWITCH_KEY="$TWITCH_KEY" \
-        -e KICK_URL="$KICK_URL" \
         -e KICK_KEY="$KICK_KEY" \
-        -e X_URL="$X_URL" \
         -e X_KEY="$X_KEY" \
-        -e TROVO_URL="$TROVO_URL" \
         -e TROVO_KEY="$TROVO_KEY" \
         -e RTMP1_URL="$RTMP1_URL" \
         -e RTMP1_KEY="$RTMP1_KEY" \
@@ -754,10 +801,10 @@ build_and_run() {
         -e V_YOUTUBE_KEY="$V_YOUTUBE_KEY" \
         -e V_TWITCH_URL="$V_TWITCH_URL" \
         -e V_TWITCH_KEY="$V_TWITCH_KEY" \
-        -e V_KICK_URL="$V_KICK_URL" \
-        -e V_KICK_KEY="$V_KICK_KEY" \
         -e V_TIKTOK_URL="$V_TIKTOK_URL" \
         -e V_TIKTOK_KEY="$V_TIKTOK_KEY" \
+        -e V_KICK_URL="$V_KICK_URL" \
+        -e V_KICK_KEY="$V_KICK_KEY" \
         -e V_FACEBOOK_URL="$V_FACEBOOK_URL" \
         -e V_FACEBOOK_KEY="$V_FACEBOOK_KEY" \
         -e V_INSTAGRAM_URL="$V_INSTAGRAM_URL" \
@@ -770,7 +817,6 @@ build_and_run() {
         -e V_RTMP1_KEY="$V_RTMP1_KEY" \
         -e OBS_KEY="$OBS_KEY" \
         -e APP_NAME="$APP_NAME" \
-        -e ACCEPTED_IP="$ACCEPTED_IP" \
         -e CHUNK_SIZE="$CHUNK_SIZE" \
         prism-rtmps
 
@@ -846,22 +892,22 @@ while true; do
     echo -e "${GREEN}     PrismRTMPS Quick Installer      ${NC}"
     echo -e "${GREEN}=====================================${NC}"
     echo -e "${YELLOW}Quick Reference:${NC}"
-    echo -e "  RTMP Ingest:   rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
+    echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
     echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
-    echo -e "  Stats URL:     http://${DISPLAY_HOST}:8081/stat"
+    echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
+    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:8081/chat.html?twitch=USER&youtube=ID"
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"
     echo "3) Configure Stream Keys (Vertical)"
     echo "4) Configure OBS Setup & Security Key"
-    echo "5) Configure IP Whitelist (Optional)"
-    echo "6) Configure Combined Chat (Optional)"
-    echo "7) Configure Domain / Reverse Proxy (Optional)"
-    echo "8) Configure Optimizations (Chunk Size)"
-    echo "9) Build & Start Server"
-    echo "10) Stop Server"
-    echo "11) View Logs"
-    echo "12) Quit"
+    echo "5) Configure Combined Chat (Optional)"
+    echo "6) Configure Domain / Reverse Proxy (Optional)"
+    echo "7) Configure Optimizations (Chunk Size)"
+    echo "8) Build & Start Server"
+    echo "9) Stop Server"
+    echo "10) View Logs"
+    echo "11) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -870,14 +916,13 @@ while true; do
         2) configure_keys ;;
         3) configure_vertical_keys ;;
         4) configure_obs ;;
-        5) configure_whitelist ;;
-        6) configure_chat ;;
-        7) configure_domain ;;
-        8) configure_optimizations ;;
-        9) build_and_run ;;
-        10) stop_container ;;
-        11) view_logs ;;
-        12) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        5) configure_chat ;;
+        6) configure_domain ;;
+        7) configure_optimizations ;;
+        8) build_and_run ;;
+        9) stop_container ;;
+        10) view_logs ;;
+        11) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
