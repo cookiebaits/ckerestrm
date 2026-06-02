@@ -83,9 +83,15 @@ rtmp {
             on_publish http://127.0.0.1:8080/validate?key=$name;
             on_publish_done http://127.0.0.1:8080/publish_done?app=$app&key=$name;
 
-            #tiktok
-            #youtube
-            #twitch
+            #v_youtube
+            #v_twitch
+            #v_kick
+            #v_tiktok
+            #v_facebook
+            #v_instagram
+            #v_x
+            #v_trovo
+            #v_rtmp1
         }
     }
 }

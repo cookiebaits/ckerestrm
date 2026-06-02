@@ -1,7 +1,7 @@
 FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.30.2
+ENV NGINX_VERSION nginx-1.26.2
 ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 
 RUN apt-get update && \
@@ -125,12 +125,6 @@ ENV OBS_KEY ""
 ENV APP_NAME "live"
 
 ENV ACCEPTED_IP ""
-
-ENV STATIC_TITLE ""
-ENV AUTO_TITLE "off"
-ENV TWITCH_CLIENT_ID ""
-ENV TWITCH_OAUTH_TOKEN ""
-ENV TWITCH_BROADCASTER_ID ""
 
 ENV CHUNK_SIZE "8192"
 
