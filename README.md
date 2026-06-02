@@ -51,13 +51,21 @@ You'd need a VPS server. Key considerations:
     git clone https://github.com/cookiebaits/prism-rtmps.git && cd prism-rtmps && chmod +x install.sh && ./install.sh
     ```
 
-*   3- **Configure OBS (or other streaming software):**
+*   3- **Run the Interactive Installer:**
+    ```bash
+  [Automatically integrated in the previous step now] for manual execution ./install.sh
+    ```
+    *   Use the menu to easily install Docker (if needed).
+    *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
+    *   Select "Build & Start Server" to launch your customized RTMP relay.
+
+*   4- **Configure OBS (or other streaming software):**
     *   Service: `Custom...`
     *   **Horizontal Server:** `rtmp://<your_vps_ip_address>:1935/live`
     *   **Vertical Server:** `rtmp://<your_vps_ip_address>:1935/vertical` (For Aitum Vertical)
     *   Stream Key: **Use ONE of the actual stream keys you configured during the setup process** (or the custom Master OBS Key if you set one).
 
-*   4- **Begin streaming from OBS!**
+*   5- **Begin streaming from OBS!**
 
 We advise testing with one or two destinations first.
 
