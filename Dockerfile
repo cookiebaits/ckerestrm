@@ -1,4 +1,4 @@
-FROM buildpack-deps:bookworm
+FROM buildpack-deps:trixie
 
 # Versions of Nginx and nginx-rtmp-module to use
 ENV NGINX_VERSION nginx-1.26.2
@@ -57,25 +57,20 @@ COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY stream_validator.py /stream_validator.py
 
 # Config Stunnel
-RUN mkdir -p  /etc/stunnel/conf.d
+RUN mkdir -p /etc/stunnel/conf.d
 # Set up config file 
 COPY stunnel/stunnel.conf /etc/stunnel/stunnel.conf
 COPY stunnel/stunnel4 /etc/default/stunnel4
 
-#Facebook Stunnel Port 19350
+# Copy all stunnel configs
 COPY stunnel/facebook.conf /etc/stunnel/conf.d/facebook.conf
-
-#Instagram Stunnel Port 19351
 COPY stunnel/instagram.conf /etc/stunnel/conf.d/instagram.conf
-
-#Tiktok Stunnel Port 19358
 COPY stunnel/tiktok.conf /etc/stunnel/conf.d/tiktok.conf
-
-#Kick Stunnel Port 19353
 COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
-
-#X Stunnel Port 19354
 COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
+COPY stunnel/youtube.conf /etc/stunnel/conf.d/youtube.conf
+COPY stunnel/youtube-backup.conf /etc/stunnel/conf.d/youtube-backup.conf
+COPY stunnel/twitch.conf /etc/stunnel/conf.d/twitch.conf
 
 #Youtube
 ENV YOUTUBE_URL rtmp://x.rtmp.youtube.com/live2/
