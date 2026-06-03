@@ -114,7 +114,7 @@ ENV TROVO_URL rtmp://livepush.trovo.live/live/
 ENV TROVO_KEY ""
 
 #Kick
-ENV KICK_URL rtmp://127.0.0.1:19353/kick/
+ENV KICK_URL rtmp://127.0.0.1:19356/kick/
 ENV KICK_KEY ""
 
 ENV X_URL rtmp://127.0.0.1:19354/x/
