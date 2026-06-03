@@ -57,19 +57,24 @@ COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY stream_validator.py /stream_validator.py
 
 # Config Stunnel
-RUN mkdir -p /etc/stunnel/conf.d
+RUN mkdir -p  /etc/stunnel/conf.d
 # Set up config file 
 COPY stunnel/stunnel.conf /etc/stunnel/stunnel.conf
 COPY stunnel/stunnel4 /etc/default/stunnel4
 
-# Copy all platform stunnel configs
-COPY stunnel/youtube.conf /etc/stunnel/conf.d/youtube.conf
-COPY stunnel/youtube-backup.conf /etc/stunnel/conf.d/youtube-backup.conf
-COPY stunnel/twitch.conf /etc/stunnel/conf.d/twitch.conf
-COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
+#Facebook Stunnel Port 19350
 COPY stunnel/facebook.conf /etc/stunnel/conf.d/facebook.conf
+
+#Instagram Stunnel Port 19351
 COPY stunnel/instagram.conf /etc/stunnel/conf.d/instagram.conf
+
+#Tiktok Stunnel Port 19358
 COPY stunnel/tiktok.conf /etc/stunnel/conf.d/tiktok.conf
+
+#Kick Stunnel Port 19353
+COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
+
+#X Stunnel Port 19354
 COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
 
 #Youtube
@@ -109,7 +114,7 @@ ENV TROVO_URL rtmp://livepush.trovo.live/live/
 ENV TROVO_KEY ""
 
 #Kick
-ENV KICK_URL rtmp://127.0.0.1:19353/kick/
+ENV KICK_URL rtmp://127.0.0.1:19356/kick/
 ENV KICK_KEY ""
 
 ENV X_URL rtmp://127.0.0.1:19354/x/

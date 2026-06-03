@@ -19,22 +19,9 @@
             filter: drop-shadow(0 0 4px rgba(0,0,0,0.8));
             opacity: 0.6;
         }
-        #login-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white; z-index: 100;
-        }
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div id="login-overlay" class="hidden">
-        <h2>Combined Chat Login</h2>
-        <p>Interactive login is required for some platforms.</p>
-        <button onclick="document.getElementById('login-overlay').classList.add('hidden')">Close</button>
-    </div>
     <div id="chat-container"></div>
     <script>
         const urlParams = new URLSearchParams(window.location.search);

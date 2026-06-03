@@ -36,10 +36,6 @@ http {
             root /usr/local/nginx/html;
         }
 
-        location /chat.html {
-            root /usr/local/nginx/html;
-        }
-
         location / {
             root /usr/local/nginx/html;
             index index.html;
@@ -57,12 +53,51 @@ rtmp {
         drop_idle_publisher 10s;
         deny play all; # Prevent unauthorized viewing
 
+        # Facebook Application
+        application facebook {
+            live on;
+            record off;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
+            push ${FACEBOOK_URL}${FACEBOOK_KEY};
+        }
+
+        # Twitch Application
+        application twitch {
+            live on;
+            record off;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
+            push ${TWITCH_URL}${TWITCH_KEY};
+        }
+
+        # YouTube Application
+        application youtube {
+            live on;
+            record off;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
+            push ${YOUTUBE_URL}${YOUTUBE_KEY};
+        }
+
+        # Kick Application
+        application kick {
+            live on;
+            record off;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
+            push ${KICK_URL}${KICK_KEY};
+        }
+
+        # X Application
+        application x {
+            live on;
+            record off;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
+            push ${X_URL}${X_KEY};
+        }
+
         # Generic live application for multi-streaming
         application ${APP_NAME} {
             live on;
             record off;
             on_publish http://127.0.0.1:8080/validate?key=$name;
-            on_publish_done http://127.0.0.1:8080/publish_done?app=$app&key=$name;
             
             #youtube
             #facebook
@@ -71,27 +106,6 @@ rtmp {
             #kick
             #x
             #twitch
-            #rtmp1
-            #rtmp2
-            #rtmp3
-        }
-
-        # Vertical Application
-        application vertical {
-            live on;
-            record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
-            on_publish_done http://127.0.0.1:8080/publish_done?app=$app&key=$name;
-
-            #v_youtube
-            #v_twitch
-            #v_kick
-            #v_tiktok
-            #v_facebook
-            #v_instagram
-            #v_x
-            #v_trovo
-            #v_rtmp1
         }
     }
 }
