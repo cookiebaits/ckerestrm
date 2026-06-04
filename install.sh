@@ -339,26 +339,35 @@ configure_obs() {
 
 build_and_run() {
     # Auto-apply horizontal keys to vertical if empty
-    [ -z "$V_YOUTUBE_KEY" ] && V_YOUTUBE_KEY="$YOUTUBE_KEY"
-    [ -z "$V_TWITCH_KEY" ] && V_TWITCH_KEY="$TWITCH_KEY"
-    [ -z "$V_KICK_KEY" ] && V_KICK_KEY="$KICK_KEY"
-    [ -z "$V_TIKTOK_KEY" ] && V_TIKTOK_KEY="$TIKTOK_KEY"
-    [ -z "$V_FACEBOOK_KEY" ] && V_FACEBOOK_KEY="$FACEBOOK_KEY"
-    [ -z "$V_INSTAGRAM_KEY" ] && V_INSTAGRAM_KEY="$INSTAGRAM_KEY"
-    [ -z "$V_X_KEY" ] && V_X_KEY="$X_KEY"
-    [ -z "$V_TROVO_KEY" ] && V_TROVO_KEY="$TROVO_KEY"
-    [ -z "$V_RTMP1_KEY" ] && V_RTMP1_KEY="$RTMP1_KEY"
+    [ -z "$V_YOUTUBE_KEY" ] && V_YOUTUBE_KEY="$YOUTUBE_KEY" && V_YOUTUBE_URL="$YOUTUBE_URL"
+    [ -z "$V_TWITCH_KEY" ] && V_TWITCH_KEY="$TWITCH_KEY" && V_TWITCH_URL="$TWITCH_URL"
+    [ -z "$V_KICK_KEY" ] && V_KICK_KEY="$KICK_KEY" && V_KICK_URL="$KICK_URL"
+    [ -z "$V_TIKTOK_KEY" ] && V_TIKTOK_KEY="$TIKTOK_KEY" && V_TIKTOK_URL="$TIKTOK_URL"
+    [ -z "$V_FACEBOOK_KEY" ] && V_FACEBOOK_KEY="$FACEBOOK_KEY" && V_FACEBOOK_URL="$FACEBOOK_URL"
+    [ -z "$V_INSTAGRAM_KEY" ] && V_INSTAGRAM_KEY="$INSTAGRAM_KEY" && V_INSTAGRAM_URL="$INSTAGRAM_URL"
+    [ -z "$V_X_KEY" ] && V_X_KEY="$X_KEY" && V_X_URL="$X_URL"
+    [ -z "$V_TROVO_KEY" ] && V_TROVO_KEY="$TROVO_KEY" && V_TROVO_URL="$TROVO_URL"
+    [ -z "$V_RTMP1_KEY" ] && V_RTMP1_KEY="$RTMP1_KEY" && V_RTMP1_URL="$RTMP1_URL"
 
     # Auto-select different servers for vertical if horizontal is the same
+    # For YouTube
     if [ "$YOUTUBE_URL" == "$V_YOUTUBE_URL" ] && [ ! -z "$YOUTUBE_KEY" ]; then
         if [[ "$YOUTUBE_URL" == *"127.0.0.1:19355"* ]]; then
              V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1"
+        elif [[ "$YOUTUBE_URL" == *"x.rtmp.youtube.com"* ]]; then
+             V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1"
         else
              V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/"
         fi
     fi
+    # For Twitch
     if [ "$TWITCH_URL" == "$V_TWITCH_URL" ] && [ ! -z "$TWITCH_KEY" ]; then
-         V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/"
+         # Use a different region or secure port
+         if [[ "$TWITCH_URL" == *"127.0.0.1:19353"* ]]; then
+              V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/"
+         else
+              V_TWITCH_URL="rtmp://127.0.0.1:19353/app/"
+         fi
     fi
 
     echo -e "${GREEN}Building Docker Image (Debian Trixie)...${NC}"

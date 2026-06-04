@@ -61,9 +61,16 @@
                 }
                 if (status.youtube) {
                     document.querySelector('#youtube-login .status-dot').classList.add('active-dot');
-                    document.getElementById('youtube-col').innerHTML = `
-                        <img class="platform-tag" src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg">
-                        <iframe src="https://www.youtube.com/live_chat?v=${status.youtube}&embed_domain=${window.location.hostname || 'localhost'}"></iframe>`;
+                    let ytSrc = '';
+                    if (status.youtube.startsWith('CHANNEL_')) {
+                        const channelId = status.youtube.replace('CHANNEL_', '');
+                        // Fallback to channel search if no active video ID
+                        document.getElementById('youtube-msg').innerHTML = `No active YouTube broadcast found. <a href="https://www.youtube.com/channel/${channelId}/live" target="_blank" style="color:#9146ff">Check Live Status</a>`;
+                    } else {
+                        document.getElementById('youtube-col').innerHTML = `
+                            <img class="platform-tag" src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg">
+                            <iframe src="https://www.youtube.com/live_chat?v=${status.youtube}&embed_domain=${window.location.hostname || 'localhost'}"></iframe>`;
+                    }
                 }
             } catch(e) {}
         }
