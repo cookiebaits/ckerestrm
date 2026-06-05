@@ -6,7 +6,7 @@ ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --break-system-packages flask gunicorn requests && \
+    pip3 install --break-system-packages flask gunicorn requests flask-session && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -119,6 +119,14 @@ ENV KICK_KEY ""
 
 ENV X_URL rtmp://127.0.0.1:19354/x/
 ENV X_KEY ""
+
+ENV TWITCH_CLIENT_ID ""
+ENV TWITCH_OAUTH_TOKEN ""
+ENV TWITCH_BROADCASTER_ID ""
+ENV TWITCH_CLIENT_SECRET ""
+ENV YOUTUBE_CLIENT_ID ""
+ENV YOUTUBE_CLIENT_SECRET ""
+ENV STREAM_BASE_TITLE "Live Stream"
 
 ENV OBS_KEY ""
 

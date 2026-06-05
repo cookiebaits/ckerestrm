@@ -1,12 +1,20 @@
-from flask import Flask, request, Response
+from flask import Flask, request, Response, session, redirect, url_for, jsonify
+from flask_session import Session
 import os
 import logging
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 import threading
 import subprocess
 from datetime import datetime
+import requests
+import secrets
+import time
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', secrets.token_hex(32))
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = '/app/data/sessions'
+Session(app)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -136,5 +144,195 @@ def publish_done():
 def health_check():
     return Response('OK', status=200)
 
+# OAuth Configurations
+TWITCH_CLIENT_ID = os.getenv('TWITCH_CLIENT_ID')
+TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
+YOUTUBE_CLIENT_ID = os.getenv('YOUTUBE_CLIENT_ID')
+YOUTUBE_CLIENT_SECRET = os.getenv('YOUTUBE_CLIENT_SECRET')
+
+# --- Unified Chat Backend ---
+
+CHAT_MESSAGES = []
+CHAT_LOCK = threading.Lock()
+MAX_CHAT_HISTORY = 100
+
+# Global registry of active tokens for background polling
+ACTIVE_TOKENS = {
+    'twitch': None,
+    'youtube': None,
+    'yt_chat_id': None
+}
+
+def add_message(source, user, text):
+    global CHAT_MESSAGES
+    with CHAT_LOCK:
+        msg = {
+            'id': secrets.token_hex(8),
+            'source': source,
+            'user': user,
+            'text': text,
+            'timestamp': datetime.now().isoformat()
+        }
+        # Avoid duplicate test messages if needed, but here we just append
+        CHAT_MESSAGES.append(msg)
+        if len(CHAT_MESSAGES) > MAX_CHAT_HISTORY:
+            CHAT_MESSAGES.pop(0)
+
+def poll_twitch_chat():
+    """Poll Twitch chat via Helix API"""
+    broadcaster_id = os.getenv('TWITCH_BROADCASTER_ID')
+
+    while True:
+        token = ACTIVE_TOKENS.get('twitch')
+        if token and broadcaster_id:
+            try:
+                # Use get_chat_messages (Helix) - note: this requires a user token from someone in the chat or the broadcaster
+                url = f"https://api.twitch.tv/helix/chat/messages?broadcaster_id={broadcaster_id}&user_id={broadcaster_id}"
+                headers = {
+                    "Client-Id": os.getenv('TWITCH_CLIENT_ID'),
+                    "Authorization": f"Bearer {token}"
+                }
+                # Note: Helix get_chat_messages is relatively new and might have tight rate limits.
+                # In a real app, IRC is better.
+                r = requests.get(url, headers=headers, timeout=5)
+                if r.status_code == 200:
+                    data = r.json()
+                    for msg in data.get('data', []):
+                        add_message('twitch', msg['user_name'], msg['message_text'])
+            except Exception as e:
+                app.logger.error(f"Twitch poll error: {e}")
+        time.sleep(10)
+
+def poll_youtube_chat():
+    """Poll YouTube chat via Live Streaming API"""
+    while True:
+        token = ACTIVE_TOKENS.get('youtube')
+        if token:
+            try:
+                headers = {"Authorization": f"Bearer {token}"}
+
+                # 1. Get Live Chat ID if we don't have it
+                if not ACTIVE_TOKENS.get('yt_chat_id'):
+                    url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?mine=true&broadcastStatus=active&part=snippet"
+                    r = requests.get(url, headers=headers, timeout=5)
+                    if r.status_code == 200:
+                        items = r.json().get('items', [])
+                        if items:
+                            ACTIVE_TOKENS['yt_chat_id'] = items[0]['snippet'].get('liveChatId')
+
+                # 2. Poll messages
+                chat_id = ACTIVE_TOKENS.get('yt_chat_id')
+                if chat_id:
+                    url = f"https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId={chat_id}&part=snippet,authorDetails"
+                    r = requests.get(url, headers=headers, timeout=5)
+                    if r.status_code == 200:
+                        data = r.json()
+                        for item in data.get('items', []):
+                            user = item['authorDetails']['displayName']
+                            text = item['snippet']['displayMessage']
+                            add_message('youtube', user, text)
+            except Exception as e:
+                app.logger.error(f"YouTube poll error: {e}")
+        time.sleep(10)
+
+# Start Polling Threads
+threading.Thread(target=poll_twitch_chat, daemon=True).start()
+threading.Thread(target=poll_youtube_chat, daemon=True).start()
+
+@app.route('/chat/messages')
+def get_messages():
+    with CHAT_LOCK:
+        return jsonify({
+            'messages': CHAT_MESSAGES,
+            'authenticated': {
+                'twitch': 'twitch_token' in session,
+                'youtube': 'youtube_token' in session
+            }
+        })
+
+@app.route('/chat/test_msg')
+def test_msg():
+    source = request.args.get('source', 'twitch')
+    user = request.args.get('user', 'TestUser')
+    text = request.args.get('text', 'Hello from PrismRTMPS!')
+    add_message(source, user, text)
+    return "Message added!"
+
+# --- OAuth Routes ---
+
+@app.route('/login/twitch')
+def login_twitch():
+    redirect_uri = request.args.get('redirect_uri') or f"{request.host_url}callback/twitch"
+    scope = "chat:read chat:edit channel:manage:broadcast"
+    params = {
+        "client_id": TWITCH_CLIENT_ID,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": scope
+    }
+    return redirect(f"https://id.twitch.tv/oauth2/authorize?{urlencode(params)}")
+
+@app.route('/callback/twitch')
+def callback_twitch():
+    code = request.args.get('code')
+    redirect_uri = f"{request.host_url}callback/twitch"
+
+    data = {
+        "client_id": TWITCH_CLIENT_ID,
+        "client_secret": TWITCH_CLIENT_SECRET,
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": redirect_uri
+    }
+
+    r = requests.post("https://id.twitch.tv/oauth2/token", data=data)
+    res = r.json()
+
+    if 'access_token' in res:
+        session['twitch_token'] = res['access_token']
+        session['twitch_refresh'] = res.get('refresh_token')
+        ACTIVE_TOKENS['twitch'] = res['access_token']
+        return "Twitch authenticated! You can close this window."
+    return f"Error: {res.get('error_description', 'Unknown error')}", 400
+
+@app.route('/login/youtube')
+def login_youtube():
+    redirect_uri = request.args.get('redirect_uri') or f"{request.host_url}callback/youtube"
+    scope = "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.force-ssl"
+    params = {
+        "client_id": YOUTUBE_CLIENT_ID,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": scope,
+        "access_type": "offline",
+        "prompt": "consent"
+    }
+    return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}")
+
+@app.route('/callback/youtube')
+def callback_youtube():
+    code = request.args.get('code')
+    redirect_uri = f"{request.host_url}callback/youtube"
+
+    data = {
+        "client_id": YOUTUBE_CLIENT_ID,
+        "client_secret": YOUTUBE_CLIENT_SECRET,
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": redirect_uri
+    }
+
+    r = requests.post("https://oauth2.googleapis.com/token", data=data)
+    res = r.json()
+
+    if 'access_token' in res:
+        session['youtube_token'] = res['access_token']
+        session['youtube_refresh'] = res.get('refresh_token')
+        ACTIVE_TOKENS['youtube'] = res['access_token']
+        return "YouTube authenticated! You can close this window."
+    return f"Error: {res.get('error_description', 'Unknown error')}", 400
+
 if __name__ == '__main__':
+    # Ensure session directory exists
+    os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
     app.run(host='127.0.0.1', port=8080, debug=False)
