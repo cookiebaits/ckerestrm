@@ -29,21 +29,21 @@ RTMP1_URL=""
 RTMP1_KEY=""
 
 # Vertical Defaults
-V_YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/"
+V_YOUTUBE_URL=""
 V_YOUTUBE_KEY=""
-V_TWITCH_URL="rtmp://127.0.0.1:19353/app/"
+V_TWITCH_URL=""
 V_TWITCH_KEY=""
-V_KICK_URL="rtmp://127.0.0.1:19356/kick/"
+V_KICK_URL=""
 V_KICK_KEY=""
-V_TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/"
+V_TIKTOK_URL=""
 V_TIKTOK_KEY=""
-V_FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/"
+V_FACEBOOK_URL=""
 V_FACEBOOK_KEY=""
-V_INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/"
+V_INSTAGRAM_URL=""
 V_INSTAGRAM_KEY=""
-V_X_URL="rtmp://127.0.0.1:19354/x/"
+V_X_URL=""
 V_X_KEY=""
-V_TROVO_URL="rtmp://livepush.trovo.live/live/"
+V_TROVO_URL=""
 V_TROVO_KEY=""
 V_RTMP1_URL=""
 V_RTMP1_KEY=""
@@ -53,18 +53,38 @@ APP_NAME="live"
 ACCEPTED_IP=""
 SERVER_DOMAIN=""
 CHUNK_SIZE="8192"
-STREAM_BASE_TITLE="Live Stream"
-TWITCH_CLIENT_ID=""
-TWITCH_OAUTH_TOKEN=""
-TWITCH_BROADCASTER_ID=""
 
-# Combined Chat Settings
-CHAT_TWITCH=""
-CHAT_YOUTUBE=""
-CHAT_KICK=""
-CHAT_TIKTOK=""
+TWITCH_CLIENT_ID=""
+TWITCH_CLIENT_SECRET=""
+YOUTUBE_CLIENT_ID=""
+YOUTUBE_CLIENT_SECRET=""
 
 CONFIG_FILE="rtmp_config.env"
+
+# Shared Server Lists
+YOUTUBE_SERVERS=(
+    "rtmp://x.rtmp.youtube.com/live2/|Primary (RTMP)"
+    "rtmp://b.rtmp.youtube.com/live2?backup=1|Backup (RTMP)"
+    "rtmp://127.0.0.1:19355/live2/|Secure Primary (RTMPS)"
+    "rtmp://127.0.0.1:19357/live2?backup=1|Secure Backup (RTMPS)"
+)
+
+TWITCH_SERVERS=(
+    "rtmp://ingest.global-contribute.live-video.net/app/|Global Auto (RTMP)"
+    "rtmp://127.0.0.1:19353/app/|Secure Global (RTMPS)"
+    "rtmp://iad05.contribute.live-video.net/app/|US East: Ashburn"
+    "rtmp://jfk05.contribute.live-video.net/app/|US East: New York"
+    "rtmp://sjc05.contribute.live-video.net/app/|US West: San Jose"
+    "rtmp://sea01.contribute.live-video.net/app/|US West: Seattle"
+    "rtmp://fra02.contribute.live-video.net/app/|EU: Frankfurt"
+    "rtmp://lhr03.contribute.live-video.net/app/|EU: London"
+    "rtmp://tyo01.contribute.live-video.net/app/|Asia: Tokyo"
+)
+
+KICK_SERVERS=(
+    "rtmp://live.kick.com/app/|Standard (RTMP)"
+    "rtmp://127.0.0.1:19356/kick/|Secure (RTMPS)"
+)
 
 # Load saved configuration if it exists
 if [ -f "$CONFIG_FILE" ]; then
@@ -112,16 +132,12 @@ V_RTMP1_KEY="$V_RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
 APP_NAME="$APP_NAME"
 ACCEPTED_IP="$ACCEPTED_IP"
-CHAT_TWITCH="$CHAT_TWITCH"
-CHAT_YOUTUBE="$CHAT_YOUTUBE"
-CHAT_KICK="$CHAT_KICK"
-CHAT_TIKTOK="$CHAT_TIKTOK"
 SERVER_DOMAIN="$SERVER_DOMAIN"
 CHUNK_SIZE="$CHUNK_SIZE"
-STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
-TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
-TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
+TWITCH_CLIENT_SECRET="$TWITCH_CLIENT_SECRET"
+YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID"
+YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -145,6 +161,48 @@ prompt_for_key() {
     fi
 }
 
+select_server() {
+    local platform=$1
+    local var_url=$2
+    local -n server_list=$3
+    local current_url=${!var_url}
+
+    echo -e "Select ${YELLOW}$platform${NC} Server:"
+    local i=1
+    for item in "${server_list[@]}"; do
+        local name="${item#*|}"
+        echo "  $i) $name"
+        ((i++))
+    done
+    echo "  $i) Custom URL"
+    echo -e "Option (Current: $current_url): \c"
+    read -r opt
+
+    if [[ "$opt" =~ ^[0-9]+$ ]] && [ "$opt" -ge 1 ] && [ "$opt" -lt "$i" ]; then
+        local selected="${server_list[$((opt-1))]}"
+        printf -v "$var_url" "%s" "${selected%|*}"
+    elif [ "$opt" -eq "$i" ]; then
+        echo -e "Enter Custom URL: "
+        read -r custom_url
+        if [ ! -z "$custom_url" ]; then
+            printf -v "$var_url" "%s" "$custom_url"
+        fi
+    fi
+    save_config
+}
+
+configure_platform() {
+    local name=$1
+    local key_var=$2
+    local url_var=$3
+    local server_list_name=$4
+
+    prompt_for_key "$name" "$key_var"
+    if [ ! -z "${!key_var}" ]; then
+        select_server "$name" "$url_var" "$server_list_name"
+    fi
+}
+
 configure_keys() {
     while true; do
         clear
@@ -163,189 +221,18 @@ configure_keys() {
         read -r choice
 
         case $choice in
-            1)
-               prompt_for_key "YouTube Key" "YOUTUBE_KEY"
-               echo -e "Select YouTube Server:"
-               echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
-               echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
-               echo "  3) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
-               echo "  4) Secure Backup (rtmps://b.rtmps.youtube.com/live2?backup=1 -> via Stunnel)"
-               echo "  5) Custom URL"
-               echo -e "Option (Current URL: $YOUTUBE_URL): \c"
-               read -r y_opt
-               case $y_opt in
-                   1) YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
-                   2) YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
-                   3) YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
-                   4) YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
-                   5)
-                      echo -e "Enter Custom YouTube Server URL: "
-                      read -r y_url
-                      if [ ! -z "$y_url" ]; then
-                          YOUTUBE_URL="$y_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            2)
-               prompt_for_key "Twitch Key" "TWITCH_KEY"
-               echo -e "Select Twitch Server:"
-               echo "  1) Global (rtmp://ingest.global-contribute.live-video.net/app/)"
-               echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
-               echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
-               echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  10) Custom URL"
-               echo -e "Option (Current URL: $TWITCH_URL): \c"
-               read -r t_opt
-               case $t_opt in
-                   1) TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
-                   2) TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
-                   3) TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
-                   4) TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   6) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   7) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   8) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   9) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   10)
-                      echo -e "Enter Custom Twitch Server URL: "
-                      read -r t_url
-                      if [ ! -z "$t_url" ]; then
-                          TWITCH_URL="$t_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            3)
-               prompt_for_key "Kick" "KICK_KEY"
-               echo -e "Select Kick Server:"
-               echo "  1) Standard (rtmp://live.kick.com/app/)"
-               echo "  2) Secure (rtmps://fa723fc1b171.global-contribute.live-video.net:443 -> via Stunnel)"
-               echo "  3) Custom URL"
-               echo -e "Option (Current URL: $KICK_URL): \c"
-               read -r k_opt
-               case $k_opt in
-                   1) KICK_URL="rtmp://live.kick.com/app/" ;;
-                   2) KICK_URL="rtmp://127.0.0.1:19356/kick/" ;;
-                   3)
-                      echo -e "Enter Custom Kick Server URL: "
-                      read -r k_url
-                      if [ ! -z "$k_url" ]; then
-                          KICK_URL="$k_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            4)
-               prompt_for_key "TikTok" "TIKTOK_KEY"
-               echo -e "Select TikTok Server:"
-               echo "  1) Secure (rtmps://push-rtmp-f5-ap-southeast-1.tiktokcdn.com:443 -> via Stunnel)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $TIKTOK_URL): \c"
-               read -r tt_opt
-               case $tt_opt in
-                   1) TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/" ;;
-                   2)
-                      echo -e "Enter Custom TikTok Server URL: "
-                      read -r tt_url
-                      if [ ! -z "$tt_url" ]; then
-                          TIKTOK_URL="$tt_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            5)
-               prompt_for_key "Facebook" "FACEBOOK_KEY"
-               echo -e "Select Facebook Server:"
-               echo "  1) Secure (rtmps://live-api-s.facebook.com:443 -> via Stunnel)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $FACEBOOK_URL): \c"
-               read -r f_opt
-               case $f_opt in
-                   1) FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/" ;;
-                   2)
-                      echo -e "Enter Custom Facebook Server URL: "
-                      read -r f_url
-                      if [ ! -z "$f_url" ]; then
-                          FACEBOOK_URL="$f_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            6)
-               prompt_for_key "Instagram" "INSTAGRAM_KEY"
-               echo -e "Select Instagram Server:"
-               echo "  1) Secure (rtmps://live-upload.instagram.com:443 -> via Stunnel)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $INSTAGRAM_URL): \c"
-               read -r i_opt
-               case $i_opt in
-                   1) INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/" ;;
-                   2)
-                      echo -e "Enter Custom Instagram Server URL: "
-                      read -r i_url
-                      if [ ! -z "$i_url" ]; then
-                          INSTAGRAM_URL="$i_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            7)
-               prompt_for_key "X (Twitter)" "X_KEY"
-               echo -e "Select X Server:"
-               echo "  1) Secure (rtmps://va.pscp.tv:443 -> via Stunnel)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $X_URL): \c"
-               read -r x_opt
-               case $x_opt in
-                   1) X_URL="rtmp://127.0.0.1:19354/x/" ;;
-                   2)
-                      echo -e "Enter Custom X Server URL: "
-                      read -r x_url
-                      if [ ! -z "$x_url" ]; then
-                          X_URL="$x_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            8)
-               prompt_for_key "Trovo" "TROVO_KEY"
-               echo -e "Select Trovo Server:"
-               echo "  1) Primary (rtmp://livepush.trovo.live/live/)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $TROVO_URL): \c"
-               read -r tr_opt
-               case $tr_opt in
-                   1) TROVO_URL="rtmp://livepush.trovo.live/live/" ;;
-                   2)
-                      echo -e "Enter Custom Trovo Server URL: "
-                      read -r tr_url
-                      if [ ! -z "$tr_url" ]; then
-                          TROVO_URL="$tr_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
+            1) configure_platform "YouTube" "YOUTUBE_KEY" "YOUTUBE_URL" YOUTUBE_SERVERS ;;
+            2) configure_platform "Twitch" "TWITCH_KEY" "TWITCH_URL" TWITCH_SERVERS ;;
+            3) configure_platform "Kick" "KICK_KEY" "KICK_URL" KICK_SERVERS ;;
+            4) prompt_for_key "TikTok" "TIKTOK_KEY" ;;
+            5) prompt_for_key "Facebook" "FACEBOOK_KEY" ;;
+            6) prompt_for_key "Instagram" "INSTAGRAM_KEY" ;;
+            7) prompt_for_key "X (Twitter)" "X_KEY" ;;
+            8) prompt_for_key "Trovo" "TROVO_KEY" ;;
             9)
                echo -e "Enter Custom RTMP Server URL (Current: $RTMP1_URL): "
                read -r c_url
-               if [ ! -z "$c_url" ]; then
-                   RTMP1_URL="$c_url"
-                   save_config
-               fi
+               if [ ! -z "$c_url" ]; then RTMP1_URL="$c_url"; save_config; fi
                prompt_for_key "Custom RTMP Key" "RTMP1_KEY"
                ;;
             10) break ;;
@@ -358,7 +245,6 @@ configure_vertical_keys() {
     while true; do
         clear
         echo -e "${GREEN}=== Configure Vertical Stream Keys ===${NC}"
-        echo -e "${YELLOW}Note: Vertical is officially supported on: YouTube, Twitch and TikTok.${NC}"
         echo "1) YouTube (Current: ${V_YOUTUBE_KEY:-None})"
         echo "2) Twitch (Current: ${V_TWITCH_KEY:-None})"
         echo "3) Kick (Current: ${V_KICK_KEY:-None})"
@@ -368,273 +254,29 @@ configure_vertical_keys() {
         echo "7) X (Twitter) (Current: ${V_X_KEY:-None})"
         echo "8) Trovo (Current: ${V_TROVO_KEY:-None})"
         echo "9) Custom RTMP (Current URL: ${V_RTMP1_URL:-None})"
-        echo "10) Mirror Horizontal Keys (Auto-fill from Horizontal)"
-        echo "11) Back to Main Menu"
+        echo "10) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
 
         case $choice in
-            1)
-               prompt_for_key "YouTube Vertical Key" "V_YOUTUBE_KEY"
-               echo -e "Select YouTube Server:"
-               echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
-               echo "  2) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
-               echo "  3) Custom URL"
-               echo -e "Option (Current URL: $V_YOUTUBE_URL): \c"
-               read -r y_opt
-               case $y_opt in
-                   1) V_YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
-                   2) V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
-                   3)
-                      echo -e "Enter Custom YouTube Server URL: "
-                      read -r y_url
-                      if [ ! -z "$y_url" ]; then
-                          V_YOUTUBE_URL="$y_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            2)
-               prompt_for_key "Twitch Vertical Key" "V_TWITCH_KEY"
-               echo -e "Select Twitch Server:"
-               echo "  1) Global (rtmp://ingest.global-contribute.live-video.net/app/)"
-               echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
-               echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
-               echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  10) Custom URL"
-               echo -e "Option (Current URL: $V_TWITCH_URL): \c"
-               read -r t_opt
-               case $t_opt in
-                   1) V_TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
-                   2) V_TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
-                   3) V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
-                   4) V_TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   6) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   7) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   8) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   9) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   10)
-                      echo -e "Enter Custom Twitch Server URL: "
-                      read -r t_url
-                      if [ ! -z "$t_url" ]; then
-                          V_TWITCH_URL="$t_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            3)
-               prompt_for_key "Kick Vertical" "V_KICK_KEY"
-               echo -e "Select Kick Server:"
-               echo "  1) Standard (rtmp://live.kick.com/app/)"
-               echo "  2) Secure (rtmps://fa723fc1b171.global-contribute.live-video.net:443 -> via Stunnel)"
-               echo "  3) Custom URL"
-               echo -e "Option (Current URL: $V_KICK_URL): \c"
-               read -r k_opt
-               case $k_opt in
-                   1) V_KICK_URL="rtmp://live.kick.com/app/" ;;
-                   2) V_KICK_URL="rtmp://127.0.0.1:19356/kick/" ;;
-                   3)
-                      echo -e "Enter Custom Kick Server URL: "
-                      read -r k_url
-                      if [ ! -z "$k_url" ]; then
-                          V_KICK_URL="$k_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            4)
-               prompt_for_key "TikTok Vertical Key" "V_TIKTOK_KEY"
-               echo -e "Select TikTok Server:"
-               echo "  1) Secure (rtmps://push-rtmp-f5-ap-southeast-1.tiktokcdn.com:443 -> via Stunnel)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $V_TIKTOK_URL): \c"
-               read -r tt_opt
-               case $tt_opt in
-                   1) V_TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/" ;;
-                   2)
-                      echo -e "Enter Custom TikTok Server URL: "
-                      read -r tt_url
-                      if [ ! -z "$tt_url" ]; then
-                          V_TIKTOK_URL="$tt_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            5)
-               prompt_for_key "Facebook Vertical" "V_FACEBOOK_KEY"
-               echo -e "Select Facebook Server:"
-               echo "  1) Secure (rtmps://live-api-s.facebook.com:443 -> via Stunnel)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $V_FACEBOOK_URL): \c"
-               read -r f_opt
-               case $f_opt in
-                   1) V_FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/" ;;
-                   2)
-                      echo -e "Enter Custom Facebook Server URL: "
-                      read -r f_url
-                      if [ ! -z "$f_url" ]; then
-                          V_FACEBOOK_URL="$f_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            6)
-               prompt_for_key "Instagram Vertical" "V_INSTAGRAM_KEY"
-               echo -e "Select Instagram Server:"
-               echo "  1) Secure (rtmps://live-upload.instagram.com:443 -> via Stunnel)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $V_INSTAGRAM_URL): \c"
-               read -r i_opt
-               case $i_opt in
-                   1) V_INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/" ;;
-                   2)
-                      echo -e "Enter Custom Instagram Server URL: "
-                      read -r i_url
-                      if [ ! -z "$i_url" ]; then
-                          V_INSTAGRAM_URL="$i_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            7)
-               prompt_for_key "X Vertical" "V_X_KEY"
-               echo -e "Select X Server:"
-               echo "  1) Secure (rtmps://va.pscp.tv:443 -> via Stunnel)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $V_X_URL): \c"
-               read -r x_opt
-               case $x_opt in
-                   1) V_X_URL="rtmp://127.0.0.1:19354/x/" ;;
-                   2)
-                      echo -e "Enter Custom X Server URL: "
-                      read -r x_url
-                      if [ ! -z "$x_url" ]; then
-                          V_X_URL="$x_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
-            8)
-               prompt_for_key "Trovo Vertical" "V_TROVO_KEY"
-               echo -e "Select Trovo Server:"
-               echo "  1) Primary (rtmp://livepush.trovo.live/live/)"
-               echo "  2) Custom URL"
-               echo -e "Option (Current URL: $V_TROVO_URL): \c"
-               read -r tr_opt
-               case $tr_opt in
-                   1) V_TROVO_URL="rtmp://livepush.trovo.live/live/" ;;
-                   2)
-                      echo -e "Enter Custom Trovo Server URL: "
-                      read -r tr_url
-                      if [ ! -z "$tr_url" ]; then
-                          V_TROVO_URL="$tr_url"
-                      fi
-                      ;;
-               esac
-               save_config
-               ;;
+            1) configure_platform "YouTube Vertical" "V_YOUTUBE_KEY" "V_YOUTUBE_URL" YOUTUBE_SERVERS ;;
+            2) configure_platform "Twitch Vertical" "V_TWITCH_KEY" "V_TWITCH_URL" TWITCH_SERVERS ;;
+            3) configure_platform "Kick Vertical" "V_KICK_KEY" "V_KICK_URL" KICK_SERVERS ;;
+            4) prompt_for_key "TikTok Vertical" "V_TIKTOK_KEY" ;;
+            5) prompt_for_key "Facebook Vertical" "V_FACEBOOK_KEY" ;;
+            6) prompt_for_key "Instagram Vertical" "V_INSTAGRAM_KEY" ;;
+            7) prompt_for_key "X Vertical" "V_X_KEY" ;;
+            8) prompt_for_key "Trovo Vertical" "V_TROVO_KEY" ;;
             9)
                echo -e "Enter Custom RTMP Vertical Server URL (Current: $V_RTMP1_URL): "
                read -r c_url
-               if [ ! -z "$c_url" ]; then
-                   V_RTMP1_URL="$c_url"
-                   save_config
-               fi
+               if [ ! -z "$c_url" ]; then V_RTMP1_URL="$c_url"; save_config; fi
                prompt_for_key "Custom RTMP Vertical Key" "V_RTMP1_KEY"
                ;;
-            10)
-               echo -e "${YELLOW}Mirroring Horizontal keys...${NC}"
-               V_YOUTUBE_KEY="$YOUTUBE_KEY"
-               V_YOUTUBE_URL="$YOUTUBE_URL"
-               V_TWITCH_KEY="$TWITCH_KEY"
-               V_TWITCH_URL="$TWITCH_URL"
-               V_TIKTOK_KEY="$TIKTOK_KEY"
-               V_TIKTOK_URL="$TIKTOK_URL"
-               V_KICK_KEY="$KICK_KEY"
-               V_KICK_URL="$KICK_URL"
-               V_FACEBOOK_KEY="$FACEBOOK_KEY"
-               V_FACEBOOK_URL="$FACEBOOK_URL"
-               V_INSTAGRAM_KEY="$INSTAGRAM_KEY"
-               V_INSTAGRAM_URL="$INSTAGRAM_URL"
-               V_X_KEY="$X_KEY"
-               V_X_URL="$X_URL"
-               V_TROVO_KEY="$TROVO_KEY"
-               V_TROVO_URL="$TROVO_URL"
-               V_RTMP1_KEY="$RTMP1_KEY"
-               V_RTMP1_URL="$RTMP1_URL"
-               save_config
-               echo -e "${GREEN}Mirrored.${NC}"
-               sleep 1
-               ;;
-            11) break ;;
+            10) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
-}
-
-configure_obs() {
-    clear
-    echo -e "${GREEN}=== OBS Configuration ===${NC}"
-    # Determine the public IP if possible, or fallback to placeholder
-    SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
-
-    # Use Domain if set, otherwise IP
-    DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-
-    echo -e "To stream to this server from OBS or another encoder:"
-    echo -e "  ${YELLOW}Horizontal URL:${NC} rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
-    echo -e "  ${YELLOW}Vertical URL:${NC}   rtmp://${DISPLAY_HOST}:1935/vertical"
-    echo ""
-    echo -e "--- Combined Chat ---"
-    echo -e "You can use the combined chat as a browser source in OBS:"
-    echo -e "  ${YELLOW}URL:${NC} http://${DISPLAY_HOST}:8081/chat.html?twitch=YOUR_CHANNEL&youtube=YOUR_VIDEO_ID"
-    echo -e "  (Replace YOUR_CHANNEL and YOUR_VIDEO_ID as needed)"
-    echo ""
-    echo -e "--- Security Key ---"
-    echo -e "PrismRTMPS requires a matching stream key to accept your stream."
-    echo -e "Current Custom OBS Key: ${OBS_KEY:-None}"
-    echo -e "Enter new Custom OBS Key (Type 'disable' to remove, or press Enter to keep current): "
-    read -r obs_input
-    if [ "$obs_input" == "disable" ] || [ "$obs_input" == "DISABLE" ]; then
-        OBS_KEY=""
-        echo -e "${GREEN}Custom OBS Key removed.${NC}"
-    elif [ ! -z "$obs_input" ]; then
-        OBS_KEY="$obs_input"
-        echo -e "${GREEN}Custom OBS Key updated.${NC}"
-    fi
-
-    echo ""
-    echo -e "--- Custom Application Name ---"
-    echo -e "Current Path: /${APP_NAME}"
-    echo -e "Enter new RTMP Path/Application name (e.g. cookies):"
-    echo -e "(Leave blank to keep current):"
-    read -r app_input
-    if [ ! -z "$app_input" ]; then
-        # Basic sanitization: remove everything except alphanumeric
-        app_input=$(echo "$app_input" | sed 's/[^a-zA-Z0-9]//g')
-        if [ ! -z "$app_input" ]; then
-            APP_NAME="$app_input"
-            echo -e "${GREEN}Application name updated to: $APP_NAME${NC}"
-        else
-             echo -e "${RED}Invalid application name. Keeping current: $APP_NAME${NC}"
-        fi
-    fi
-
-    save_config
-    sleep 2
 }
 
 configure_domain() {
@@ -642,345 +284,117 @@ configure_domain() {
     echo -e "${GREEN}=== Domain / Reverse Proxy Configuration ===${NC}"
     echo -e "Current Domain: ${SERVER_DOMAIN:-None (Using IP)}"
     echo -e "Enter your domain or Cloudflare reverse proxy (e.g. stream.yourdomain.com):"
-    echo -e "(Leave blank to keep current, type 'disable' to use IP)"
     read -r dom_input
-    if [ "$dom_input" == "disable" ] || [ "$dom_input" == "DISABLE" ]; then
-        SERVER_DOMAIN=""
-        echo -e "${GREEN}Domain disabled, using IP.${NC}"
-    elif [ ! -z "$dom_input" ]; then
-        # Basic sanitization for domain
-        dom_input=$(echo "$dom_input" | sed 's/[^a-zA-Z0-9.-]//g')
-        if [ ! -z "$dom_input" ]; then
-            SERVER_DOMAIN="$dom_input"
-            echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
-            echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
-        else
-            echo -e "${RED}Invalid domain name. Keeping current.${NC}"
-        fi
-    fi
+    if [ "$dom_input" == "disable" ]; then SERVER_DOMAIN=""; else SERVER_DOMAIN="$dom_input"; fi
     save_config
-    sleep 2
+    sleep 1
 }
 
 configure_whitelist() {
     clear
     echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
-    echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
-    echo ""
-    echo -e "Enter IP address to whitelist (Leave blank to keep current, type 'disable' to allow all):"
+    echo -e "Current Accepted IP: ${ACCEPTED_IP:-None (Allow All)}"
+    echo -e "Enter IP address to whitelist (type 'disable' to allow all):"
     read -r ip_input
-    if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
-        ACCEPTED_IP=""
-        echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
-    elif [ ! -z "$ip_input" ]; then
-        ACCEPTED_IP="$ip_input"
-        echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
-    fi
+    if [ "$ip_input" == "disable" ]; then ACCEPTED_IP=""; else ACCEPTED_IP="$ip_input"; fi
     save_config
-    sleep 2
+    sleep 1
 }
 
-configure_titles() {
+configure_api() {
     while true; do
         clear
-        echo -e "${GREEN}=== Stream Titles & Twitch API Configuration ===${NC}"
-        echo "1) Base Title (Current: $STREAM_BASE_TITLE)"
-        echo "2) Twitch Client ID (Current: ${TWITCH_CLIENT_ID:-None})"
-        echo "3) Twitch OAuth Token (Current: ${TWITCH_OAUTH_TOKEN:-None})"
-        echo "4) Twitch Broadcaster ID (Current: ${TWITCH_BROADCASTER_ID:-None})"
-        echo "5) Reset Episode Count"
-        echo "6) Back to Main Menu"
+        echo -e "${GREEN}=== Configure API / OAuth (Twitch/YouTube) ===${NC}"
+        echo "1) Twitch Client ID (Current: ${TWITCH_CLIENT_ID:-None})"
+        echo "2) Twitch Client Secret (Current: ${TWITCH_CLIENT_SECRET:-None})"
+        echo "3) YouTube Client ID (Current: ${YOUTUBE_CLIENT_ID:-None})"
+        echo "4) YouTube Client Secret (Current: ${YOUTUBE_CLIENT_SECRET:-None})"
+        echo "5) Back to Main Menu"
         echo -e "Select an option: \c"
-        read -r title_opt
-
-        case $title_opt in
-            1)
-                echo -e "Enter Base Stream Title:"
-                read -r title_input
-                STREAM_BASE_TITLE="$title_input"
-                save_config
-                ;;
-            2)
-                echo -e "Enter Twitch Client ID:"
-                read -r title_input
-                TWITCH_CLIENT_ID="$title_input"
-                save_config
-                ;;
-            3)
-                echo -e "Enter Twitch OAuth Token (Bearer):"
-                read -r title_input
-                TWITCH_OAUTH_TOKEN="$title_input"
-                save_config
-                ;;
-            4)
-                echo -e "Enter Twitch Broadcaster ID (Numeric):"
-                read -r title_input
-                TWITCH_BROADCASTER_ID="$title_input"
-                save_config
-                ;;
-            5)
-                mkdir -p ./data
-                echo "1" > ./data/episode_count.txt
-                echo -e "${GREEN}Episode count reset to 1.${NC}"
-                sleep 1
-                ;;
-            6) break ;;
-            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        read -r choice
+        case $choice in
+            1) echo -n "Enter Twitch Client ID: "; read -r TWITCH_CLIENT_ID; save_config ;;
+            2) echo -n "Enter Twitch Client Secret: "; read -r TWITCH_CLIENT_SECRET; save_config ;;
+            3) echo -n "Enter YouTube Client ID: "; read -r YOUTUBE_CLIENT_ID; save_config ;;
+            4) echo -n "Enter YouTube Client Secret: "; read -r YOUTUBE_CLIENT_SECRET; save_config ;;
+            5) break ;;
         esac
     done
 }
 
-configure_chat() {
-    while true; do
-        clear
-        echo -e "${GREEN}=== Combined Chat Configuration ===${NC}"
-        echo "Enter Channel Names/IDs for browser source embeds:"
-        echo ""
-        echo "1) Twitch Channel (Current: ${CHAT_TWITCH:-None})"
-        echo "2) YouTube Video ID (Current: ${CHAT_YOUTUBE:-None})"
-        echo "3) Kick Channel (Current: ${CHAT_KICK:-None})"
-        echo "4) TikTok Channel (Current: ${CHAT_TIKTOK:-None})"
-        echo "5) Show Browser Source URL"
-        echo "6) Back to Main Menu"
-        echo -e "Select an option: \c"
-        read -r chat_opt
-
-        case $chat_opt in
-            1)
-                echo -e "Enter Twitch Channel Name:"
-                read -r chat_input
-                CHAT_TWITCH="$chat_input"
-                save_config
-                ;;
-            2)
-                echo -e "Enter YouTube Video ID (from URL v=XXXX):"
-                read -r chat_input
-                CHAT_YOUTUBE="$chat_input"
-                save_config
-                ;;
-            3)
-                echo -e "Enter Kick Channel Name:"
-                read -r chat_input
-                CHAT_KICK="$chat_input"
-                save_config
-                ;;
-            4)
-                echo -e "Enter TikTok Username (without @):"
-                read -r chat_input
-                CHAT_TIKTOK="$chat_input"
-                save_config
-                ;;
-            5)
-                SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
-                DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-                CHAT_URL="http://${DISPLAY_HOST}:8081/chat.html?"
-                if [ ! -z "$CHAT_TWITCH" ]; then CHAT_URL="${CHAT_URL}twitch=${CHAT_TWITCH}&"; fi
-                if [ ! -z "$CHAT_YOUTUBE" ]; then CHAT_URL="${CHAT_URL}youtube=${CHAT_YOUTUBE}&"; fi
-                if [ ! -z "$CHAT_KICK" ]; then CHAT_URL="${CHAT_URL}kick=${CHAT_KICK}&"; fi
-                if [ ! -z "$CHAT_TIKTOK" ]; then CHAT_URL="${CHAT_URL}tiktok=${CHAT_TIKTOK}&"; fi
-                echo -e "\n${YELLOW}OBS Browser Source URL:${NC}"
-                echo -e "${GREEN}${CHAT_URL%&}${NC}"
-                echo -e "\nPress Enter to continue..."
-                read -r
-                ;;
-            6) break ;;
-            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-        esac
-    done
-}
-
-configure_optimizations() {
+configure_obs() {
     clear
-    echo -e "${GREEN}=== Optimizations ===${NC}"
-    echo "Current Chunk Size: $CHUNK_SIZE (Default: 8192)"
-    echo "Enter new Chunk Size (press Enter to keep current): "
-    read -r input
-    if [ ! -z "$input" ]; then
-        CHUNK_SIZE="$input"
-        save_config
-        echo -e "${GREEN}Chunk size updated.${NC}"
-        sleep 1
-    fi
-}
-
-install_docker() {
-    echo -e "${GREEN}Checking for Docker...${NC}"
-    if ! command -v docker &> /dev/null; then
-        echo -e "${YELLOW}Docker not found. Installing...${NC}"
-        # Basic docker install via official script
-        curl -4 -fsSL https://get.docker.com -o get-docker.sh
-        sudo sh get-docker.sh
-        sudo systemctl start docker
-        sudo systemctl enable docker
-        rm get-docker.sh
-        echo -e "${GREEN}Docker installed successfully.${NC}"
-    else
-        echo -e "${GREEN}Docker is already installed.${NC}"
-    fi
+    echo -e "${GREEN}=== OBS Configuration ===${NC}"
+    SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
+    DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
+    echo -e "  ${YELLOW}Horizontal URL:${NC} rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
+    echo -e "  ${YELLOW}Vertical URL:${NC}   rtmp://${DISPLAY_HOST}:1935/vertical"
+    echo -e "  ${YELLOW}Combined Chat:${NC} http://${DISPLAY_HOST}:8081/chat.html"
+    echo ""
+    echo -e "Enter Custom OBS Security Key (Optional):"
+    read -r obs_input
+    if [ ! -z "$obs_input" ]; then OBS_KEY="$obs_input"; save_config; fi
     sleep 2
 }
 
 build_and_run() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
-        sleep 2
-        return
-    fi
+    # Auto-apply horizontal keys to vertical if empty
+    [ -z "$V_YOUTUBE_KEY" ] && V_YOUTUBE_KEY="$YOUTUBE_KEY" && V_YOUTUBE_URL="$YOUTUBE_URL"
+    [ -z "$V_TWITCH_KEY" ] && V_TWITCH_KEY="$TWITCH_KEY" && V_TWITCH_URL="$TWITCH_URL"
+    [ -z "$V_KICK_KEY" ] && V_KICK_KEY="$KICK_KEY" && V_KICK_URL="$KICK_URL"
+    [ -z "$V_TIKTOK_KEY" ] && V_TIKTOK_KEY="$TIKTOK_KEY" && V_TIKTOK_URL="$TIKTOK_URL"
+    [ -z "$V_FACEBOOK_KEY" ] && V_FACEBOOK_KEY="$FACEBOOK_KEY" && V_FACEBOOK_URL="$FACEBOOK_URL"
+    [ -z "$V_INSTAGRAM_KEY" ] && V_INSTAGRAM_KEY="$INSTAGRAM_KEY" && V_INSTAGRAM_URL="$INSTAGRAM_URL"
+    [ -z "$V_X_KEY" ] && V_X_KEY="$X_KEY" && V_X_URL="$X_URL"
+    [ -z "$V_TROVO_KEY" ] && V_TROVO_KEY="$TROVO_KEY" && V_TROVO_URL="$TROVO_URL"
+    [ -z "$V_RTMP1_KEY" ] && V_RTMP1_KEY="$RTMP1_KEY" && V_RTMP1_URL="$RTMP1_URL"
 
-    # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok)
-    if [ ! -z "$YOUTUBE_KEY" ] && [ -z "$V_YOUTUBE_KEY" ]; then
-        V_YOUTUBE_KEY="$YOUTUBE_KEY"
-        V_YOUTUBE_URL="$YOUTUBE_URL"
-    fi
-    if [ ! -z "$TWITCH_KEY" ] && [ -z "$V_TWITCH_KEY" ]; then
-        V_TWITCH_KEY="$TWITCH_KEY"
-        V_TWITCH_URL="$TWITCH_URL"
-    fi
-    if [ ! -z "$TIKTOK_KEY" ] && [ -z "$V_TIKTOK_KEY" ]; then
-        V_TIKTOK_KEY="$TIKTOK_KEY"
-        V_TIKTOK_URL="$TIKTOK_URL"
-    fi
-
-    # Check if any keys are set
-    ANY_KEY_SET=0
-    for key in "$YOUTUBE_KEY" "$FACEBOOK_KEY" "$INSTAGRAM_KEY" "$TIKTOK_KEY" "$TWITCH_KEY" "$KICK_KEY" "$X_KEY" "$TROVO_KEY" "$RTMP1_KEY" \
-               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY"; do
-        if [ ! -z "$key" ]; then
-            ANY_KEY_SET=1
-            break
+    # Auto-select different servers for vertical if horizontal is the same
+    # For YouTube
+    if [ "$YOUTUBE_URL" == "$V_YOUTUBE_URL" ] && [ ! -z "$YOUTUBE_KEY" ]; then
+        if [[ "$YOUTUBE_URL" == *"127.0.0.1:19355"* ]]; then
+             V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1"
+        elif [[ "$YOUTUBE_URL" == *"x.rtmp.youtube.com"* ]]; then
+             V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1"
+        else
+             V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/"
         fi
-    done
-
-    if [ "$ANY_KEY_SET" -eq 0 ]; then
-        echo -e "${RED}No stream keys (Horizontal or Vertical) have been configured.${NC}"
-        echo -e "${YELLOW}Aborting installation as per configuration rules.${NC}"
-        echo -e "Press Enter to return to menu..."
-        read -r
-        return
+    fi
+    # For Twitch
+    if [ "$TWITCH_URL" == "$V_TWITCH_URL" ] && [ ! -z "$TWITCH_KEY" ]; then
+         # Use a different region or secure port
+         if [[ "$TWITCH_URL" == *"127.0.0.1:19353"* ]]; then
+              V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/"
+         else
+              V_TWITCH_URL="rtmp://127.0.0.1:19353/app/"
+         fi
     fi
 
-    echo -e "${GREEN}Building Docker Image...${NC}"
+    echo -e "${GREEN}Building Docker Image (Debian Trixie)...${NC}"
     docker build -t prism-rtmps .
 
-    echo -e "${GREEN}Stopping any existing container...${NC}"
     docker stop prism-rtmps 2>/dev/null || true
     docker rm prism-rtmps 2>/dev/null || true
 
-    echo -e "${GREEN}Starting container...${NC}"
-    # Start the container
     docker run -d --name prism-rtmps \
-        -p 1935:1935 \
-        -p 8081:8081 \
+        -p 1935:1935 -p 8081:8081 \
         --restart unless-stopped \
-        -e YOUTUBE_URL="$YOUTUBE_URL" \
-        -e YOUTUBE_KEY="$YOUTUBE_KEY" \
-        -e FACEBOOK_URL="$FACEBOOK_URL" \
-        -e FACEBOOK_KEY="$FACEBOOK_KEY" \
-        -e INSTAGRAM_URL="$INSTAGRAM_URL" \
-        -e INSTAGRAM_KEY="$INSTAGRAM_KEY" \
-        -e TIKTOK_URL="$TIKTOK_URL" \
-        -e TIKTOK_KEY="$TIKTOK_KEY" \
-        -e TWITCH_URL="$TWITCH_URL" \
-        -e TWITCH_KEY="$TWITCH_KEY" \
-        -e KICK_URL="$KICK_URL" \
-        -e KICK_KEY="$KICK_KEY" \
-        -e X_URL="$X_URL" \
-        -e X_KEY="$X_KEY" \
-        -e TROVO_URL="$TROVO_URL" \
-        -e TROVO_KEY="$TROVO_KEY" \
-        -e RTMP1_URL="$RTMP1_URL" \
-        -e RTMP1_KEY="$RTMP1_KEY" \
-        -e V_YOUTUBE_URL="$V_YOUTUBE_URL" \
-        -e V_YOUTUBE_KEY="$V_YOUTUBE_KEY" \
-        -e V_TWITCH_URL="$V_TWITCH_URL" \
-        -e V_TWITCH_KEY="$V_TWITCH_KEY" \
-        -e V_KICK_URL="$V_KICK_URL" \
-        -e V_KICK_KEY="$V_KICK_KEY" \
-        -e V_TIKTOK_URL="$V_TIKTOK_URL" \
-        -e V_TIKTOK_KEY="$V_TIKTOK_KEY" \
-        -e V_FACEBOOK_URL="$V_FACEBOOK_URL" \
-        -e V_FACEBOOK_KEY="$V_FACEBOOK_KEY" \
-        -e V_INSTAGRAM_URL="$V_INSTAGRAM_URL" \
-        -e V_INSTAGRAM_KEY="$V_INSTAGRAM_KEY" \
-        -e V_X_URL="$V_X_URL" \
-        -e V_X_KEY="$V_X_KEY" \
-        -e V_TROVO_URL="$V_TROVO_URL" \
-        -e V_TROVO_KEY="$V_TROVO_KEY" \
-        -e V_RTMP1_URL="$V_RTMP1_URL" \
-        -e V_RTMP1_KEY="$V_RTMP1_KEY" \
-        -e OBS_KEY="$OBS_KEY" \
-        -e APP_NAME="$APP_NAME" \
-        -e ACCEPTED_IP="$ACCEPTED_IP" \
-        -e CHUNK_SIZE="$CHUNK_SIZE" \
-        -e STREAM_BASE_TITLE="$STREAM_BASE_TITLE" \
-        -e TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID" \
-        -e TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN" \
-        -e TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID" \
+        -v $(pwd)/data:/app/data \
+        --env-file <(env | grep -E '^(YOUTUBE|TWITCH|KICK|TIKTOK|FACEBOOK|INSTAGRAM|X|TROVO|RTMP1|V_|OBS|APP|ACCEPTED|SERVER|CHUNK|TWITCH_CLIENT|YOUTUBE_CLIENT)') \
         prism-rtmps
-
-    if [ $? -eq 0 ]; then
-        SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
-        DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-        echo -e "${GREEN}Container 'prism-rtmps' is running!${NC}"
-        echo -e "You can stream to: rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
-        echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:1935/vertical"
-        echo -e "Stats available at: http://${DISPLAY_HOST}:8081/stat"
-    else
-        echo -e "${RED}Failed to start container.${NC}"
-    fi
-    echo -e "Press Enter to continue..."
-    read -r
-}
-
-view_logs() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Docker is not installed!${NC}"
-        sleep 2
-        return
-    fi
-
-    echo -e "${YELLOW}Showing logs for prism-rtmps... (Press Ctrl+C to exit log view)${NC}"
-    # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
-    (trap 'exit 0' INT; docker logs -f prism-rtmps)
-
-    while true; do
-        echo -e "\n${GREEN}=== Log Options ===${NC}"
-        echo "1) Return to Main Menu"
-        echo "2) Clear Logs"
-        echo -e "Select an option: \c"
-        read -r log_opt
-
-        case $log_opt in
-            1) break ;;
-            2)
-                echo -e "${YELLOW}Clearing logs...${NC}"
-                # Truncate internal logs
-                docker exec prism-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log' 2>/dev/null || true
-                # Truncate Docker's own log file for the container
-                LOG_PATH=$(docker inspect --format='{{.LogPath}}' prism-rtmps 2>/dev/null)
-                if [ ! -z "$LOG_PATH" ]; then
-                    sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
-                fi
-                echo -e "${GREEN}Logs cleared.${NC}"
-                sleep 1
-                ;;
-            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-        esac
-    done
-}
-
-stop_container() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Docker is not installed!${NC}"
-        sleep 2
-        return
-    fi
-    echo -e "${YELLOW}Stopping container...${NC}"
-    docker stop prism-rtmps 2>/dev/null && echo -e "${GREEN}Container stopped.${NC}" || echo -e "${RED}Container not running.${NC}"
+    
+    echo -e "${GREEN}Server Started!${NC}"
     sleep 2
 }
 
-# Cache Server IP for UI Performance
+install_docker() {
+    if ! command -v docker &> /dev/null; then
+        curl -4 -fsSL https://get.docker.com -o get-docker.sh
+        sudo sh get-docker.sh
+        rm get-docker.sh
+    fi
+}
+
 SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
 
 while true; do
@@ -990,24 +404,21 @@ while true; do
     echo -e "${GREEN}     PrismRTMPS Quick Installer      ${NC}"
     echo -e "${GREEN}=====================================${NC}"
     echo -e "${YELLOW}Quick Reference:${NC}"
-    echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
-    echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
-    echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
-    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:8081/chat.html?twitch=USER&youtube=ID"
+    echo -e "  Horizontal Ingest: rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
+    echo -e "  Vertical Ingest:   rtmp://${DISPLAY_HOST}:1935/vertical"
+    echo -e "  Combined Chat:     http://${DISPLAY_HOST}:8081/chat.html"
     echo "-------------------------------------"
-    echo "1) Install Docker (if not installed)"
+    echo "1) Install Docker"
     echo "2) Configure Stream Keys (Horizontal)"
     echo "3) Configure Stream Keys (Vertical)"
-    echo "4) Configure OBS Setup & Security Key"
-    echo "5) Configure IP Whitelist (Optional)"
-    echo "6) Configure Combined Chat (Optional)"
-        echo "7) Configure Stream Titles & Twitch API (Optional)"
-        echo "8) Configure Domain / Reverse Proxy (Optional)"
-        echo "9) Configure Optimizations (Chunk Size)"
-        echo "10) Build & Start Server"
-        echo "11) Stop Server"
-        echo "12) View Logs"
-        echo "13) Quit"
+    echo "4) Configure OBS Setup"
+    echo "5) Configure Domain / Reverse Proxy (Optional)"
+    echo "6) Build & Start Server"
+    echo "7) Stop Server"
+    echo "8) Configure IP Whitelist (Optional)"
+    echo "9) Configure API / OAuth (Twitch/YouTube)"
+    echo "10) View Logs"
+    echo "11) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1016,15 +427,12 @@ while true; do
         2) configure_keys ;;
         3) configure_vertical_keys ;;
         4) configure_obs ;;
-        5) configure_whitelist ;;
-        6) configure_chat ;;
-        7) configure_titles ;;
-        8) configure_domain ;;
-        9) configure_optimizations ;;
-        10) build_and_run ;;
-        11) stop_container ;;
-        12) view_logs ;;
-        13) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
-        *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
+        5) configure_domain ;;
+        6) build_and_run ;;
+        7) docker stop prism-rtmps ;;
+        8) configure_whitelist ;;
+        9) configure_api ;;
+        10) docker logs -f prism-rtmps ;;
+        11) exit 0 ;;
     esac
 done
