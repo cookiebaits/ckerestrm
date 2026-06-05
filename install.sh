@@ -57,6 +57,9 @@ STREAM_BASE_TITLE="Live Stream"
 TWITCH_CLIENT_ID=""
 TWITCH_OAUTH_TOKEN=""
 TWITCH_BROADCASTER_ID=""
+TWITCH_CLIENT_SECRET=""
+YOUTUBE_CLIENT_ID=""
+YOUTUBE_CLIENT_SECRET=""
 
 # Combined Chat Settings
 CHAT_TWITCH=""
@@ -122,6 +125,9 @@ STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
 TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
 TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
+TWITCH_CLIENT_SECRET="$TWITCH_CLIENT_SECRET"
+YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID"
+YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -688,8 +694,11 @@ configure_titles() {
         echo "2) Twitch Client ID (Current: ${TWITCH_CLIENT_ID:-None})"
         echo "3) Twitch OAuth Token (Current: ${TWITCH_OAUTH_TOKEN:-None})"
         echo "4) Twitch Broadcaster ID (Current: ${TWITCH_BROADCASTER_ID:-None})"
-        echo "5) Reset Episode Count"
-        echo "6) Back to Main Menu"
+        echo "5) Twitch Client Secret (Current: ${TWITCH_CLIENT_SECRET:-None})"
+        echo "6) YouTube Client ID (Current: ${YOUTUBE_CLIENT_ID:-None})"
+        echo "7) YouTube Client Secret (Current: ${YOUTUBE_CLIENT_SECRET:-None})"
+        echo "8) Reset Episode Count"
+        echo "9) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r title_opt
 
@@ -719,12 +728,30 @@ configure_titles() {
                 save_config
                 ;;
             5)
+                echo -e "Enter Twitch Client Secret:"
+                read -r title_input
+                TWITCH_CLIENT_SECRET="$title_input"
+                save_config
+                ;;
+            6)
+                echo -e "Enter YouTube Client ID:"
+                read -r title_input
+                YOUTUBE_CLIENT_ID="$title_input"
+                save_config
+                ;;
+            7)
+                echo -e "Enter YouTube Client Secret:"
+                read -r title_input
+                YOUTUBE_CLIENT_SECRET="$title_input"
+                save_config
+                ;;
+            8)
                 mkdir -p ./data
                 echo "1" > ./data/episode_count.txt
                 echo -e "${GREEN}Episode count reset to 1.${NC}"
                 sleep 1
                 ;;
-            6) break ;;
+            9) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -827,10 +854,16 @@ build_and_run() {
         return
     fi
 
-    # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok)
+    # Auto-fill vertical from horizontal if horizontal is set but vertical is not
     if [ ! -z "$YOUTUBE_KEY" ] && [ -z "$V_YOUTUBE_KEY" ]; then
         V_YOUTUBE_KEY="$YOUTUBE_KEY"
         V_YOUTUBE_URL="$YOUTUBE_URL"
+        # If mirroring YouTube and horizontal is using primary, automatically switch vertical to backup
+        if [ "$YOUTUBE_URL" == "rtmp://x.rtmp.youtube.com/live2/" ]; then
+             V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1"
+        elif [ "$YOUTUBE_URL" == "rtmp://127.0.0.1:19355/live2/" ]; then
+             V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1"
+        fi
     fi
     if [ ! -z "$TWITCH_KEY" ] && [ -z "$V_TWITCH_KEY" ]; then
         V_TWITCH_KEY="$TWITCH_KEY"
@@ -839,6 +872,30 @@ build_and_run() {
     if [ ! -z "$TIKTOK_KEY" ] && [ -z "$V_TIKTOK_KEY" ]; then
         V_TIKTOK_KEY="$TIKTOK_KEY"
         V_TIKTOK_URL="$TIKTOK_URL"
+    fi
+    if [ ! -z "$KICK_KEY" ] && [ -z "$V_KICK_KEY" ]; then
+        V_KICK_KEY="$KICK_KEY"
+        V_KICK_URL="$KICK_URL"
+    fi
+    if [ ! -z "$FACEBOOK_KEY" ] && [ -z "$V_FACEBOOK_KEY" ]; then
+        V_FACEBOOK_KEY="$FACEBOOK_KEY"
+        V_FACEBOOK_URL="$FACEBOOK_URL"
+    fi
+    if [ ! -z "$INSTAGRAM_KEY" ] && [ -z "$V_INSTAGRAM_KEY" ]; then
+        V_INSTAGRAM_KEY="$INSTAGRAM_KEY"
+        V_INSTAGRAM_URL="$INSTAGRAM_URL"
+    fi
+    if [ ! -z "$X_KEY" ] && [ -z "$V_X_KEY" ]; then
+        V_X_KEY="$X_KEY"
+        V_X_URL="$X_URL"
+    fi
+    if [ ! -z "$TROVO_KEY" ] && [ -z "$V_TROVO_KEY" ]; then
+        V_TROVO_KEY="$TROVO_KEY"
+        V_TROVO_URL="$TROVO_URL"
+    fi
+    if [ ! -z "$RTMP1_KEY" ] && [ -z "$V_RTMP1_KEY" ]; then
+        V_RTMP1_KEY="$RTMP1_KEY"
+        V_RTMP1_URL="$RTMP1_URL"
     fi
 
     # Check if any keys are set
@@ -916,6 +973,9 @@ build_and_run() {
         -e TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID" \
         -e TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN" \
         -e TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID" \
+        -e TWITCH_CLIENT_SECRET="$TWITCH_CLIENT_SECRET" \
+        -e YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID" \
+        -e YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
@@ -999,10 +1059,10 @@ while true; do
     echo "2) Configure Stream Keys (Horizontal)"
     echo "3) Configure Stream Keys (Vertical)"
     echo "4) Configure OBS Setup & Security Key"
-    echo "5) Configure IP Whitelist (Optional)"
+    echo "5) Configure Domain / Reverse Proxy (Optional)"
     echo "6) Configure Combined Chat (Optional)"
         echo "7) Configure Stream Titles & Twitch API (Optional)"
-        echo "8) Configure Domain / Reverse Proxy (Optional)"
+        echo "8) Configure IP Whitelist (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
         echo "10) Build & Start Server"
         echo "11) Stop Server"
@@ -1016,10 +1076,10 @@ while true; do
         2) configure_keys ;;
         3) configure_vertical_keys ;;
         4) configure_obs ;;
-        5) configure_whitelist ;;
+        5) configure_domain ;;
         6) configure_chat ;;
         7) configure_titles ;;
-        8) configure_domain ;;
+        8) configure_whitelist ;;
         9) configure_optimizations ;;
         10) build_and_run ;;
         11) stop_container ;;
