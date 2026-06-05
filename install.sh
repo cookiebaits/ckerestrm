@@ -999,10 +999,10 @@ while true; do
     echo "2) Configure Stream Keys (Horizontal)"
     echo "3) Configure Stream Keys (Vertical)"
     echo "4) Configure OBS Setup & Security Key"
-    echo "5) Configure IP Whitelist (Optional)"
+    echo "5) Configure Domain / Reverse Proxy (Optional)"
     echo "6) Configure Combined Chat (Optional)"
         echo "7) Configure Stream Titles & Twitch API (Optional)"
-        echo "8) Configure Domain / Reverse Proxy (Optional)"
+        echo "8) Configure IP Whitelist (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
         echo "10) Build & Start Server"
         echo "11) Stop Server"
@@ -1016,10 +1016,10 @@ while true; do
         2) configure_keys ;;
         3) configure_vertical_keys ;;
         4) configure_obs ;;
-        5) configure_whitelist ;;
+        5) configure_domain ;;
         6) configure_chat ;;
         7) configure_titles ;;
-        8) configure_domain ;;
+        8) configure_whitelist ;;
         9) configure_optimizations ;;
         10) build_and_run ;;
         11) stop_container ;;
