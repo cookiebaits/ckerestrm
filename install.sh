@@ -72,6 +72,7 @@ OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
 OBS_SCENE_LIVE="Full Room"
 OBS_SCENE_BRB="brb"
+OBS_SCENE_INTRO="Intro"
 
 # Combined Chat Settings
 CHAT_TWITCH=""
@@ -150,6 +151,7 @@ OBS_WS_PORT="$OBS_WS_PORT"
 OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
 OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
 OBS_SCENE_BRB="$OBS_SCENE_BRB"
+OBS_SCENE_INTRO="$OBS_SCENE_INTRO"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -839,7 +841,8 @@ configure_belabox() {
         echo "5) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
         echo "6) OBS Live Scene Name (Current: ${OBS_SCENE_LIVE})"
         echo "7) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
-        echo "8) Back to Main Menu"
+        echo "8) OBS Intro Scene Name (Current: ${OBS_SCENE_INTRO})"
+        echo "9) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r bel_opt
 
@@ -892,7 +895,13 @@ configure_belabox() {
                 OBS_SCENE_BRB="${scene_brb:-brb}"
                 save_config
                 ;;
-            8) break ;;
+            8)
+                echo -e "Enter Scene Name for Intro (Default: Intro):"
+                read -r scene_intro
+                OBS_SCENE_INTRO="${scene_intro:-Intro}"
+                save_config
+                ;;
+            9) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -984,6 +993,7 @@ build_and_run() {
     fi
 
     docker run -d --name prism-rtmps \
+        -v "$(pwd)/data:/app/data" \
         -p 1935:1935 \
         -p 8081:8081 \
         $SRT_MAPPING \
@@ -1045,6 +1055,7 @@ build_and_run() {
         -e OBS_WS_PASSWORD="$OBS_WS_PASSWORD" \
         -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
         -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
+        -e OBS_SCENE_INTRO="$OBS_SCENE_INTRO" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then

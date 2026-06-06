@@ -4,6 +4,7 @@ import logging
 from urllib.parse import parse_qs, urlencode
 import threading
 import subprocess
+import time
 from datetime import datetime
 import obsws_python as obs
 from flask_session import Session
@@ -64,6 +65,7 @@ OBS_WS_PORT = int(os.getenv('OBS_WS_PORT', 4455))
 OBS_WS_PASSWORD = os.getenv('OBS_WS_PASSWORD', '')
 OBS_SCENE_LIVE = os.getenv('OBS_SCENE_LIVE', 'Full Room')
 OBS_SCENE_BRB = os.getenv('OBS_SCENE_BRB', 'brb')
+OBS_SCENE_INTRO = os.getenv('OBS_SCENE_INTRO', 'Intro')
 
 # Populate VALID_KEYS
 for key_name, key_value in DESTINATION_KEYS.items():
@@ -101,12 +103,15 @@ def increment_episode_count():
         except Exception as e:
             app.logger.error(f"Error writing episode count: {e}")
 
-def switch_obs_scene(scene_name):
+def switch_obs_scene(scene_name, delay=0):
     if not OBS_WS_HOST:
         return
 
     def _do_switch():
         try:
+            if delay > 0:
+                app.logger.info(f"OBS: Waiting {delay} seconds before switching to '{scene_name}'")
+                time.sleep(delay)
             cl = obs.ReqClient(host=OBS_WS_HOST, port=OBS_WS_PORT, password=OBS_WS_PASSWORD, timeout=3)
             cl.set_current_program_scene(scene_name)
             app.logger.info(f"OBS: Switched to scene '{scene_name}'")
@@ -159,8 +164,11 @@ def validate():
         app.logger.info(f"ACCEPTED stream from {client_ip}")
         # Update titles in background to not block Nginx
         threading.Thread(target=run_update_titles).start()
-        # Switch to Live Scene
-        switch_obs_scene(OBS_SCENE_LIVE)
+
+        # Switch to Intro Scene immediately, then switch to Live Scene after 10 minutes (600s)
+        switch_obs_scene(OBS_SCENE_INTRO)
+        switch_obs_scene(OBS_SCENE_LIVE, delay=600)
+
         return Response('OK', status=200)
     else:
         app.logger.warning(f"REJECTED invalid key from {client_ip}")
