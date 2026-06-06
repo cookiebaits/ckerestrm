@@ -57,6 +57,12 @@ STREAM_BASE_TITLE="Live Stream"
 TWITCH_CLIENT_ID=""
 TWITCH_OAUTH_TOKEN=""
 TWITCH_BROADCASTER_ID=""
+TWITCH_CLIENT_SECRET=""
+TWITCH_REDIRECT_URI=""
+YOUTUBE_CLIENT_ID=""
+YOUTUBE_CLIENT_SECRET=""
+YOUTUBE_REDIRECT_URI=""
+SECRET_KEY=$(openssl rand -hex 24)
 
 # Belabox & OBS Scene Switcher Settings
 SRT_PORT=""
@@ -66,6 +72,7 @@ OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
 OBS_SCENE_LIVE="Full Room"
 OBS_SCENE_BRB="brb"
+OBS_SCENE_INTRO="Intro"
 
 # Combined Chat Settings
 CHAT_TWITCH=""
@@ -131,6 +138,12 @@ STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
 TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
 TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
+TWITCH_CLIENT_SECRET="$TWITCH_CLIENT_SECRET"
+TWITCH_REDIRECT_URI="$TWITCH_REDIRECT_URI"
+YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID"
+YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET"
+YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI"
+SECRET_KEY="$SECRET_KEY"
 SRT_PORT="$SRT_PORT"
 SRT_PASSPHRASE="$SRT_PASSPHRASE"
 OBS_WS_HOST="$OBS_WS_HOST"
@@ -138,6 +151,7 @@ OBS_WS_PORT="$OBS_WS_PORT"
 OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
 OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
 OBS_SCENE_BRB="$OBS_SCENE_BRB"
+OBS_SCENE_INTRO="$OBS_SCENE_INTRO"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -749,57 +763,68 @@ configure_titles() {
 configure_chat() {
     while true; do
         clear
-        echo -e "${GREEN}=== Combined Chat Configuration ===${NC}"
-        echo "Enter Channel Names/IDs for browser source embeds:"
-        echo ""
-        echo "1) Twitch Channel (Current: ${CHAT_TWITCH:-None})"
-        echo "2) YouTube Video ID (Current: ${CHAT_YOUTUBE:-None})"
-        echo "3) Kick Channel (Current: ${CHAT_KICK:-None})"
-        echo "4) TikTok Channel (Current: ${CHAT_TIKTOK:-None})"
-        echo "5) Show Browser Source URL"
-        echo "6) Back to Main Menu"
+        echo -e "${GREEN}=== Combined Chat & Control Configuration ===${NC}"
+        echo "1) Twitch Client ID (Current: ${TWITCH_CLIENT_ID:-None})"
+        echo "2) Twitch Client Secret (Current: ${TWITCH_CLIENT_SECRET:+********})"
+        echo "3) Twitch Redirect URI (Current: ${TWITCH_REDIRECT_URI:-None})"
+        echo "4) YouTube Client ID (Current: ${YOUTUBE_CLIENT_ID:-None})"
+        echo "5) YouTube Client Secret (Current: ${YOUTUBE_CLIENT_SECRET:+********})"
+        echo "6) YouTube Redirect URI (Current: ${YOUTUBE_REDIRECT_URI:-None})"
+        echo "7) Show Dashboard URL"
+        echo "8) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r chat_opt
 
         case $chat_opt in
             1)
-                echo -e "Enter Twitch Channel Name:"
+                echo -e "Enter Twitch Client ID:"
                 read -r chat_input
-                CHAT_TWITCH="$chat_input"
+                TWITCH_CLIENT_ID="$chat_input"
                 save_config
                 ;;
             2)
-                echo -e "Enter YouTube Video ID (from URL v=XXXX):"
+                echo -e "Enter Twitch Client Secret:"
                 read -r chat_input
-                CHAT_YOUTUBE="$chat_input"
+                TWITCH_CLIENT_SECRET="$chat_input"
                 save_config
                 ;;
             3)
-                echo -e "Enter Kick Channel Name:"
+                SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
+                DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
+                echo -e "Enter Twitch Redirect URI (Default: http://${DISPLAY_HOST}:8081/callback/twitch):"
                 read -r chat_input
-                CHAT_KICK="$chat_input"
+                TWITCH_REDIRECT_URI="${chat_input:-http://${DISPLAY_HOST}:8081/callback/twitch}"
                 save_config
                 ;;
             4)
-                echo -e "Enter TikTok Username (without @):"
+                echo -e "Enter YouTube Client ID:"
                 read -r chat_input
-                CHAT_TIKTOK="$chat_input"
+                YOUTUBE_CLIENT_ID="$chat_input"
                 save_config
                 ;;
             5)
+                echo -e "Enter YouTube Client Secret:"
+                read -r chat_input
+                YOUTUBE_CLIENT_SECRET="$chat_input"
+                save_config
+                ;;
+            6)
                 SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
                 DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-                CHAT_URL="http://${DISPLAY_HOST}:8081/chat.html?"
-                if [ ! -z "$CHAT_TWITCH" ]; then CHAT_URL="${CHAT_URL}twitch=${CHAT_TWITCH}&"; fi
-                if [ ! -z "$CHAT_YOUTUBE" ]; then CHAT_URL="${CHAT_URL}youtube=${CHAT_YOUTUBE}&"; fi
-                if [ ! -z "$CHAT_KICK" ]; then CHAT_URL="${CHAT_URL}kick=${CHAT_KICK}&"; fi
-                if [ ! -z "$CHAT_TIKTOK" ]; then CHAT_URL="${CHAT_URL}tiktok=${CHAT_TIKTOK}&"; fi
-                echo -e "\n${YELLOW}OBS Browser Source URL:${NC}"
-                echo -e "${GREEN}${CHAT_URL%&}${NC}"
+                echo -e "Enter YouTube Redirect URI (Default: http://${DISPLAY_HOST}:8081/callback/youtube):"
+                read -r chat_input
+                YOUTUBE_REDIRECT_URI="${chat_input:-http://${DISPLAY_HOST}:8081/callback/youtube}"
+                save_config
+                ;;
+            7)
+                SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
+                DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
+                echo -e "\n${YELLOW}Control Dashboard URL:${NC}"
+                echo -e "${GREEN}http://${DISPLAY_HOST}:8081/chat.html${NC}"
                 echo -e "\nPress Enter to continue..."
                 read -r
                 ;;
-            6) break ;;
+            8) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -816,7 +841,8 @@ configure_belabox() {
         echo "5) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
         echo "6) OBS Live Scene Name (Current: ${OBS_SCENE_LIVE})"
         echo "7) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
-        echo "8) Back to Main Menu"
+        echo "8) OBS Intro Scene Name (Current: ${OBS_SCENE_INTRO})"
+        echo "9) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r bel_opt
 
@@ -869,7 +895,13 @@ configure_belabox() {
                 OBS_SCENE_BRB="${scene_brb:-brb}"
                 save_config
                 ;;
-            8) break ;;
+            8)
+                echo -e "Enter Scene Name for Intro (Default: Intro):"
+                read -r scene_intro
+                OBS_SCENE_INTRO="${scene_intro:-Intro}"
+                save_config
+                ;;
+            9) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -961,6 +993,7 @@ build_and_run() {
     fi
 
     docker run -d --name prism-rtmps \
+        -v "$(pwd)/data:/app/data" \
         -p 1935:1935 \
         -p 8081:8081 \
         $SRT_MAPPING \
@@ -1009,6 +1042,12 @@ build_and_run() {
         -e TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID" \
         -e TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN" \
         -e TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID" \
+        -e TWITCH_CLIENT_SECRET="$TWITCH_CLIENT_SECRET" \
+        -e TWITCH_REDIRECT_URI="$TWITCH_REDIRECT_URI" \
+        -e YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID" \
+        -e YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET" \
+        -e YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI" \
+        -e SECRET_KEY="$SECRET_KEY" \
         -e SRT_PORT="$SRT_PORT" \
         -e SRT_PASSPHRASE="$SRT_PASSPHRASE" \
         -e OBS_WS_HOST="$OBS_WS_HOST" \
@@ -1016,6 +1055,7 @@ build_and_run() {
         -e OBS_WS_PASSWORD="$OBS_WS_PASSWORD" \
         -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
         -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
+        -e OBS_SCENE_INTRO="$OBS_SCENE_INTRO" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
