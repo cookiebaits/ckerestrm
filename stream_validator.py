@@ -1,13 +1,24 @@
-from flask import Flask, request, Response
+from flask import Flask, request, Response, redirect, url_for, session, jsonify
 import os
 import logging
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 import threading
 import subprocess
 from datetime import datetime
 import obsws_python as obs
+from flask_session import Session
+import requests
+import google_auth_oauthlib.flow
+from googleapiclient.discovery import build
 
 app = Flask(__name__)
+
+# Session configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24))
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = '/app/data/sessions'
+os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+Session(app)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -37,6 +48,15 @@ for i in ['YOUTUBE', 'TWITCH', 'TIKTOK', 'KICK', 'FACEBOOK', 'INSTAGRAM', 'X', '
 ACCEPTED_IP = os.getenv('ACCEPTED_IP', '')
 EPISODE_FILE = '/app/data/episode_count.txt'
 TITLE_LOCK = threading.Lock()
+
+# OAuth Configuration
+TWITCH_CLIENT_ID = os.getenv('TWITCH_CLIENT_ID', '')
+TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET', '')
+TWITCH_REDIRECT_URI = os.getenv('TWITCH_REDIRECT_URI', '')
+
+YOUTUBE_CLIENT_ID = os.getenv('YOUTUBE_CLIENT_ID', '')
+YOUTUBE_CLIENT_SECRET = os.getenv('YOUTUBE_CLIENT_SECRET', '')
+YOUTUBE_REDIRECT_URI = os.getenv('YOUTUBE_REDIRECT_URI', '')
 
 # OBS WebSocket Configuration
 OBS_WS_HOST = os.getenv('OBS_WS_HOST', '')
@@ -157,6 +177,122 @@ def publish_done():
         # Switch to BRB Scene
         switch_obs_scene(OBS_SCENE_BRB)
     return Response('OK', status=200)
+
+# --- OAuth Routes ---
+
+@app.route('/login/twitch')
+def login_twitch():
+    if not TWITCH_CLIENT_ID:
+        return "Twitch Client ID not configured", 400
+    params = {
+        'client_id': TWITCH_CLIENT_ID,
+        'redirect_uri': TWITCH_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': 'channel:manage:broadcast chat:read chat:edit'
+    }
+    return redirect(f"https://id.twitch.tv/oauth2/authorize?{urlencode(params)}")
+
+@app.route('/callback/twitch')
+def callback_twitch():
+    code = request.args.get('code')
+    data = {
+        'client_id': TWITCH_CLIENT_ID,
+        'client_secret': TWITCH_CLIENT_SECRET,
+        'code': code,
+        'grant_type': 'authorization_code',
+        'redirect_uri': TWITCH_REDIRECT_URI
+    }
+    r = requests.post("https://id.twitch.tv/oauth2/token", data=data)
+    res = r.json()
+    session['twitch_token'] = res.get('access_token')
+
+    # Get user info
+    headers = {'Authorization': f"Bearer {session['twitch_token']}", 'Client-Id': TWITCH_CLIENT_ID}
+    u = requests.get("https://api.twitch.tv/helix/users", headers=headers)
+    user_data = u.json()
+    if 'data' in user_data and len(user_data['data']) > 0:
+        session['twitch_user'] = user_data['data'][0]['display_name']
+        session['twitch_id'] = user_data['data'][0]['id']
+
+    return redirect('/chat.html')
+
+@app.route('/login/youtube')
+def login_youtube():
+    if not YOUTUBE_CLIENT_ID:
+        return "YouTube Client ID not configured", 400
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(
+        {
+            "web": {
+                "client_id": YOUTUBE_CLIENT_ID,
+                "client_secret": YOUTUBE_CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [YOUTUBE_REDIRECT_URI]
+            }
+        },
+        scopes=['https://www.googleapis.com/auth/youtube.force-ssl']
+    )
+    flow.redirect_uri = YOUTUBE_REDIRECT_URI
+    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+    session['google_state'] = state
+    return redirect(authorization_url)
+
+@app.route('/callback/youtube')
+def callback_youtube():
+    flow = google_auth_oauthlib.flow.Flow.from_client_config(
+        {
+            "web": {
+                "client_id": YOUTUBE_CLIENT_ID,
+                "client_secret": YOUTUBE_CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [YOUTUBE_REDIRECT_URI]
+            }
+        },
+        scopes=['https://www.googleapis.com/auth/youtube.force-ssl'],
+        state=session['google_state']
+    )
+    flow.redirect_uri = YOUTUBE_REDIRECT_URI
+    flow.fetch_token(authorization_response=request.url)
+    credentials = flow.credentials
+    session['youtube_token'] = credentials.token
+
+    youtube = build('youtube', 'v3', credentials=credentials)
+    r = youtube.channels().list(mine=True, part='snippet').execute()
+    if 'items' in r:
+        session['youtube_user'] = r['items'][0]['snippet']['title']
+
+    return redirect('/chat.html')
+
+@app.route('/api/status')
+def api_status():
+    return jsonify({
+        'twitch': session.get('twitch_user'),
+        'youtube': session.get('youtube_user')
+    })
+
+@app.route('/api/update_title', methods=['POST'])
+def api_update_title():
+    data = request.json
+    title = data.get('title')
+    results = {}
+
+    if 'twitch_token' in session:
+        headers = {
+            'Client-Id': TWITCH_CLIENT_ID,
+            'Authorization': f"Bearer {session['twitch_token']}",
+            'Content-Type': 'application/json'
+        }
+        url = f"https://api.twitch.tv/helix/channels?broadcaster_id={session['twitch_id']}"
+        r = requests.patch(url, headers=headers, json={"title": title})
+        results['twitch'] = r.status_code == 204
+
+    if 'youtube_token' in session:
+        # Simplified: updating title requires finding the live broadcast ID first
+        # This is a placeholder for actual YouTube API title update logic
+        results['youtube'] = "Update not implemented yet"
+
+    return jsonify(results)
 
 @app.route('/health', methods=['GET'])
 def health_check():
