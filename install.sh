@@ -1132,8 +1132,11 @@ while true; do
     echo -e "${YELLOW}Quick Reference:${NC}"
     echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
     echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
+    if [ ! -z "$SRT_PORT" ]; then
+        echo -e "  SRT Ingest:      srt://${DISPLAY_HOST}:${SRT_PORT}?mode=caller${SRT_PASSPHRASE:+\&passphrase=}${SRT_PASSPHRASE}"
+    fi
     echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
-    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:8081/chat.html?twitch=USER&youtube=ID"
+    echo -e "  Control Dashboard: http://${DISPLAY_HOST}:8081/chat.html"
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"

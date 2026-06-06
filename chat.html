@@ -75,9 +75,12 @@
             if (status.youtube) {
                 document.getElementById('youtube-status').innerText = `YouTube: ${status.youtube}`;
                 document.getElementById('youtube-status').className = 'status-badge status-online';
-                // Note: YouTube chat embed requires Video ID which we don't have from just the user profile.
-                // This is a placeholder. In a real scenario, you'd fetch the active broadcast.
-                addChatColumn('youtube', 'about:blank', 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg');
+
+                if (status.youtube_video_id) {
+                    addChatColumn('youtube', `https://www.youtube.com/live_chat?v=${status.youtube_video_id}&embed_domain=${window.location.hostname || 'localhost'}`, 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg');
+                } else {
+                    addChatColumn('youtube', 'about:blank', 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg');
+                }
             }
         }
 
