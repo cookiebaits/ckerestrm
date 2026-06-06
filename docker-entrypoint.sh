@@ -139,5 +139,24 @@ echo "Starting Stunnel..."
 # Start stunnel in the background
 stunnel4 /etc/stunnel/stunnel.conf
 
+# --- SRT Ingest Support ---
+if [ -n "$SRT_PORT" ]; then
+    echo "Starting SRT relay on port $SRT_PORT..."
+    # Relay SRT to local RTMP. We use OBS_KEY for the stream name.
+    # srt-live-transmit srt://:SRT_PORT rtmp://127.0.0.1:1935/${APP_NAME}/${OBS_KEY}
+    # We run it in a loop to ensure it restarts if it crashes
+    (
+        while true; do
+            SRT_OPTIONS="?mode=listener&port=${SRT_PORT}"
+            if [ -n "$SRT_PASSPHRASE" ]; then
+                SRT_OPTIONS="${SRT_OPTIONS}&passphrase=${SRT_PASSPHRASE}&pbkeylen=32"
+            fi
+            srt-live-transmit "srt://:${SRT_OPTIONS}" "rtmp://127.0.0.1:1935/${APP_NAME}/${OBS_KEY}"
+            echo "SRT relay crashed/stopped, restarting in 2 seconds..."
+            sleep 2
+        done
+    ) &
+fi
+
 echo "Starting Nginx..."
 exec "$@" # Execute the CMD from Dockerfile (nginx -g 'daemon off;')

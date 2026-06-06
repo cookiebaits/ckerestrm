@@ -58,6 +58,15 @@ TWITCH_CLIENT_ID=""
 TWITCH_OAUTH_TOKEN=""
 TWITCH_BROADCASTER_ID=""
 
+# Belabox & OBS Scene Switcher Settings
+SRT_PORT=""
+SRT_PASSPHRASE=""
+OBS_WS_HOST=""
+OBS_WS_PORT="4455"
+OBS_WS_PASSWORD=""
+OBS_SCENE_LIVE="Full Room"
+OBS_SCENE_BRB="brb"
+
 # Combined Chat Settings
 CHAT_TWITCH=""
 CHAT_YOUTUBE=""
@@ -122,6 +131,13 @@ STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
 TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
 TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
+SRT_PORT="$SRT_PORT"
+SRT_PASSPHRASE="$SRT_PASSPHRASE"
+OBS_WS_HOST="$OBS_WS_HOST"
+OBS_WS_PORT="$OBS_WS_PORT"
+OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
+OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
+OBS_SCENE_BRB="$OBS_SCENE_BRB"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -789,6 +805,76 @@ configure_chat() {
     done
 }
 
+configure_belabox() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== Belabox (SRT) & OBS Scene Switcher ===${NC}"
+        echo "1) SRT Ingest Port (Current: ${SRT_PORT:-Disabled})"
+        echo "2) SRT Passphrase (Current: ${SRT_PASSPHRASE:+********})"
+        echo "3) OBS WebSocket Host (Current: ${OBS_WS_HOST:-None})"
+        echo "4) OBS WebSocket Port (Current: ${OBS_WS_PORT})"
+        echo "5) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
+        echo "6) OBS Live Scene Name (Current: ${OBS_SCENE_LIVE})"
+        echo "7) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
+        echo "8) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r bel_opt
+
+        case $bel_opt in
+            1)
+                echo -e "Enter SRT Port (e.g. 2000, leave blank to disable):"
+                read -r srt_input
+                # Basic validation: numeric or empty
+                if [[ "$srt_input" =~ ^[0-9]*$ ]]; then
+                    SRT_PORT="$srt_input"
+                    save_config
+                else
+                    echo -e "${RED}Invalid port. Must be numeric.${NC}"
+                    sleep 1
+                fi
+                ;;
+            2)
+                echo -e "Enter SRT Passphrase (leave blank to disable):"
+                read -r srt_pass
+                SRT_PASSPHRASE="$srt_pass"
+                save_config
+                ;;
+            3)
+                echo -e "Enter OBS WebSocket Host (IP of your OBS PC):"
+                read -r ws_host
+                OBS_WS_HOST="$ws_host"
+                save_config
+                ;;
+            4)
+                echo -e "Enter OBS WebSocket Port (Default 4455):"
+                read -r ws_port
+                OBS_WS_PORT="${ws_port:-4455}"
+                save_config
+                ;;
+            5)
+                echo -e "Enter OBS WebSocket Password:"
+                read -r ws_pass
+                OBS_WS_PASSWORD="$ws_pass"
+                save_config
+                ;;
+            6)
+                echo -e "Enter Scene Name for Live (Default: Full Room):"
+                read -r scene_live
+                OBS_SCENE_LIVE="${scene_live:-Full Room}"
+                save_config
+                ;;
+            7)
+                echo -e "Enter Scene Name for BRB (Default: brb):"
+                read -r scene_brb
+                OBS_SCENE_BRB="${scene_brb:-brb}"
+                save_config
+                ;;
+            8) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
+
 configure_optimizations() {
     clear
     echo -e "${GREEN}=== Optimizations ===${NC}"
@@ -868,9 +954,16 @@ build_and_run() {
 
     echo -e "${GREEN}Starting container...${NC}"
     # Start the container
+    # Determine SRT Port Mapping
+    SRT_MAPPING=""
+    if [ ! -z "$SRT_PORT" ]; then
+        SRT_MAPPING="-p ${SRT_PORT}:${SRT_PORT}/udp"
+    fi
+
     docker run -d --name prism-rtmps \
         -p 1935:1935 \
         -p 8081:8081 \
+        $SRT_MAPPING \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
@@ -916,6 +1009,13 @@ build_and_run() {
         -e TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID" \
         -e TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN" \
         -e TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID" \
+        -e SRT_PORT="$SRT_PORT" \
+        -e SRT_PASSPHRASE="$SRT_PASSPHRASE" \
+        -e OBS_WS_HOST="$OBS_WS_HOST" \
+        -e OBS_WS_PORT="$OBS_WS_PORT" \
+        -e OBS_WS_PASSWORD="$OBS_WS_PASSWORD" \
+        -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
+        -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
@@ -1004,10 +1104,11 @@ while true; do
         echo "7) Configure Stream Titles & Twitch API (Optional)"
         echo "8) Configure IP Whitelist (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
-        echo "10) Build & Start Server"
-        echo "11) Stop Server"
-        echo "12) View Logs"
-        echo "13) Quit"
+    echo "10) Configure Belabox & OBS Switcher (Optional)"
+    echo "11) Build & Start Server"
+    echo "12) Stop Server"
+    echo "13) View Logs"
+    echo "14) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1021,10 +1122,11 @@ while true; do
         7) configure_titles ;;
         8) configure_whitelist ;;
         9) configure_optimizations ;;
-        10) build_and_run ;;
-        11) stop_container ;;
-        12) view_logs ;;
-        13) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        10) configure_belabox ;;
+        11) build_and_run ;;
+        12) stop_container ;;
+        13) view_logs ;;
+        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
