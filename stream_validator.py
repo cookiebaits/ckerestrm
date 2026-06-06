@@ -5,6 +5,7 @@ from urllib.parse import parse_qs
 import threading
 import subprocess
 from datetime import datetime
+import obsws_python as obs
 
 app = Flask(__name__)
 logging.basicConfig(
@@ -36,6 +37,13 @@ for i in ['YOUTUBE', 'TWITCH', 'TIKTOK', 'KICK', 'FACEBOOK', 'INSTAGRAM', 'X', '
 ACCEPTED_IP = os.getenv('ACCEPTED_IP', '')
 EPISODE_FILE = '/app/data/episode_count.txt'
 TITLE_LOCK = threading.Lock()
+
+# OBS WebSocket Configuration
+OBS_WS_HOST = os.getenv('OBS_WS_HOST', '')
+OBS_WS_PORT = int(os.getenv('OBS_WS_PORT', 4455))
+OBS_WS_PASSWORD = os.getenv('OBS_WS_PASSWORD', '')
+OBS_SCENE_LIVE = os.getenv('OBS_SCENE_LIVE', 'Full Room')
+OBS_SCENE_BRB = os.getenv('OBS_SCENE_BRB', 'brb')
 
 # Populate VALID_KEYS
 for key_name, key_value in DESTINATION_KEYS.items():
@@ -72,6 +80,20 @@ def increment_episode_count():
                 f.write(str(count + 1))
         except Exception as e:
             app.logger.error(f"Error writing episode count: {e}")
+
+def switch_obs_scene(scene_name):
+    if not OBS_WS_HOST:
+        return
+
+    def _do_switch():
+        try:
+            cl = obs.ReqClient(host=OBS_WS_HOST, port=OBS_WS_PORT, password=OBS_WS_PASSWORD, timeout=3)
+            cl.set_current_program_scene(scene_name)
+            app.logger.info(f"OBS: Switched to scene '{scene_name}'")
+        except Exception as e:
+            app.logger.error(f"OBS WebSocket Error: {e}")
+
+    threading.Thread(target=_do_switch).start()
 
 def run_update_titles():
     # Only run if Twitch credentials exist
@@ -117,6 +139,8 @@ def validate():
         app.logger.info(f"ACCEPTED stream from {client_ip}")
         # Update titles in background to not block Nginx
         threading.Thread(target=run_update_titles).start()
+        # Switch to Live Scene
+        switch_obs_scene(OBS_SCENE_LIVE)
         return Response('OK', status=200)
     else:
         app.logger.warning(f"REJECTED invalid key from {client_ip}")
@@ -130,6 +154,8 @@ def publish_done():
         # Increment episode count when horizontal stream finishes
         increment_episode_count()
         app.logger.info("Horizontal stream finished. Episode count incremented.")
+        # Switch to BRB Scene
+        switch_obs_scene(OBS_SCENE_BRB)
     return Response('OK', status=200)
 
 @app.route('/health', methods=['GET'])
