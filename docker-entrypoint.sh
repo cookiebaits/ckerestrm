@@ -136,14 +136,12 @@ add_push "V-X"         "V_X_KEY"         "V_X_URL"         "v_x"
 add_push "V-Trovo"     "V_TROVO_KEY"     "V_TROVO_URL"     "v_trovo"
 add_push "V-RTMP1"     "V_RTMP1_KEY"     "V_RTMP1_URL"     "v_rtmp1"
 
-# TikTok Dynamic Key Relay
+# TikTok Dynamic Key Relay (Vertical Only)
 if [ -n "$TIKTOK_SL_TOKEN" ]; then
-    echo "TikTok Dynamic Key Relay activated."
-    sed -i "s|#tiktok_dyn|push rtmp://127.0.0.1:1935/tiktok_relay/live;|g" $TMP_TEMPLATE
+    echo "TikTok Dynamic Key Relay (Vertical) activated."
     sed -i "s|#v_tiktok_dyn|push rtmp://127.0.0.1:1935/tiktok_relay/vertical;|g" $TMP_TEMPLATE
     ENV_OK=1
 else
-    sed -i "s|#tiktok_dyn||g" $TMP_TEMPLATE
     sed -i "s|#v_tiktok_dyn||g" $TMP_TEMPLATE
 fi
 

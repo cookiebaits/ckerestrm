@@ -845,7 +845,8 @@ configure_tiktok_dynamic() {
         clear
         echo -e "${GREEN}=== TikTok Dynamic Key Configuration (Streamlabs) ===${NC}"
         echo -e "${YELLOW}This allows PrismRTMPS to automatically generate a new TikTok stream key each time you go live.${NC}"
-        echo -e "${YELLOW}Note: If enabled, this will override manual TikTok stream key settings.${NC}"
+        echo -e "${YELLOW}Note: Dynamic keys are applied to the VERTICAL stream only.${NC}"
+        echo -e "${YELLOW}If enabled, this will override manual TikTok stream key settings.${NC}"
         echo ""
         echo "1) Streamlabs TikTok Token (Current: ${TIKTOK_SL_TOKEN:+********})"
         echo "2) Stream Title (Current: $TIKTOK_TITLE)"
