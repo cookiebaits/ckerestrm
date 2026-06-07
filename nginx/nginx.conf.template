@@ -116,6 +116,7 @@ rtmp {
             #facebook
             #instagram
             #tiktok
+            #tiktok_dyn
             #kick
             #x
             #twitch
@@ -130,9 +131,16 @@ rtmp {
             #v_facebook
             #v_instagram
             #v_tiktok
+            #v_tiktok_dyn
             #v_kick
             #v_x
             #v_twitch
+        }
+
+        application tiktok_relay {
+            live on;
+            record off;
+            exec_push python3 /app/tiktok_pusher.py rtmp://127.0.0.1:1935/tiktok_relay/$name;
         }
     }
 }

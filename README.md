@@ -34,6 +34,7 @@ This fork also includes performance tuning (optimized `chunk_size`), updated cor
 *   **Nginx 1.30.2 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
 *   **Belabox (SRT) Integration:** Secure, high-quality, low-latency mobile streaming support via SRT with automatic OBS scene switching.
 *   **Unified Control Dashboard:** Integrated OAuth-powered dashboard for combined Twitch/YouTube chat and synchronized title management.
+*   **TikTok Dynamic Stream Key:** Integration with Streamlabs TikTok API to automatically generate and rotate TikTok stream keys each time you go live.
 
 ## Prequisites
 
@@ -91,6 +92,27 @@ PrismRTMPS now supports **Belabox** (via SRT) for high-reliability mobile stream
 *   **Auto-Start:** When you start your SRT stream, OBS will automatically switch to your **"Intro"** scene.
 *   **Timed Transition:** After **10 minutes**, the system autonomously transitions OBS to your **"Full Room"** scene.
 *   **Disconnection Protection:** If the stream drops, OBS immediately switches to the **"brb"** scene.
+
+## TikTok Dynamic Key Setup
+
+PrismRTMPS can automatically manage your TikTok Live sessions, generating a new URL and Key every time you start your stream.
+
+### 1. Obtain Streamlabs TikTok Token
+*   Install Streamlabs Desktop and log in with your TikTok account.
+*   Navigate to Settings -> Advanced -> API Token (or use a token retriever).
+
+### 2. Configure in `install.sh`
+*   Go to **"Configure TikTok Dynamic Key"**.
+*   Enter your **Streamlabs Token**.
+*   Search and select your **Game Category** (e.g., Minecraft, Just Chatting).
+*   Set your default **Stream Title**.
+
+### 3. Usage
+*   When you start streaming from OBS to PrismRTMPS, the system will automatically:
+    1. Call the Streamlabs API to start a new TikTok Live session.
+    2. Retrieve the fresh RTMP URL and Key.
+    3. Relay your stream to TikTok.
+    4. Automatically end the TikTok Live session when you stop streaming in OBS.
 
 ## How To Manage PrismRTMPS
 
