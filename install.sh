@@ -64,6 +64,12 @@ YOUTUBE_CLIENT_SECRET=""
 YOUTUBE_REDIRECT_URI=""
 SECRET_KEY=$(openssl rand -hex 24)
 
+# TikTok Dynamic Settings
+TIKTOK_SL_TOKEN=""
+TIKTOK_TITLE="Live Stream"
+TIKTOK_GAME_NAME="Other"
+TIKTOK_GAME_ID=""
+
 # Belabox & OBS Scene Switcher Settings
 SRT_PORT=""
 SRT_PASSPHRASE=""
@@ -152,6 +158,10 @@ OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
 OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
 OBS_SCENE_BRB="$OBS_SCENE_BRB"
 OBS_SCENE_INTRO="$OBS_SCENE_INTRO"
+TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN"
+TIKTOK_TITLE="$TIKTOK_TITLE"
+TIKTOK_GAME_NAME="$TIKTOK_GAME_NAME"
+TIKTOK_GAME_ID="$TIKTOK_GAME_ID"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -830,6 +840,92 @@ configure_chat() {
     done
 }
 
+configure_tiktok_dynamic() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== TikTok Dynamic Key Configuration (Streamlabs) ===${NC}"
+        echo -e "${YELLOW}This allows PrismRTMPS to automatically generate a new TikTok stream key each time you go live.${NC}"
+        echo ""
+        echo "1) Streamlabs TikTok Token (Current: ${TIKTOK_SL_TOKEN:+********})"
+        echo "2) Stream Title (Current: $TIKTOK_TITLE)"
+        echo "3) Game Category (Current: $TIKTOK_GAME_NAME)"
+        echo "4) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r tt_dyn_opt
+
+        case $tt_dyn_opt in
+            1)
+                echo -e "Enter Streamlabs TikTok API Token:"
+                read -r token_input
+                TIKTOK_SL_TOKEN="$token_input"
+                save_config
+                ;;
+            2)
+                echo -e "Enter Stream Title:"
+                read -r title_input
+                TIKTOK_TITLE="$title_input"
+                save_config
+                ;;
+            3)
+                if [ -z "$TIKTOK_SL_TOKEN" ]; then
+                    echo -e "${RED}Error: Set Streamlabs Token first!${NC}"
+                    sleep 2
+                    continue
+                fi
+                echo -e "Enter Game Name to search (e.g. 'Just Chatting', 'Minecraft'):"
+                read -r search_query
+                echo "Searching..."
+                # Run search using a temporary python check
+                SEARCH_RESULTS=$(TIKTOK_TOKEN="$TIKTOK_SL_TOKEN" SEARCH_QUERY="$search_query" python3 -c "
+import requests, os
+token = os.getenv('TIKTOK_TOKEN')
+query = os.getenv('SEARCH_QUERY', '')[:25]
+s = requests.session()
+s.headers.update({'user-agent': 'Mozilla/5.0', 'authorization': f'Bearer {token}'})
+try:
+    r = s.get(f'https://streamlabs.com/api/v5/slobs/tiktok/info?category={query}').json()
+    for c in r.get('categories', []):
+        print(f\"{c['game_mask_id']}|{c['full_name']}\")
+except:
+    pass
+" 2>/dev/null)
+                
+                if [ -z "$SEARCH_RESULTS" ]; then
+                    echo -e "${RED}No categories found.${NC}"
+                    sleep 2
+                else
+                    echo -e "\n${YELLOW}Search Results:${NC}"
+                    IFS=$'\n'
+                    count=1
+                    declare -a ids
+                    declare -a names
+                    for line in $SEARCH_RESULTS; do
+                        id=$(echo "$line" | cut -d'|' -f1)
+                        name=$(echo "$line" | cut -d'|' -f2)
+                        ids[$count]=$id
+                        names[$count]=$name
+                        echo "$count) $name"
+                        ((count++))
+                    done
+                    echo -e "Select a category number: \c"
+                    read -r cat_choice
+                    if [[ "$cat_choice" =~ ^[0-9]+$ ]] && [ "$cat_choice" -lt "$count" ]; then
+                        TIKTOK_GAME_ID="${ids[$cat_choice]}"
+                        TIKTOK_GAME_NAME="${names[$cat_choice]}"
+                        echo -e "${GREEN}Selected: $TIKTOK_GAME_NAME${NC}"
+                        save_config
+                    else
+                        echo -e "${RED}Invalid selection.${NC}"
+                    fi
+                    sleep 2
+                fi
+                ;;
+            4) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
+
 configure_belabox() {
     while true; do
         clear
@@ -1056,6 +1152,9 @@ build_and_run() {
         -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
         -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
         -e OBS_SCENE_INTRO="$OBS_SCENE_INTRO" \
+        -e TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN" \
+        -e TIKTOK_TITLE="$TIKTOK_TITLE" \
+        -e TIKTOK_GAME_ID="$TIKTOK_GAME_ID" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
@@ -1132,8 +1231,11 @@ while true; do
     echo -e "${YELLOW}Quick Reference:${NC}"
     echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
     echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
+    if [ ! -z "$SRT_PORT" ]; then
+        echo -e "  SRT Ingest:      srt://${DISPLAY_HOST}:${SRT_PORT}?mode=caller${SRT_PASSPHRASE:+\&passphrase=}${SRT_PASSPHRASE}"
+    fi
     echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
-    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:8081/chat.html?twitch=USER&youtube=ID"
+    echo -e "  Control Dashboard: http://${DISPLAY_HOST}:8081/chat.html"
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"
@@ -1145,10 +1247,11 @@ while true; do
         echo "8) Configure IP Whitelist (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
     echo "10) Configure Belabox & OBS Switcher (Optional)"
-    echo "11) Build & Start Server"
-    echo "12) Stop Server"
-    echo "13) View Logs"
-    echo "14) Quit"
+    echo "11) Configure TikTok Dynamic Key (Optional)"
+    echo "12) Build & Start Server"
+    echo "13) Stop Server"
+    echo "14) View Logs"
+    echo "15) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1163,10 +1266,11 @@ while true; do
         8) configure_whitelist ;;
         9) configure_optimizations ;;
         10) configure_belabox ;;
-        11) build_and_run ;;
-        12) stop_container ;;
-        13) view_logs ;;
-        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        11) configure_tiktok_dynamic ;;
+        12) build_and_run ;;
+        13) stop_container ;;
+        14) view_logs ;;
+        15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
