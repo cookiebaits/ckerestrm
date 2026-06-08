@@ -11,8 +11,13 @@ from flask_session import Session
 import requests
 import google_auth_oauthlib.flow
 from googleapiclient.discovery import build
+from flask_socketio import SocketIO, emit
+import asyncio
+import edge_tts
+from twitchio.ext import commands
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Session configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24))
@@ -347,5 +352,84 @@ def api_update_title():
 def health_check():
     return Response('OK', status=200)
 
+# --- TTS & Unified Chat ---
+
+@app.route('/api/tts')
+def api_tts():
+    text = request.args.get('text', '')
+    if not text:
+        return "No text", 400
+
+    voice = "en-US-GuyNeural"
+    communicate = edge_tts.Communicate(text, voice)
+
+    # We'll stream the audio back
+    def generate():
+        for chunk in communicate.stream_sync():
+            if chunk["type"] == "audio":
+                yield chunk["data"]
+
+    return Response(generate(), mimetype="audio/mpeg")
+
+# Background Chat Managers
+twitch_bot = None
+youtube_active = False
+
+def start_chat_managers():
+    global twitch_bot, youtube_active
+
+    # Twitch Chat
+    if 'twitch_token' in session and not twitch_bot:
+        try:
+            class Bot(commands.Bot):
+                def __init__(self, token):
+                    super().__init__(token=f"oauth:{token}", prefix='!', initial_channels=[session['twitch_user']])
+
+                async def event_message(self, message):
+                    if message.echo: return
+                    socketio.emit('chat_msg', {
+                        'platform': 'twitch',
+                        'user': message.author.name,
+                        'text': message.content
+                    })
+
+            twitch_bot = Bot(session['twitch_token'])
+            threading.Thread(target=lambda: twitch_bot.run(), daemon=True).start()
+        except Exception as e:
+            app.logger.error(f"Twitch Chat Error: {e}")
+
+    # YouTube Chat Polling
+    if 'youtube_token' in session and session.get('youtube_video_id') and not youtube_active:
+        youtube_active = True
+        def poll_yt():
+            from google.oauth2.credentials import Credentials
+            creds = Credentials(session['youtube_token'])
+            youtube = build('youtube', 'v3', credentials=creds)
+
+            # Get Live Chat ID
+            r = youtube.liveBroadcasts().list(id=session['youtube_video_id'], part='snippet').execute()
+            if 'items' in r and len(r['items']) > 0:
+                chat_id = r['items'][0]['snippet']['liveChatId']
+                next_page_token = None
+                while youtube_active:
+                    try:
+                        c = youtube.liveChatMessages().list(liveChatId=chat_id, part='snippet,authorDetails', pageToken=next_page_token).execute()
+                        for item in c.get('items', []):
+                            socketio.emit('chat_msg', {
+                                'platform': 'youtube',
+                                'user': item['authorDetails']['displayName'],
+                                'text': item['snippet']['displayMessage']
+                            })
+                        next_page_token = c.get('nextPageToken')
+                        time.sleep(max(1, c.get('pollingIntervalMillis', 1000) / 1000))
+                    except:
+                        time.sleep(5)
+        threading.Thread(target=poll_yt, daemon=True).start()
+
+@app.route('/api/start_chat')
+def api_start_chat():
+    start_chat_managers()
+    return jsonify({'status': 'started'})
+
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8080, debug=False)
+    socketio.run(app, host='127.0.0.1', port=8080, debug=False)

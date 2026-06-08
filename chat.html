@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>PrismRTMPS - Control Dashboard</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         body { margin: 0; padding: 20px; background: #0e0e10; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; box-sizing: border-box; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0; }
@@ -13,19 +14,28 @@
 
         .main-content { display: flex; gap: 20px; flex-grow: 1; overflow: hidden; }
         .chat-section { flex: 2; display: flex; flex-direction: column; background: #18181b; border-radius: 8px; overflow: hidden; }
-        .chat-header { padding: 10px; background: #26262c; display: flex; gap: 10px; }
-        .chat-container { display: flex; flex-grow: 1; gap: 1px; background: #26262c; }
-        .chat-column { flex: 1; background: #0e0e10; position: relative; }
+        .chat-header { padding: 10px; background: #26262c; display: flex; justify-content: space-between; align-items: center; }
+        .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .message { display: flex; gap: 10px; align-items: flex-start; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         .control-section { flex: 1; background: #18181b; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         input[type="text"] { background: #26262c; border: 1px solid #3f3f46; color: white; padding: 10px; border-radius: 4px; }
 
-        .platform-icon { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; opacity: 0.8; z-index: 5; }
-        iframe { border: none; width: 100%; height: 100%; }
+        .platform-logo { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; }
+        .user-name { font-weight: bold; color: #a1a1aa; }
         .status-badge { font-size: 0.8em; padding: 2px 6px; border-radius: 10px; }
         .status-online { background: #00ff7f; color: black; }
         .status-offline { background: #3f3f46; color: #a1a1aa; }
+
+        /* TTS Toggle */
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #3f3f46; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #00ff7f; }
+        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
 <body>
@@ -41,9 +51,18 @@
 
     <div class="main-content">
         <div class="chat-section">
-            <div class="chat-header">Combined Stream Chat</div>
-            <div class="chat-container" id="chat-container">
-                <!-- Chats will be injected here -->
+            <div class="chat-header">
+                <span>Unified Stream Chat</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="font-size: 0.9em;">Enable TTS</label>
+                    <label class="switch">
+                        <input type="checkbox" id="tts-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <!-- Messages will appear here -->
             </div>
         </div>
 
@@ -55,43 +74,67 @@
                 <button onclick="updateTitle()" class="btn btn-update">Sync Title</button>
             </div>
             <div id="update-msg"></div>
+            <hr style="border: 0; border-top: 1px solid #3f3f46; margin: 10px 0;">
+            <div id="connection-status" style="font-size: 0.8em; color: #71717a;">Connecting to relay...</div>
         </div>
     </div>
 
     <script>
+        const socket = io();
+        const logos = {
+            twitch: 'https://upload.wikimedia.org/wikipedia/commons/d/d3/Twitch_Glitch_Logo_Purple.svg',
+            youtube: 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg'
+        };
+
+        socket.on('connect', () => {
+            document.getElementById('connection-status').innerText = 'Relay Connected';
+            fetch('/api/start_chat'); // Trigger chat listeners
+        });
+
+        socket.on('chat_msg', (msg) => {
+            addMessage(msg);
+            if (document.getElementById('tts-toggle').checked) {
+                playTTS(msg.text);
+            }
+        });
+
+        function addMessage(msg) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerHTML = `
+                <img src="${logos[msg.platform]}" class="platform-logo">
+                <div>
+                    <span class="user-name">${msg.user}:</span>
+                    <span class="message-text">${msg.text}</span>
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+
+            // Keep only last 50 messages
+            if (container.children.length > 50) container.removeChild(container.firstChild);
+        }
+
+        async function playTTS(text) {
+            // Filter out links/emojis etc if needed
+            const cleanText = text.replace(/https?:\/\/\S+/g, 'link');
+            const audio = new Audio(`/api/tts?text=${encodeURIComponent(cleanText)}`);
+            audio.play();
+        }
+
         async function checkStatus() {
             const r = await fetch('/api/status');
             const status = await r.json();
 
-            const container = document.getElementById('chat-container');
-            container.innerHTML = '';
-
             if (status.twitch) {
                 document.getElementById('twitch-status').innerText = `Twitch: ${status.twitch}`;
                 document.getElementById('twitch-status').className = 'status-badge status-online';
-                addChatColumn('twitch', `https://www.twitch.tv/embed/${status.twitch}/chat?parent=${window.location.hostname || 'localhost'}&darkpopout`, 'https://upload.wikimedia.org/wikipedia/commons/d/d3/Twitch_Glitch_Logo_Purple.svg');
             }
-
             if (status.youtube) {
                 document.getElementById('youtube-status').innerText = `YouTube: ${status.youtube}`;
                 document.getElementById('youtube-status').className = 'status-badge status-online';
-
-                if (status.youtube_video_id) {
-                    addChatColumn('youtube', `https://www.youtube.com/live_chat?v=${status.youtube_video_id}&embed_domain=${window.location.hostname || 'localhost'}`, 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg');
-                } else {
-                    addChatColumn('youtube', 'about:blank', 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg');
-                }
             }
-        }
-
-        function addChatColumn(id, url, icon) {
-            const col = document.createElement('div');
-            col.className = 'chat-column';
-            col.innerHTML = `
-                <img src="${icon}" class="platform-icon">
-                <iframe src="${url}"></iframe>
-            `;
-            document.getElementById('chat-container').appendChild(col);
         }
 
         async function updateTitle() {
@@ -105,10 +148,11 @@
                 body: JSON.stringify({ title })
             });
             const res = await r.json();
-            msg.innerText = `Update Status - Twitch: ${res.twitch ? 'Success' : 'Failed'}, YouTube: ${res.youtube}`;
+            msg.innerText = `Update Status - Twitch: ${res.twitch ? 'Success' : 'Failed'}, YouTube: ${res.youtube === true ? 'Success' : res.youtube}`;
         }
 
         checkStatus();
+        setInterval(checkStatus, 30000);
     </script>
 </body>
 </html>
