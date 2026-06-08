@@ -137,7 +137,7 @@ rtmp {
             #v_facebook
             #v_instagram
             #v_tiktok
-            #v_tiktok_dyn
+            #tiktok_v_dynamic
             #v_kick
             #v_x
             #v_twitch
