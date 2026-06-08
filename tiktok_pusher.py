@@ -40,28 +40,28 @@ def main():
     token = os.getenv("TIKTOK_SL_TOKEN")
     title = os.getenv("TIKTOK_TITLE", "Live Stream")
     category = os.getenv("TIKTOK_GAME_ID", "")
-    rtmp_in = sys.argv[1] # Expected: rtmp://127.0.0.1:1935/tiktok_relay/stream_name
+    rtmp_in = sys.argv[1] # Expected: rtmp://127.0.0.1:1935/tiktok_relay/vertical
 
     if not token:
         print("TikTok Streamlabs Token not set.")
         sys.exit(1)
 
     tiktok = TikTokStream(token)
-    
+
     try:
-        print(f"Starting TikTok Live: {title}...")
+        print(f"Starting TikTok Vertical Live: {title}...")
         rtmp_out_base, stream_key = tiktok.start(title, category)
         rtmp_out = f"{rtmp_out_base}{stream_key}"
         print(f"TikTok Live Started. ID: {tiktok.stream_id}")
-        
+
         # Start FFmpeg relay
         ffmpeg_cmd = [
             "ffmpeg", "-i", rtmp_in,
             "-c", "copy", "-f", "flv", rtmp_out
         ]
-        
+
         process = subprocess.Popen(ffmpeg_cmd)
-        
+
         def handle_signal(signum, frame):
             print("Received termination signal. Ending TikTok Live...")
             process.terminate()

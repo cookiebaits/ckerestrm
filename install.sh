@@ -845,6 +845,8 @@ configure_tiktok_dynamic() {
         clear
         echo -e "${GREEN}=== TikTok Dynamic Key Configuration (Streamlabs) ===${NC}"
         echo -e "${YELLOW}This allows PrismRTMPS to automatically generate a new TikTok stream key each time you go live.${NC}"
+        echo -e "${YELLOW}Note: Dynamic keys are applied to the VERTICAL stream only.${NC}"
+        echo -e "${YELLOW}If enabled, this will override manual TikTok stream key settings.${NC}"
         echo ""
         echo "1) Streamlabs TikTok Token (Current: ${TIKTOK_SL_TOKEN:+********})"
         echo "2) Stream Title (Current: $TIKTOK_TITLE)"
@@ -889,7 +891,7 @@ try:
 except:
     pass
 " 2>/dev/null)
-                
+
                 if [ -z "$SEARCH_RESULTS" ]; then
                     echo -e "${RED}No categories found.${NC}"
                     sleep 2
@@ -1058,7 +1060,8 @@ build_and_run() {
     # Check if any keys are set
     ANY_KEY_SET=0
     for key in "$YOUTUBE_KEY" "$FACEBOOK_KEY" "$INSTAGRAM_KEY" "$TIKTOK_KEY" "$TWITCH_KEY" "$KICK_KEY" "$X_KEY" "$TROVO_KEY" "$RTMP1_KEY" \
-               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY"; do
+               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY" \
+               "$TIKTOK_SL_TOKEN"; do
         if [ ! -z "$key" ]; then
             ANY_KEY_SET=1
             break
