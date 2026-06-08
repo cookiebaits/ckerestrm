@@ -235,12 +235,20 @@ configure_keys() {
                echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
                echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
                echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  10) Custom URL"
+               echo "  5) US East: Chicago (rtmp://ord02.contribute.live-video.net/app/)"
+               echo "  6) US East: Miami (rtmp://mia05.contribute.live-video.net/app/)"
+               echo "  7) US Central: Dallas (rtmp://dfw01.contribute.live-video.net/app/)"
+               echo "  8) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
+               echo "  9) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
+               echo "  10) US West: Los Angeles (rtmp://lax05.contribute.live-video.net/app/)"
+               echo "  11) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
+               echo "  12) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
+               echo "  13) EU: Amsterdam (rtmp://ams03.contribute.live-video.net/app/)"
+               echo "  14) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
+               echo "  15) Asia: Seoul (rtmp://icn01.contribute.live-video.net/app/)"
+               echo "  16) Asia: Singapore (rtmp://sin01.contribute.live-video.net/app/)"
+               echo "  17) Australia: Sydney (rtmp://syd01.contribute.live-video.net/app/)"
+               echo "  18) Custom URL"
                echo -e "Option (Current URL: $TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
@@ -248,12 +256,20 @@ configure_keys() {
                    2) TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
                    3) TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
                    4) TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   6) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   7) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   8) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   9) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   10)
+                   5) TWITCH_URL="rtmp://ord02.contribute.live-video.net/app/" ;;
+                   6) TWITCH_URL="rtmp://mia05.contribute.live-video.net/app/" ;;
+                   7) TWITCH_URL="rtmp://dfw01.contribute.live-video.net/app/" ;;
+                   8) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
+                   9) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
+                   10) TWITCH_URL="rtmp://lax05.contribute.live-video.net/app/" ;;
+                   11) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
+                   12) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
+                   13) TWITCH_URL="rtmp://ams03.contribute.live-video.net/app/" ;;
+                   14) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
+                   15) TWITCH_URL="rtmp://icn01.contribute.live-video.net/app/" ;;
+                   16) TWITCH_URL="rtmp://sin01.contribute.live-video.net/app/" ;;
+                   17) TWITCH_URL="rtmp://syd01.contribute.live-video.net/app/" ;;
+                   18)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -442,12 +458,20 @@ configure_vertical_keys() {
                echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
                echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
                echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  10) Custom URL"
+               echo "  5) US East: Chicago (rtmp://ord02.contribute.live-video.net/app/)"
+               echo "  6) US East: Miami (rtmp://mia05.contribute.live-video.net/app/)"
+               echo "  7) US Central: Dallas (rtmp://dfw01.contribute.live-video.net/app/)"
+               echo "  8) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
+               echo "  9) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
+               echo "  10) US West: Los Angeles (rtmp://lax05.contribute.live-video.net/app/)"
+               echo "  11) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
+               echo "  12) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
+               echo "  13) EU: Amsterdam (rtmp://ams03.contribute.live-video.net/app/)"
+               echo "  14) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
+               echo "  15) Asia: Seoul (rtmp://icn01.contribute.live-video.net/app/)"
+               echo "  16) Asia: Singapore (rtmp://sin01.contribute.live-video.net/app/)"
+               echo "  17) Australia: Sydney (rtmp://syd01.contribute.live-video.net/app/)"
+               echo "  18) Custom URL"
                echo -e "Option (Current URL: $V_TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
@@ -455,12 +479,20 @@ configure_vertical_keys() {
                    2) V_TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
                    3) V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
                    4) V_TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   6) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   7) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   8) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   9) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   10)
+                   5) V_TWITCH_URL="rtmp://ord02.contribute.live-video.net/app/" ;;
+                   6) V_TWITCH_URL="rtmp://mia05.contribute.live-video.net/app/" ;;
+                   7) V_TWITCH_URL="rtmp://dfw01.contribute.live-video.net/app/" ;;
+                   8) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
+                   9) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
+                   10) V_TWITCH_URL="rtmp://lax05.contribute.live-video.net/app/" ;;
+                   11) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
+                   12) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
+                   13) V_TWITCH_URL="rtmp://ams03.contribute.live-video.net/app/" ;;
+                   14) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
+                   15) V_TWITCH_URL="rtmp://icn01.contribute.live-video.net/app/" ;;
+                   16) V_TWITCH_URL="rtmp://sin01.contribute.live-video.net/app/" ;;
+                   17) V_TWITCH_URL="rtmp://syd01.contribute.live-video.net/app/" ;;
+                   18)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
