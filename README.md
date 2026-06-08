@@ -31,10 +31,7 @@ This fork also includes performance tuning (optimized `chunk_size`), updated cor
 *   **Vertical Streaming Support:** Optimized for use with the **OBS Aitum Vertical plugin**. Push a second, independent vertical feed to specialized targets (TikTok, YouTube Vertical, Twitch Vertical) alongside your horizontal stream.
 *   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
 *   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
-*   **Nginx 1.30.2 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
-*   **Belabox (SRT) Integration:** Secure, high-quality, low-latency mobile streaming support via SRT with automatic OBS scene switching.
-*   **Unified Control Dashboard:** Integrated OAuth-powered dashboard for combined Twitch/YouTube chat and synchronized title management.
-*   **TikTok Dynamic Stream Key:** Integration with Streamlabs TikTok API to automatically generate and rotate TikTok stream keys each time you go live.
+*   **Nginx 1.30.1 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
 
 ## Prequisites
 
@@ -71,48 +68,6 @@ You'd need a VPS server. Key considerations:
 *   5- **Begin streaming from OBS!**
 
 We advise testing with one or two destinations first.
-
-## Belabox (SRT) & OBS Automation Setup
-
-PrismRTMPS now supports **Belabox** (via SRT) for high-reliability mobile streaming and automatic OBS scene management.
-
-### 1. Configure in `install.sh`
-*   Run `./install.sh` and go to the **"Belabox & OBS Switcher"** menu.
-*   **SRT Ingest Port:** Set a UDP port (e.g., `2000`). Ensure this port is open in your VPS firewall.
-*   **SRT Passphrase:** (Optional) Set a secure passphrase for your SRT connection.
-*   **OBS WebSocket:** Enter your OBS PC's IP and WebSocket credentials (v5).
-*   **Scene Names:** Define your "Intro", "Full Room" (Live), and "brb" scene names exactly as they appear in OBS.
-
-### 2. Set up Belabox / SRT Encoder
-*   **URL:** `srt://<your_vps_ip_address>:<srt_port>?mode=caller`
-*   **Passphrase:** Match the passphrase set in `install.sh`.
-*   **Latency:** Standard 1000-2000ms recommended for bonded cellular.
-
-### 3. How it Works
-*   **Auto-Start:** When you start your SRT stream, OBS will automatically switch to your **"Intro"** scene.
-*   **Timed Transition:** After **10 minutes**, the system autonomously transitions OBS to your **"Full Room"** scene.
-*   **Disconnection Protection:** If the stream drops, OBS immediately switches to the **"brb"** scene.
-
-## TikTok Dynamic Key Setup
-
-PrismRTMPS can automatically manage your TikTok Live sessions, generating a new URL and Key every time you start your stream.
-
-### 1. Obtain Streamlabs TikTok Token
-*   Install Streamlabs Desktop and log in with your TikTok account.
-*   Navigate to Settings -> Advanced -> API Token (or use a token retriever).
-
-### 2. Configure in `install.sh`
-*   Go to **"Configure TikTok Dynamic Key"**.
-*   Enter your **Streamlabs Token**.
-*   Search and select your **Game Category** (e.g., Minecraft, Just Chatting).
-*   Set your default **Stream Title**.
-
-### 3. Usage
-*   When you start streaming from OBS to PrismRTMPS, the system will automatically:
-    1. Call the Streamlabs API to start a new TikTok Live session.
-    2. Retrieve the fresh RTMP URL and Key.
-    3. Relay your stream to TikTok.
-    4. Automatically end the TikTok Live session when you stop streaming in OBS.
 
 ## How To Manage PrismRTMPS
 
