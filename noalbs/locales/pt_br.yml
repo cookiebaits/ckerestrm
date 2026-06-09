@@ -1,0 +1,92 @@
+start:
+    success: Stream iniciada
+    error: "Erro ao iniciar a stream: %{error}"
+startTwitchTranscoding:
+    trying: Tentando iniciar a stream com transcoding
+    successNoTranscoding: Stream iniciada sem transcoding
+    success: Stream iniciada com transcoding %{attemptsMessage}
+    attempts: ", após %{count} tentativas"
+stop:
+    success: Stream parada
+    raid: A stream foi parada e raidamos %{display_channel} siga para o link %{channel}
+    error: "Não foi possível parar a stream: %{error}"
+switch:
+    noParams: Nenhuma cena especificada
+    success: Cena trocada para "%{scene}"
+    error: Não foi possível trocar a cena para "%{scene}"
+source:
+    noParams: Nenhuma fonte especificada
+    success: Fonte "%{name}" sucesso %{status}
+    error: Erro ao alternar a fonte "%{name}"
+    enabled: habilitado
+    disabled: desabilitado
+bitrate:
+    success: "%{name}: %{message}"
+    error: "Sem conexão :("
+trigger:
+    success: "Trigger escolhido: %{number}"
+    successDisabled: Trigger desabilitada
+    error: Não foi possível editar o trigger %{number}, não é um valor válido
+    current: "Trigger atual: %{number}"
+    disabled: Trigger atual desabilitada
+sourceinfo:
+    noInfo: Sem informações
+    notFound: "Nenhum servidor encontrado: %{name}"
+serverinfo:
+    noInfo: Nenhuma informação do servidor disponível
+    success: "cena: %{scene}, bitrate: %{bitrate} Kbps, fps: %{fps}, caiu devido a network: %{network}, lag de renderização: %{rendering}, lag de encoding: %{encoding}, CPU: %{cpu}, memória: %{memory}, espaço livre em disco: %{disk}"
+rec:
+    started: Gravação iniciada
+    stopped: Gravação parada
+    errorStatus: Erro ao obter o status de gravação
+    errorToggle: Erro ao alternar a gravação
+fix:
+    try: Tentando fixar a stream
+    error: Erro ao fixar a stream
+refresh:
+    try: Atualizando a stream
+    error: Erro ao atualizar a stream
+    success: Stream atualizada
+    noScene: Nenhuma cena de refresh criada, fixando em vez disso
+alias:
+    success: Atalho criado %{alias} -> %{command}
+    removed: Atalho %{alias} removido
+    errorCommand: Comando %{command} não existe
+    errorAlias: Atalho %{alias} não existe
+    errorAlreadyUsed: "%{alias} já é um atalho"
+    errorIncorrectArguments: Erro nos argumentos enviados
+sceneSwitch:
+    switch: Cena mudada para "%{scene}"
+offlineTimeout:
+    timeout: Tempo offline excedido, parando a stream
+handleCommands:
+    public: Comandos públicos %{condition}
+    mod: Comandos de Mod %{condition}
+    notify: Notificação de mudança automática de cena %{condition}
+    autostop: Parada automática da stream %{condition}
+    enabled: habilitado
+    disabled: desabilitado
+noalbs:
+    prefix: NOALBS prefixo atualizado para %{prefix}
+    errorPrefix: Não foi possível atualizar o prefixo NOALBS
+    switcherEnabled: Troca de cena habilitada com sucesso
+    switcherDisabled: Troca de cena desabilitada com sucesso
+    instantSwitch: Troca de cena instantânea em recuperação %{condition}
+    langError: Não foi possível atualizar a linguagem do NOALBS
+    langErrorInvalid: Erro ao editar a linguagem %{lang}, não é um valor valido
+    langSuccess: A linguagem do NOALBS foi atualizada para %{lang}
+    retryCount: "Tentativa atual: %{count}"
+    retryError: Erro ao editar as tentativas %{count}, não é um valor valido
+    retrySuccess: "Tentativa escolhida: %{count}"
+    ignoreAdded: Added %{username} to NOALBS ignore list
+    ignoreRemoved: Removed %{username} from NOALBS ignore list
+    ignoreNoUsername: No username provided
+scene:
+    success: Trocando para cena "%{scene}"
+    error: A cena %{scene} não pode ser escolhida
+collection:
+    noParams: Nenhuma coleção foi especificada
+    notFound: "Ocorreu um erro, nenhuma coleção com o nome %{collection} foi encontrada"
+    success: Coleção trocada com sucesso para "%{collection}"
+    error: Não foi possível mudar para a coleção "%{collection}"
+    note: "Nota: O perfil será alterado quando não estiver transmitindo"
