@@ -174,46 +174,8 @@ stunnel4 /etc/stunnel/stunnel.conf
 
 # --- NOALBS Integration ---
 if [ "$NOALBS_ENABLED" == "true" ] && [ -n "$OBS_WS_HOST" ]; then
-    echo "Configuring NOALBS..."
-    cat <<EOF > /app/noalbs/config.json
-{
-  "user": { "name": "prism-user" },
-  "switcher": {
-    "bitrateSwitcherEnabled": true,
-    "instantlySwitchOnRecover": true,
-    "retryAttempts": 3,
-    "triggers": {
-      "low": ${LOW_BITRATE},
-      "offline": 200
-    },
-    "switchingScenes": {
-      "normal": "${OBS_SCENE_LIVE}",
-      "low": "${OBS_SCENE_BRB}",
-      "offline": "${OBS_SCENE_BRB}"
-    },
-    "streamServers": [
-      {
-        "streamServer": {
-          "type": "Nginx",
-          "statsUrl": "http://127.0.0.1:8081/stat",
-          "application": "${APP_NAME}",
-          "key": "live"
-        },
-        "name": "Prism-Main",
-        "enabled": true
-      }
-    ]
-  },
-  "software": {
-    "type": "Obs",
-    "host": "${OBS_WS_HOST}",
-    "port": ${OBS_WS_PORT},
-    "password": "${OBS_WS_PASSWORD}"
-  }
-}
-EOF
-    echo "Starting NOALBS..."
-    cd /app/noalbs && noalbs > /tmp/noalbs.log 2>&1 &
+    echo "Starting NOALBS Switcher..."
+    python3 /app/noalbs/noalbs.py > /tmp/noalbs.log 2>&1 &
 fi
 
 echo "Starting Nginx..."

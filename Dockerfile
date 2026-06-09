@@ -59,13 +59,7 @@ COPY tiktok_pusher.py /app/tiktok_pusher.py
 COPY tiktok_search.py /app/tiktok_search.py
 
 # Config NOALBS
-RUN mkdir -p /app/noalbs && \
-    cd /tmp && \
-    wget https://github.com/715209/nginx-obs-automatic-low-bitrate-switching/releases/download/v2.16.1/noalbs-v2.16.1-x86_64-unknown-linux-musl.tar.gz && \
-    tar -zxf noalbs-v2.16.1-x86_64-unknown-linux-musl.tar.gz && \
-    mv noalbs /usr/local/bin/noalbs && \
-    chmod +x /usr/local/bin/noalbs && \
-    rm noalbs-v2.16.1-x86_64-unknown-linux-musl.tar.gz
+COPY noalbs /app/noalbs
 
 # Config Stunnel
 RUN mkdir -p  /etc/stunnel/conf.d
