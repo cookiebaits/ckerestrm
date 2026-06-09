@@ -7,7 +7,7 @@ ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
     pip3 install --break-system-packages flask gunicorn requests obsws-python flask-session twitchio google-api-python-client google-auth-oauthlib google-auth-httplib2 edge-tts flask-socketio eventlet && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext srt-tools ffmpeg && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext ffmpeg && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
@@ -57,6 +57,15 @@ COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY stream_validator.py /stream_validator.py
 COPY tiktok_pusher.py /app/tiktok_pusher.py
 COPY tiktok_search.py /app/tiktok_search.py
+
+# Config NOALBS
+RUN mkdir -p /app/noalbs && \
+    cd /tmp && \
+    wget https://github.com/715209/nginx-obs-automatic-low-bitrate-switching/releases/download/v2.16.1/noalbs-v2.16.1-x86_64-unknown-linux-musl.tar.gz && \
+    tar -zxf noalbs-v2.16.1-x86_64-unknown-linux-musl.tar.gz && \
+    mv noalbs /usr/local/bin/noalbs && \
+    chmod +x /usr/local/bin/noalbs && \
+    rm noalbs-v2.16.1-x86_64-unknown-linux-musl.tar.gz
 
 # Config Stunnel
 RUN mkdir -p  /etc/stunnel/conf.d

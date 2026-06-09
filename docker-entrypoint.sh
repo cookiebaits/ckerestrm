@@ -172,23 +172,48 @@ echo "Starting Stunnel..."
 # Start stunnel in the background
 stunnel4 /etc/stunnel/stunnel.conf
 
-# --- SRT Ingest Support ---
-if [ -n "$SRT_PORT" ]; then
-    echo "Starting SRT relay on port $SRT_PORT..."
-    # Relay SRT to local RTMP. We use OBS_KEY for the stream name.
-    # srt-live-transmit srt://:SRT_PORT rtmp://127.0.0.1:1935/${APP_NAME}/${OBS_KEY}
-    # We run it in a loop to ensure it restarts if it crashes
-    (
-        while true; do
-            SRT_OPTIONS="?mode=listener&port=${SRT_PORT}"
-            if [ -n "$SRT_PASSPHRASE" ]; then
-                SRT_OPTIONS="${SRT_OPTIONS}&passphrase=${SRT_PASSPHRASE}&pbkeylen=32"
-            fi
-            srt-live-transmit "srt://:${SRT_OPTIONS}" "rtmp://127.0.0.1:1935/${APP_NAME}/${OBS_KEY}"
-            echo "SRT relay crashed/stopped, restarting in 2 seconds..."
-            sleep 2
-        done
-    ) &
+# --- NOALBS Integration ---
+if [ "$NOALBS_ENABLED" == "true" ] && [ -n "$OBS_WS_HOST" ]; then
+    echo "Configuring NOALBS..."
+    cat <<EOF > /app/noalbs/config.json
+{
+  "user": { "name": "prism-user" },
+  "switcher": {
+    "bitrateSwitcherEnabled": true,
+    "instantlySwitchOnRecover": true,
+    "retryAttempts": 3,
+    "triggers": {
+      "low": ${LOW_BITRATE},
+      "offline": 200
+    },
+    "switchingScenes": {
+      "normal": "${OBS_SCENE_LIVE}",
+      "low": "${OBS_SCENE_BRB}",
+      "offline": "${OBS_SCENE_BRB}"
+    },
+    "streamServers": [
+      {
+        "streamServer": {
+          "type": "Nginx",
+          "statsUrl": "http://127.0.0.1:8081/stat",
+          "application": "${APP_NAME}",
+          "key": "live"
+        },
+        "name": "Prism-Main",
+        "enabled": true
+      }
+    ]
+  },
+  "software": {
+    "type": "Obs",
+    "host": "${OBS_WS_HOST}",
+    "port": ${OBS_WS_PORT},
+    "password": "${OBS_WS_PASSWORD}"
+  }
+}
+EOF
+    echo "Starting NOALBS..."
+    cd /app/noalbs && noalbs > /tmp/noalbs.log 2>&1 &
 fi
 
 echo "Starting Nginx..."

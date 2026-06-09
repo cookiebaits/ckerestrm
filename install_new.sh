@@ -77,8 +77,9 @@ RESTORE_BITRATE="1500"
 OBS_WS_HOST=""
 OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
-OBS_SCENE_LIVE="Main"
-OBS_SCENE_BRB="BRB"
+OBS_SCENE_LIVE="Full Room"
+OBS_SCENE_BRB="brb"
+OBS_SCENE_INTRO="Intro"
 
 # Combined Chat Settings
 CHAT_TWITCH=""
@@ -150,14 +151,12 @@ YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID"
 YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET"
 YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI"
 SECRET_KEY="$SECRET_KEY"
-NOALBS_ENABLED="$NOALBS_ENABLED"
-LOW_BITRATE="$LOW_BITRATE"
-RESTORE_BITRATE="$RESTORE_BITRATE"
 OBS_WS_HOST="$OBS_WS_HOST"
 OBS_WS_PORT="$OBS_WS_PORT"
 OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
 OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
 OBS_SCENE_BRB="$OBS_SCENE_BRB"
+OBS_SCENE_INTRO="$OBS_SCENE_INTRO"
 TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN"
 TIKTOK_TITLE="$TIKTOK_TITLE"
 TIKTOK_GAME_NAME="$TIKTOK_GAME_NAME"
@@ -434,18 +433,14 @@ configure_vertical_keys() {
                prompt_for_key "YouTube Vertical Key" "V_YOUTUBE_KEY"
                echo -e "Select YouTube Server:"
                echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
-               echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
-               echo "  3) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
-               echo "  4) Secure Backup (rtmps://b.rtmps.youtube.com/live2?backup=1 -> via Stunnel)"
-               echo "  5) Custom URL"
+               echo "  2) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
+               echo "  3) Custom URL"
                echo -e "Option (Current URL: $V_YOUTUBE_URL): \c"
                read -r y_opt
                case $y_opt in
                    1) V_YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
-                   2) V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
-                   3) V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
-                   4) V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
-                   5)
+                   2) V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
+                   3)
                       echo -e "Enter Custom YouTube Server URL: "
                       read -r y_url
                       if [ ! -z "$y_url" ]; then
@@ -964,67 +959,75 @@ except:
     done
 }
 
-configure_noalbs() {
+configure_belabox() {
     while true; do
         clear
-        echo -e "${GREEN}=== NOALBS & OBS Scene Switcher ===${NC}"
-        echo "1) Enable NOALBS (Current: ${NOALBS_ENABLED})"
-        echo "2) Low Bitrate Threshold (Current: ${LOW_BITRATE} kbps)"
-        echo "3) Restore Bitrate Threshold (Current: ${RESTORE_BITRATE} kbps)"
-        echo "4) OBS WebSocket Host (Current: ${OBS_WS_HOST:-None})"
-        echo "5) OBS WebSocket Port (Current: ${OBS_WS_PORT})"
-        echo "6) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
-        echo "7) OBS Main Scene Name (Current: ${OBS_SCENE_LIVE})"
-        echo "8) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
+        echo -e "${GREEN}=== Belabox (SRT) & OBS Scene Switcher ===${NC}"
+        echo "1) SRT Ingest Port (Current: ${SRT_PORT:-Disabled})"
+        echo "2) SRT Passphrase (Current: ${SRT_PASSPHRASE:+********})"
+        echo "3) OBS WebSocket Host (Current: ${OBS_WS_HOST:-None})"
+        echo "4) OBS WebSocket Port (Current: ${OBS_WS_PORT})"
+        echo "5) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
+        echo "6) OBS Live Scene Name (Current: ${OBS_SCENE_LIVE})"
+        echo "7) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
+        echo "8) OBS Intro Scene Name (Current: ${OBS_SCENE_INTRO})"
         echo "9) Back to Main Menu"
         echo -e "Select an option: \c"
-        read -r no_opt
+        read -r bel_opt
 
-        case $no_opt in
+        case $bel_opt in
             1)
-                if [ "$NOALBS_ENABLED" == "true" ]; then NOALBS_ENABLED="false"; else NOALBS_ENABLED="true"; fi
-                save_config
+                echo -e "Enter SRT Port (e.g. 2000, leave blank to disable):"
+                read -r srt_input
+                # Basic validation: numeric or empty
+                if [[ "$srt_input" =~ ^[0-9]*$ ]]; then
+                    SRT_PORT="$srt_input"
+                    save_config
+                else
+                    echo -e "${RED}Invalid port. Must be numeric.${NC}"
+                    sleep 1
+                fi
                 ;;
             2)
-                echo -e "Enter Low Bitrate Threshold (kbps, e.g. 1000):"
-                read -r low_input
-                LOW_BITRATE="${low_input:-1000}"
+                echo -e "Enter SRT Passphrase (leave blank to disable):"
+                read -r srt_pass
+                SRT_PASSPHRASE="$srt_pass"
                 save_config
                 ;;
             3)
-                echo -e "Enter Restore Bitrate Threshold (kbps, e.g. 1500):"
-                read -r res_input
-                RESTORE_BITRATE="${res_input:-1500}"
-                save_config
-                ;;
-            4)
                 echo -e "Enter OBS WebSocket Host (IP of your OBS PC):"
                 read -r ws_host
                 OBS_WS_HOST="$ws_host"
                 save_config
                 ;;
-            5)
+            4)
                 echo -e "Enter OBS WebSocket Port (Default 4455):"
                 read -r ws_port
                 OBS_WS_PORT="${ws_port:-4455}"
                 save_config
                 ;;
-            6)
+            5)
                 echo -e "Enter OBS WebSocket Password:"
                 read -r ws_pass
                 OBS_WS_PASSWORD="$ws_pass"
                 save_config
                 ;;
-            7)
-                echo -e "Enter Main Scene Name (Default: Main):"
+            6)
+                echo -e "Enter Scene Name for Live (Default: Full Room):"
                 read -r scene_live
-                OBS_SCENE_LIVE="${scene_live:-Main}"
+                OBS_SCENE_LIVE="${scene_live:-Full Room}"
+                save_config
+                ;;
+            7)
+                echo -e "Enter Scene Name for BRB (Default: brb):"
+                read -r scene_brb
+                OBS_SCENE_BRB="${scene_brb:-brb}"
                 save_config
                 ;;
             8)
-                echo -e "Enter BRB Scene Name (Default: BRB):"
-                read -r scene_brb
-                OBS_SCENE_BRB="${scene_brb:-BRB}"
+                echo -e "Enter Scene Name for Intro (Default: Intro):"
+                read -r scene_intro
+                OBS_SCENE_INTRO="${scene_intro:-Intro}"
                 save_config
                 ;;
             9) break ;;
@@ -1113,10 +1116,17 @@ build_and_run() {
 
     echo -e "${GREEN}Starting container...${NC}"
     # Start the container
+    # Determine SRT Port Mapping
+    SRT_MAPPING=""
+    if [ ! -z "$SRT_PORT" ]; then
+        SRT_MAPPING="-p ${SRT_PORT}:${SRT_PORT}/udp"
+    fi
+
     docker run -d --name prism-rtmps \
         -v "$(pwd)/data:/app/data" \
         -p 1935:1935 \
         -p 8081:8081 \
+        $SRT_MAPPING \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
@@ -1255,6 +1265,9 @@ while true; do
     echo -e "${YELLOW}Quick Reference:${NC}"
     echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
     echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
+    if [ ! -z "$SRT_PORT" ]; then
+        echo -e "  SRT Ingest:      srt://${DISPLAY_HOST}:${SRT_PORT}?mode=caller${SRT_PASSPHRASE:+\&passphrase=}${SRT_PASSPHRASE}"
+    fi
     echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
     echo -e "  Control Dashboard: http://${DISPLAY_HOST}:8081/chat.html"
     echo "-------------------------------------"
@@ -1267,7 +1280,7 @@ while true; do
         echo "7) Configure Stream Titles & Twitch API (Optional)"
         echo "8) Configure IP Whitelist (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
-    echo "10) Configure NOALBS Scene Switcher (Optional)"
+    echo "10) Configure Belabox & OBS Switcher (Optional)"
     echo "11) Configure TikTok Dynamic Key (Optional)"
     echo "12) Build & Start Server"
     echo "13) Stop Server"
@@ -1286,7 +1299,7 @@ while true; do
         7) configure_titles ;;
         8) configure_whitelist ;;
         9) configure_optimizations ;;
-        10) configure_noalbs ;;
+        10) configure_belabox ;;
         11) configure_tiktok_dynamic ;;
         12) build_and_run ;;
         13) stop_container ;;

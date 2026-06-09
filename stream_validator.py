@@ -173,9 +173,8 @@ def validate():
 
         # Only switch scenes if it's the primary horizontal stream
         if app_name == os.getenv('APP_NAME', 'live'):
-            # Switch to Intro Scene immediately, then switch to Live Scene after 10 minutes (600s)
-            switch_obs_scene(OBS_SCENE_INTRO)
-            switch_obs_scene(OBS_SCENE_LIVE, delay=600)
+            # Scene switching is now handled by NOALBS based on bitrate
+            pass
 
         return Response('OK', status=200)
     else:
@@ -190,8 +189,8 @@ def publish_done():
         # Increment episode count when horizontal stream finishes
         increment_episode_count()
         app.logger.info("Horizontal stream finished. Episode count incremented.")
-        # Switch to BRB Scene
-        switch_obs_scene(OBS_SCENE_BRB)
+        # Scene switching is now handled by NOALBS
+        pass
     return Response('OK', status=200)
 
 # --- OAuth Routes ---
