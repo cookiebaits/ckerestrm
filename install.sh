@@ -1100,7 +1100,17 @@ build_and_run() {
     # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok)
     if [ ! -z "$YOUTUBE_KEY" ] && [ -z "$V_YOUTUBE_KEY" ]; then
         V_YOUTUBE_KEY="$YOUTUBE_KEY"
-        V_YOUTUBE_URL="$YOUTUBE_URL"
+        # For YouTube, if horizontal is using primary, automatically use backup for vertical to avoid conflicts
+        if [[ "$YOUTUBE_URL" == *"x.rtmp.youtube.com"* ]] || [[ "$YOUTUBE_URL" == *"19355"* ]]; then
+            # If horizontal is using secure primary (19355), use secure backup (19357)
+            if [[ "$YOUTUBE_URL" == *"19355"* ]]; then
+                V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1"
+            else
+                V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1"
+            fi
+        else
+            V_YOUTUBE_URL="$YOUTUBE_URL"
+        fi
     fi
     if [ ! -z "$TWITCH_KEY" ] && [ -z "$V_TWITCH_KEY" ]; then
         V_TWITCH_KEY="$TWITCH_KEY"
