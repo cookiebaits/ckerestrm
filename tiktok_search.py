@@ -7,7 +7,7 @@ def search_game(token, query):
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) StreamlabsDesktop/1.17.0 Chrome/122.0.6261.156 Electron/29.3.1 Safari/537.36",
         "authorization": f"Bearer {token}"
     })
-
+    
     query = query[:25]
     url = f"https://streamlabs.com/api/v5/slobs/tiktok/info?category={query}"
     try:

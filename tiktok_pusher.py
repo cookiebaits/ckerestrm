@@ -4,6 +4,14 @@ import os
 import subprocess
 import time
 import signal
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("TikTokPusher")
 
 class TikTokStream:
     def __init__(self, token):
@@ -22,19 +30,34 @@ class TikTokStream:
             'category': (None, category),
             'audience_type': (None, audience_type),
         }
-        response = self.s.post(url, files=files).json()
-        if "rtmp" in response and "key" in response:
-            self.stream_id = response["id"]
-            return response["rtmp"], response["key"]
-        else:
-            raise Exception(f"Failed to start TikTok stream: {response}")
+        
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = self.s.post(url, files=files, timeout=30).json()
+                if "rtmp" in response and "key" in response:
+                    self.stream_id = response["id"]
+                    return response["rtmp"], response["key"]
+                else:
+                    logger.warning(f"TikTok API Start attempt {attempt+1} failed: {response}")
+            except Exception as e:
+                logger.warning(f"TikTok API Start attempt {attempt+1} error: {e}")
+            
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+        
+        raise Exception("Failed to start TikTok stream after multiple retries")
 
     def end(self):
         if not self.stream_id:
             return False
         url = f"https://streamlabs.com/api/v5/slobs/tiktok/stream/{self.stream_id}/end"
-        response = self.s.post(url).json()
-        return response.get("success", False)
+        try:
+            response = self.s.post(url, timeout=30).json()
+            return response.get("success", False)
+        except Exception as e:
+            logger.error(f"Error ending TikTok session: {e}")
+            return False
 
 def main():
     token = os.getenv("TIKTOK_SL_TOKEN")
@@ -43,27 +66,29 @@ def main():
     rtmp_in = sys.argv[1] # Expected: rtmp://127.0.0.1:1935/tiktok_relay/vertical
 
     if not token:
-        print("TikTok Streamlabs Token not set.")
+        logger.error("TikTok Streamlabs Token not set.")
         sys.exit(1)
 
     tiktok = TikTokStream(token)
-
+    
     try:
-        print(f"Starting TikTok Vertical Live: {title}...")
+        logger.info(f"Starting TikTok Vertical Live: {title}...")
         rtmp_out_base, stream_key = tiktok.start(title, category)
         rtmp_out = f"{rtmp_out_base}{stream_key}"
-        print(f"TikTok Live Started. ID: {tiktok.stream_id}")
-
+        logger.info(f"TikTok Live Started. ID: {tiktok.stream_id}")
+        
         # Start FFmpeg relay
+        # Added -re for real-time and improved buffer settings
         ffmpeg_cmd = [
-            "ffmpeg", "-i", rtmp_in,
+            "ffmpeg", "-hide_banner", "-loglevel", "error",
+            "-i", rtmp_in,
             "-c", "copy", "-f", "flv", rtmp_out
         ]
-
+        
         process = subprocess.Popen(ffmpeg_cmd)
-
+        
         def handle_signal(signum, frame):
-            print("Received termination signal. Ending TikTok Live...")
+            logger.info("Received termination signal. Ending TikTok Live...")
             process.terminate()
             tiktok.end()
             sys.exit(0)
@@ -72,11 +97,14 @@ def main():
         signal.signal(signal.SIGINT, handle_signal)
 
         process.wait()
-        print("Stream ended. Closing TikTok Live session...")
-        tiktok.end()
+        logger.info("Relay stream ended. Closing TikTok Live session...")
+        if not tiktok.end():
+            logger.warning("TikTok API reported failure when ending stream.")
 
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Pusher Error: {e}")
+        if tiktok.stream_id:
+            tiktok.end()
         sys.exit(1)
 
 if __name__ == "__main__":

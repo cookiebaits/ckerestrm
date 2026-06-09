@@ -57,6 +57,18 @@ STREAM_BASE_TITLE="Live Stream"
 TWITCH_CLIENT_ID=""
 TWITCH_OAUTH_TOKEN=""
 TWITCH_BROADCASTER_ID=""
+TWITCH_CLIENT_SECRET=""
+TWITCH_REDIRECT_URI=""
+YOUTUBE_CLIENT_ID=""
+YOUTUBE_CLIENT_SECRET=""
+YOUTUBE_REDIRECT_URI=""
+SECRET_KEY=$(openssl rand -hex 24)
+
+# TikTok Dynamic Settings
+TIKTOK_SL_TOKEN=""
+TIKTOK_TITLE="Live Stream"
+TIKTOK_GAME_NAME="Other"
+TIKTOK_GAME_ID=""
 
 # Belabox & OBS Scene Switcher Settings
 SRT_PORT=""
@@ -66,6 +78,7 @@ OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
 OBS_SCENE_LIVE="Full Room"
 OBS_SCENE_BRB="brb"
+OBS_SCENE_INTRO="Intro"
 
 # Combined Chat Settings
 CHAT_TWITCH=""
@@ -131,6 +144,12 @@ STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
 TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
 TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
+TWITCH_CLIENT_SECRET="$TWITCH_CLIENT_SECRET"
+TWITCH_REDIRECT_URI="$TWITCH_REDIRECT_URI"
+YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID"
+YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET"
+YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI"
+SECRET_KEY="$SECRET_KEY"
 SRT_PORT="$SRT_PORT"
 SRT_PASSPHRASE="$SRT_PASSPHRASE"
 OBS_WS_HOST="$OBS_WS_HOST"
@@ -138,6 +157,11 @@ OBS_WS_PORT="$OBS_WS_PORT"
 OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
 OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
 OBS_SCENE_BRB="$OBS_SCENE_BRB"
+OBS_SCENE_INTRO="$OBS_SCENE_INTRO"
+TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN"
+TIKTOK_TITLE="$TIKTOK_TITLE"
+TIKTOK_GAME_NAME="$TIKTOK_GAME_NAME"
+TIKTOK_GAME_ID="$TIKTOK_GAME_ID"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -211,12 +235,20 @@ configure_keys() {
                echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
                echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
                echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  10) Custom URL"
+               echo "  5) US East: Chicago (rtmp://ord02.contribute.live-video.net/app/)"
+               echo "  6) US East: Miami (rtmp://mia05.contribute.live-video.net/app/)"
+               echo "  7) US Central: Dallas (rtmp://dfw01.contribute.live-video.net/app/)"
+               echo "  8) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
+               echo "  9) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
+               echo "  10) US West: Los Angeles (rtmp://lax05.contribute.live-video.net/app/)"
+               echo "  11) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
+               echo "  12) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
+               echo "  13) EU: Amsterdam (rtmp://ams03.contribute.live-video.net/app/)"
+               echo "  14) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
+               echo "  15) Asia: Seoul (rtmp://icn01.contribute.live-video.net/app/)"
+               echo "  16) Asia: Singapore (rtmp://sin01.contribute.live-video.net/app/)"
+               echo "  17) Australia: Sydney (rtmp://syd01.contribute.live-video.net/app/)"
+               echo "  18) Custom URL"
                echo -e "Option (Current URL: $TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
@@ -224,12 +256,20 @@ configure_keys() {
                    2) TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
                    3) TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
                    4) TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   6) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   7) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   8) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   9) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   10)
+                   5) TWITCH_URL="rtmp://ord02.contribute.live-video.net/app/" ;;
+                   6) TWITCH_URL="rtmp://mia05.contribute.live-video.net/app/" ;;
+                   7) TWITCH_URL="rtmp://dfw01.contribute.live-video.net/app/" ;;
+                   8) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
+                   9) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
+                   10) TWITCH_URL="rtmp://lax05.contribute.live-video.net/app/" ;;
+                   11) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
+                   12) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
+                   13) TWITCH_URL="rtmp://ams03.contribute.live-video.net/app/" ;;
+                   14) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
+                   15) TWITCH_URL="rtmp://icn01.contribute.live-video.net/app/" ;;
+                   16) TWITCH_URL="rtmp://sin01.contribute.live-video.net/app/" ;;
+                   17) TWITCH_URL="rtmp://syd01.contribute.live-video.net/app/" ;;
+                   18)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -418,12 +458,20 @@ configure_vertical_keys() {
                echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
                echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
                echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  10) Custom URL"
+               echo "  5) US East: Chicago (rtmp://ord02.contribute.live-video.net/app/)"
+               echo "  6) US East: Miami (rtmp://mia05.contribute.live-video.net/app/)"
+               echo "  7) US Central: Dallas (rtmp://dfw01.contribute.live-video.net/app/)"
+               echo "  8) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
+               echo "  9) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
+               echo "  10) US West: Los Angeles (rtmp://lax05.contribute.live-video.net/app/)"
+               echo "  11) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
+               echo "  12) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
+               echo "  13) EU: Amsterdam (rtmp://ams03.contribute.live-video.net/app/)"
+               echo "  14) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
+               echo "  15) Asia: Seoul (rtmp://icn01.contribute.live-video.net/app/)"
+               echo "  16) Asia: Singapore (rtmp://sin01.contribute.live-video.net/app/)"
+               echo "  17) Australia: Sydney (rtmp://syd01.contribute.live-video.net/app/)"
+               echo "  18) Custom URL"
                echo -e "Option (Current URL: $V_TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
@@ -431,12 +479,20 @@ configure_vertical_keys() {
                    2) V_TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
                    3) V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
                    4) V_TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   6) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   7) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   8) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   9) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   10)
+                   5) V_TWITCH_URL="rtmp://ord02.contribute.live-video.net/app/" ;;
+                   6) V_TWITCH_URL="rtmp://mia05.contribute.live-video.net/app/" ;;
+                   7) V_TWITCH_URL="rtmp://dfw01.contribute.live-video.net/app/" ;;
+                   8) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
+                   9) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
+                   10) V_TWITCH_URL="rtmp://lax05.contribute.live-video.net/app/" ;;
+                   11) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
+                   12) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
+                   13) V_TWITCH_URL="rtmp://ams03.contribute.live-video.net/app/" ;;
+                   14) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
+                   15) V_TWITCH_URL="rtmp://icn01.contribute.live-video.net/app/" ;;
+                   16) V_TWITCH_URL="rtmp://sin01.contribute.live-video.net/app/" ;;
+                   17) V_TWITCH_URL="rtmp://syd01.contribute.live-video.net/app/" ;;
+                   18)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -749,57 +805,156 @@ configure_titles() {
 configure_chat() {
     while true; do
         clear
-        echo -e "${GREEN}=== Combined Chat Configuration ===${NC}"
-        echo "Enter Channel Names/IDs for browser source embeds:"
-        echo ""
-        echo "1) Twitch Channel (Current: ${CHAT_TWITCH:-None})"
-        echo "2) YouTube Video ID (Current: ${CHAT_YOUTUBE:-None})"
-        echo "3) Kick Channel (Current: ${CHAT_KICK:-None})"
-        echo "4) TikTok Channel (Current: ${CHAT_TIKTOK:-None})"
-        echo "5) Show Browser Source URL"
-        echo "6) Back to Main Menu"
+        echo -e "${GREEN}=== Combined Chat & Control Configuration ===${NC}"
+        echo "1) Twitch Client ID (Current: ${TWITCH_CLIENT_ID:-None})"
+        echo "2) Twitch Client Secret (Current: ${TWITCH_CLIENT_SECRET:+********})"
+        echo "3) Twitch Redirect URI (Current: ${TWITCH_REDIRECT_URI:-None})"
+        echo "4) YouTube Client ID (Current: ${YOUTUBE_CLIENT_ID:-None})"
+        echo "5) YouTube Client Secret (Current: ${YOUTUBE_CLIENT_SECRET:+********})"
+        echo "6) YouTube Redirect URI (Current: ${YOUTUBE_REDIRECT_URI:-None})"
+        echo "7) Show Dashboard URL"
+        echo "8) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r chat_opt
 
         case $chat_opt in
             1)
-                echo -e "Enter Twitch Channel Name:"
+                echo -e "Enter Twitch Client ID:"
                 read -r chat_input
-                CHAT_TWITCH="$chat_input"
+                TWITCH_CLIENT_ID="$chat_input"
                 save_config
                 ;;
             2)
-                echo -e "Enter YouTube Video ID (from URL v=XXXX):"
+                echo -e "Enter Twitch Client Secret:"
                 read -r chat_input
-                CHAT_YOUTUBE="$chat_input"
+                TWITCH_CLIENT_SECRET="$chat_input"
                 save_config
                 ;;
             3)
-                echo -e "Enter Kick Channel Name:"
+                SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
+                DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
+                echo -e "Enter Twitch Redirect URI (Default: http://${DISPLAY_HOST}:8081/callback/twitch):"
                 read -r chat_input
-                CHAT_KICK="$chat_input"
+                TWITCH_REDIRECT_URI="${chat_input:-http://${DISPLAY_HOST}:8081/callback/twitch}"
                 save_config
                 ;;
             4)
-                echo -e "Enter TikTok Username (without @):"
+                echo -e "Enter YouTube Client ID:"
                 read -r chat_input
-                CHAT_TIKTOK="$chat_input"
+                YOUTUBE_CLIENT_ID="$chat_input"
                 save_config
                 ;;
             5)
+                echo -e "Enter YouTube Client Secret:"
+                read -r chat_input
+                YOUTUBE_CLIENT_SECRET="$chat_input"
+                save_config
+                ;;
+            6)
                 SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
                 DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-                CHAT_URL="http://${DISPLAY_HOST}:8081/chat.html?"
-                if [ ! -z "$CHAT_TWITCH" ]; then CHAT_URL="${CHAT_URL}twitch=${CHAT_TWITCH}&"; fi
-                if [ ! -z "$CHAT_YOUTUBE" ]; then CHAT_URL="${CHAT_URL}youtube=${CHAT_YOUTUBE}&"; fi
-                if [ ! -z "$CHAT_KICK" ]; then CHAT_URL="${CHAT_URL}kick=${CHAT_KICK}&"; fi
-                if [ ! -z "$CHAT_TIKTOK" ]; then CHAT_URL="${CHAT_URL}tiktok=${CHAT_TIKTOK}&"; fi
-                echo -e "\n${YELLOW}OBS Browser Source URL:${NC}"
-                echo -e "${GREEN}${CHAT_URL%&}${NC}"
+                echo -e "Enter YouTube Redirect URI (Default: http://${DISPLAY_HOST}:8081/callback/youtube):"
+                read -r chat_input
+                YOUTUBE_REDIRECT_URI="${chat_input:-http://${DISPLAY_HOST}:8081/callback/youtube}"
+                save_config
+                ;;
+            7)
+                SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
+                DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
+                echo -e "\n${YELLOW}Control Dashboard URL:${NC}"
+                echo -e "${GREEN}http://${DISPLAY_HOST}:8081/chat.html${NC}"
                 echo -e "\nPress Enter to continue..."
                 read -r
                 ;;
-            6) break ;;
+            8) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
+
+configure_tiktok_dynamic() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== TikTok Dynamic Key Configuration (Streamlabs) ===${NC}"
+        echo -e "${YELLOW}This allows PrismRTMPS to automatically generate a new TikTok stream key each time you go live.${NC}"
+        echo -e "${YELLOW}Note: Dynamic keys are applied to the VERTICAL stream only.${NC}"
+        echo -e "${YELLOW}If enabled, this will override manual TikTok stream key settings.${NC}"
+        echo ""
+        echo "1) Streamlabs TikTok Token (Current: ${TIKTOK_SL_TOKEN:+********})"
+        echo "2) Stream Title (Current: $TIKTOK_TITLE)"
+        echo "3) Game Category (Current: $TIKTOK_GAME_NAME)"
+        echo "4) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r tt_dyn_opt
+
+        case $tt_dyn_opt in
+            1)
+                echo -e "Enter Streamlabs TikTok API Token:"
+                read -r token_input
+                TIKTOK_SL_TOKEN="$token_input"
+                save_config
+                ;;
+            2)
+                echo -e "Enter Stream Title:"
+                read -r title_input
+                TIKTOK_TITLE="$title_input"
+                save_config
+                ;;
+            3)
+                if [ -z "$TIKTOK_SL_TOKEN" ]; then
+                    echo -e "${RED}Error: Set Streamlabs Token first!${NC}"
+                    sleep 2
+                    continue
+                fi
+                echo -e "Enter Game Name to search (e.g. 'Just Chatting', 'Minecraft'):"
+                read -r search_query
+                echo "Searching..."
+                # Run search using a temporary python check
+                SEARCH_RESULTS=$(TIKTOK_TOKEN="$TIKTOK_SL_TOKEN" SEARCH_QUERY="$search_query" python3 -c "
+import requests, os
+token = os.getenv('TIKTOK_TOKEN')
+query = os.getenv('SEARCH_QUERY', '')[:25]
+s = requests.session()
+s.headers.update({'user-agent': 'Mozilla/5.0', 'authorization': f'Bearer {token}'})
+try:
+    r = s.get(f'https://streamlabs.com/api/v5/slobs/tiktok/info?category={query}').json()
+    for c in r.get('categories', []):
+        print(f\"{c['game_mask_id']}|{c['full_name']}\")
+except:
+    pass
+" 2>/dev/null)
+                
+                if [ -z "$SEARCH_RESULTS" ]; then
+                    echo -e "${RED}No categories found.${NC}"
+                    sleep 2
+                else
+                    echo -e "\n${YELLOW}Search Results:${NC}"
+                    IFS=$'\n'
+                    count=1
+                    declare -a ids
+                    declare -a names
+                    for line in $SEARCH_RESULTS; do
+                        id=$(echo "$line" | cut -d'|' -f1)
+                        name=$(echo "$line" | cut -d'|' -f2)
+                        ids[$count]=$id
+                        names[$count]=$name
+                        echo "$count) $name"
+                        ((count++))
+                    done
+                    echo -e "Select a category number: \c"
+                    read -r cat_choice
+                    if [[ "$cat_choice" =~ ^[0-9]+$ ]] && [ "$cat_choice" -lt "$count" ]; then
+                        TIKTOK_GAME_ID="${ids[$cat_choice]}"
+                        TIKTOK_GAME_NAME="${names[$cat_choice]}"
+                        echo -e "${GREEN}Selected: $TIKTOK_GAME_NAME${NC}"
+                        save_config
+                    else
+                        echo -e "${RED}Invalid selection.${NC}"
+                    fi
+                    sleep 2
+                fi
+                ;;
+            4) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -816,7 +971,8 @@ configure_belabox() {
         echo "5) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
         echo "6) OBS Live Scene Name (Current: ${OBS_SCENE_LIVE})"
         echo "7) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
-        echo "8) Back to Main Menu"
+        echo "8) OBS Intro Scene Name (Current: ${OBS_SCENE_INTRO})"
+        echo "9) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r bel_opt
 
@@ -869,7 +1025,13 @@ configure_belabox() {
                 OBS_SCENE_BRB="${scene_brb:-brb}"
                 save_config
                 ;;
-            8) break ;;
+            8)
+                echo -e "Enter Scene Name for Intro (Default: Intro):"
+                read -r scene_intro
+                OBS_SCENE_INTRO="${scene_intro:-Intro}"
+                save_config
+                ;;
+            9) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -930,7 +1092,8 @@ build_and_run() {
     # Check if any keys are set
     ANY_KEY_SET=0
     for key in "$YOUTUBE_KEY" "$FACEBOOK_KEY" "$INSTAGRAM_KEY" "$TIKTOK_KEY" "$TWITCH_KEY" "$KICK_KEY" "$X_KEY" "$TROVO_KEY" "$RTMP1_KEY" \
-               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY"; do
+               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY" \
+               "$TIKTOK_SL_TOKEN"; do
         if [ ! -z "$key" ]; then
             ANY_KEY_SET=1
             break
@@ -961,6 +1124,7 @@ build_and_run() {
     fi
 
     docker run -d --name prism-rtmps \
+        -v "$(pwd)/data:/app/data" \
         -p 1935:1935 \
         -p 8081:8081 \
         $SRT_MAPPING \
@@ -1009,6 +1173,12 @@ build_and_run() {
         -e TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID" \
         -e TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN" \
         -e TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID" \
+        -e TWITCH_CLIENT_SECRET="$TWITCH_CLIENT_SECRET" \
+        -e TWITCH_REDIRECT_URI="$TWITCH_REDIRECT_URI" \
+        -e YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID" \
+        -e YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET" \
+        -e YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI" \
+        -e SECRET_KEY="$SECRET_KEY" \
         -e SRT_PORT="$SRT_PORT" \
         -e SRT_PASSPHRASE="$SRT_PASSPHRASE" \
         -e OBS_WS_HOST="$OBS_WS_HOST" \
@@ -1016,6 +1186,10 @@ build_and_run() {
         -e OBS_WS_PASSWORD="$OBS_WS_PASSWORD" \
         -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
         -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
+        -e OBS_SCENE_INTRO="$OBS_SCENE_INTRO" \
+        -e TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN" \
+        -e TIKTOK_TITLE="$TIKTOK_TITLE" \
+        -e TIKTOK_GAME_ID="$TIKTOK_GAME_ID" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
@@ -1092,8 +1266,11 @@ while true; do
     echo -e "${YELLOW}Quick Reference:${NC}"
     echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
     echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
+    if [ ! -z "$SRT_PORT" ]; then
+        echo -e "  SRT Ingest:      srt://${DISPLAY_HOST}:${SRT_PORT}?mode=caller${SRT_PASSPHRASE:+\&passphrase=}${SRT_PASSPHRASE}"
+    fi
     echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
-    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:8081/chat.html?twitch=USER&youtube=ID"
+    echo -e "  Control Dashboard: http://${DISPLAY_HOST}:8081/chat.html"
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"
@@ -1105,10 +1282,11 @@ while true; do
         echo "8) Configure IP Whitelist (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
     echo "10) Configure Belabox & OBS Switcher (Optional)"
-    echo "11) Build & Start Server"
-    echo "12) Stop Server"
-    echo "13) View Logs"
-    echo "14) Quit"
+    echo "11) Configure TikTok Dynamic Key (Optional)"
+    echo "12) Build & Start Server"
+    echo "13) Stop Server"
+    echo "14) View Logs"
+    echo "15) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1123,10 +1301,11 @@ while true; do
         8) configure_whitelist ;;
         9) configure_optimizations ;;
         10) configure_belabox ;;
-        11) build_and_run ;;
-        12) stop_container ;;
-        13) view_logs ;;
-        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        11) configure_tiktok_dynamic ;;
+        12) build_and_run ;;
+        13) stop_container ;;
+        14) view_logs ;;
+        15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
