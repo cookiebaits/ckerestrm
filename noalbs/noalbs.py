@@ -25,8 +25,10 @@ class Noalbs:
 
     def get_bitrate(self):
         try:
-            r = requests.get(self.stats_url, timeout=2)
-            if r.status_code != 200: return 0
+            r = requests.get(self.stats_url, timeout=5)
+            if r.status_code != 200:
+                logger.error(f"Nginx Stats HTTP {r.status_code}")
+                return 0
 
             root = ET.fromstring(r.text)
             # Find the live application and its inbound stream
@@ -44,9 +46,11 @@ class Noalbs:
             return 0
 
     def switch_scene(self, scene):
-        if not self.obs_host: return
+        if not self.obs_host:
+            logger.error("OBS_WS_HOST not configured")
+            return
         try:
-            cl = obs.ReqClient(host=self.obs_host, port=self.obs_port, password=self.obs_password, timeout=3)
+            cl = obs.ReqClient(host=self.obs_host, port=self.obs_port, password=self.obs_password, timeout=5)
             cl.set_current_program_scene(scene)
             logger.info(f"Switched OBS to: {scene}")
         except Exception as e:

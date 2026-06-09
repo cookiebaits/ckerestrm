@@ -71,9 +71,10 @@ TIKTOK_GAME_NAME="Other"
 TIKTOK_GAME_ID=""
 
 # NOALBS & OBS Scene Switcher Settings
-NOALBS_ENABLED="true"
+NOALBS_ENABLED="false"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
+BRB_VIDEO_PATH=""
 OBS_WS_HOST=""
 OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
@@ -153,6 +154,7 @@ SECRET_KEY="$SECRET_KEY"
 NOALBS_ENABLED="$NOALBS_ENABLED"
 LOW_BITRATE="$LOW_BITRATE"
 RESTORE_BITRATE="$RESTORE_BITRATE"
+BRB_VIDEO_PATH="$BRB_VIDEO_PATH"
 OBS_WS_HOST="$OBS_WS_HOST"
 OBS_WS_PORT="$OBS_WS_PORT"
 OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
@@ -634,7 +636,18 @@ configure_vertical_keys() {
             10)
                echo -e "${YELLOW}Mirroring Horizontal keys...${NC}"
                V_YOUTUBE_KEY="$YOUTUBE_KEY"
-               V_YOUTUBE_URL="$YOUTUBE_URL"
+               # For YouTube, if horizontal is using primary, automatically use backup for vertical to avoid conflicts
+               if [[ "$YOUTUBE_URL" == *"x.rtmp.youtube.com"* ]] || [[ "$YOUTUBE_URL" == *"19355"* ]]; then
+                   echo -e "${YELLOW}Note: Automatically selected YouTube Backup server for vertical stream.${NC}"
+                   # If horizontal is using secure primary (19355), use secure backup (19357)
+                   if [[ "$YOUTUBE_URL" == *"19355"* ]]; then
+                       V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1"
+                   else
+                       V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1"
+                   fi
+               else
+                   V_YOUTUBE_URL="$YOUTUBE_URL"
+               fi
                V_TWITCH_KEY="$TWITCH_KEY"
                V_TWITCH_URL="$TWITCH_URL"
                V_TIKTOK_KEY="$TIKTOK_KEY"
@@ -976,7 +989,8 @@ configure_noalbs() {
         echo "6) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
         echo "7) OBS Main Scene Name (Current: ${OBS_SCENE_LIVE})"
         echo "8) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
-        echo "9) Back to Main Menu"
+        echo "9) Upload BRB Video (Beta) (Current: ${BRB_VIDEO_PATH:-None})"
+        echo "10) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r no_opt
 
@@ -1027,7 +1041,19 @@ configure_noalbs() {
                 OBS_SCENE_BRB="${scene_brb:-BRB}"
                 save_config
                 ;;
-            9) break ;;
+            9)
+                echo -e "Enter full path to BRB video file (e.g. /home/user/brb.mp4):"
+                read -r video_input
+                if [ -f "$video_input" ]; then
+                    BRB_VIDEO_PATH="$video_input"
+                    echo -e "${GREEN}Video path saved.${NC}"
+                    save_config
+                else
+                    echo -e "${RED}Error: File not found.${NC}"
+                    sleep 1
+                fi
+                ;;
+            10) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -1113,8 +1139,15 @@ build_and_run() {
 
     echo -e "${GREEN}Starting container...${NC}"
     # Start the container
+    # Handle BRB video volume mapping
+    BRB_MAPPING=""
+    if [ -f "$BRB_VIDEO_PATH" ]; then
+        BRB_MAPPING="-v $BRB_VIDEO_PATH:/app/data/brb_video.mp4"
+    fi
+
     docker run -d --name prism-rtmps \
         -v "$(pwd)/data:/app/data" \
+        $BRB_MAPPING \
         -p 1935:1935 \
         -p 8081:8081 \
         --restart unless-stopped \
@@ -1249,6 +1282,16 @@ SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
 while true; do
     clear
     DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
+
+    # Helper function to get status label
+    get_status() {
+        if [ "$1" == "true" ] || [ -n "$1" ]; then
+            echo -e "${GREEN}(Enabled)${NC}"
+        else
+            echo -e "${YELLOW}(Optional; disabled)${NC}"
+        fi
+    }
+
     echo -e "${GREEN}=====================================${NC}"
     echo -e "${GREEN}     PrismRTMPS Quick Installer      ${NC}"
     echo -e "${GREEN}=====================================${NC}"
@@ -1262,13 +1305,13 @@ while true; do
     echo "2) Configure Stream Keys (Horizontal)"
     echo "3) Configure Stream Keys (Vertical)"
     echo "4) Configure OBS Setup & Security Key"
-    echo "5) Configure Domain / Reverse Proxy (Optional)"
-    echo "6) Configure Combined Chat (Optional)"
-        echo "7) Configure Stream Titles & Twitch API (Optional)"
-        echo "8) Configure IP Whitelist (Optional)"
-        echo "9) Configure Optimizations (Chunk Size)"
-    echo "10) Configure NOALBS Scene Switcher (Optional)"
-    echo "11) Configure TikTok Dynamic Key (Optional)"
+    echo -e "5) Configure Domain / Reverse Proxy $(get_status $SERVER_DOMAIN)"
+    echo -e "6) Configure Combined Chat $(get_status $TWITCH_CLIENT_ID)"
+    echo -e "7) Configure Stream Titles & Twitch API $(get_status $TWITCH_OAUTH_TOKEN)"
+    echo -e "8) Configure IP Whitelist $(get_status $ACCEPTED_IP)"
+    echo "9) Configure Optimizations (Chunk Size)"
+    echo -e "10) Configure NOALBS Scene Switcher $(get_status $NOALBS_ENABLED)"
+    echo -e "11) Configure TikTok Dynamic Key $(get_status $TIKTOK_SL_TOKEN)"
     echo "12) Build & Start Server"
     echo "13) Stop Server"
     echo "14) View Logs"

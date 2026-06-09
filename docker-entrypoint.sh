@@ -17,7 +17,9 @@ echo "Starting stream key validation server..."
 # -b 127.0.0.1:8080: Bind to the same internal host and port
 # --log-level info: Set the log level
 # stream_validator:app: Point to the 'app' object in your python file
+# Use eventlet worker for SocketIO support
 gunicorn \
+    --worker-class eventlet \
     --workers 1 \
     --bind 127.0.0.1:8080 \
     --log-level info \
@@ -84,65 +86,63 @@ add_push() {
     if [ -n "$key_value" ]; then
         if [ -z "$push_url" ]; then
              echo "Warning: ${platform_name} key (${env_key_var}) is set, but URL (${env_url_var}) is empty. Skipping push."
-             sed -i "s|#${template_marker}| |g" $TMP_TEMPLATE
+             sed -i "s|{{PUSH_${template_marker}}}||g" $TMP_TEMPLATE
         else
             echo "${platform_name} activated."
             # Correctly escape slashes in URLs for sed, use | as delimiter
             local escaped_push="push ${push_url}${key_value};"
-            sed -i "s|#${template_marker}|${escaped_push}|g" $TMP_TEMPLATE
+            sed -i "s|{{PUSH_${template_marker}}}|${escaped_push}|g" $TMP_TEMPLATE
             ENV_OK=1
        fi
     else
-        # Remove the placeholder comment if key is not set
-        sed -i "s|#${template_marker}| |g" $TMP_TEMPLATE
+        # Remove the placeholder if key is not set
+        sed -i "s|{{PUSH_${template_marker}}}||g" $TMP_TEMPLATE
     fi
 }
 
 # Add pushes for each platform using the function
-add_push "Youtube"    "YOUTUBE_KEY"    "YOUTUBE_URL"    "youtube"
-add_push "Facebook"   "FACEBOOK_KEY"   "FACEBOOK_URL"   "facebook"
-add_push "Instagram"  "INSTAGRAM_KEY"  "INSTAGRAM_URL"  "instagram"
+add_push "YouTube"     "YOUTUBE_KEY"    "YOUTUBE_URL"    "YOUTUBE"
+add_push "Facebook"    "FACEBOOK_KEY"   "FACEBOOK_URL"   "FACEBOOK"
+add_push "Instagram"   "INSTAGRAM_KEY"  "INSTAGRAM_URL"  "INSTAGRAM"
+add_push "Twitch"      "TWITCH_KEY"     "TWITCH_URL"     "TWITCH"
+add_push "Kick"        "KICK_KEY"       "KICK_URL"       "KICK"
+add_push "X (Twitter)" "X_KEY"          "X_URL"          "X"
+add_push "Trovo"       "TROVO_KEY"      "TROVO_URL"      "TROVO"
+add_push "RTMP1"       "RTMP1_KEY"      "RTMP1_URL"      "RTMP1"
+add_push "RTMP2"       "RTMP2_KEY"      "RTMP2_URL"      "RTMP2"
+add_push "RTMP3"       "RTMP3_KEY"      "RTMP3_URL"      "RTMP3"
 
 # Manual TikTok push (only if dynamic is not set)
 if [ -z "$TIKTOK_SL_TOKEN" ]; then
-    add_push "TikTok"     "TIKTOK_KEY"     "TIKTOK_URL"     "tiktok"
+    add_push "TikTok"  "TIKTOK_KEY"     "TIKTOK_URL"     "TIKTOK"
 else
-    sed -i "s|#tiktok| |g" $TMP_TEMPLATE
+    sed -i "s|{{PUSH_TIKTOK}}||g" $TMP_TEMPLATE
 fi
 
-add_push "Twitch"     "TWITCH_KEY"     "TWITCH_URL"     "twitch"
-add_push "Kick"       "KICK_KEY"       "KICK_URL"       "kick"
-add_push "X (Twitter)" "X_KEY"          "X_URL"          "x"
-add_push "Trovo"      "TROVO_KEY"      "TROVO_URL"      "trovo"
-add_push "RTMP1"      "RTMP1_KEY"      "RTMP1_URL"      "rtmp1"
-add_push "RTMP2"      "RTMP2_KEY"      "RTMP2_URL"      "rtmp2"
-add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
-
 # Vertical pushes
-add_push "V-Youtube"   "V_YOUTUBE_KEY"   "V_YOUTUBE_URL"   "v_youtube"
-add_push "V-Facebook"  "V_FACEBOOK_KEY"  "V_FACEBOOK_URL"  "v_facebook"
-add_push "V-Instagram" "V_INSTAGRAM_KEY" "V_INSTAGRAM_URL" "v_instagram"
+add_push "V-YouTube"   "V_YOUTUBE_KEY"   "V_YOUTUBE_URL"   "V_YOUTUBE"
+add_push "V-Facebook"  "V_FACEBOOK_KEY"  "V_FACEBOOK_URL"  "V_FACEBOOK"
+add_push "V-Instagram" "V_INSTAGRAM_KEY" "V_INSTAGRAM_URL" "V_INSTAGRAM"
+add_push "V-Twitch"    "V_TWITCH_KEY"    "V_TWITCH_URL"    "V_TWITCH"
+add_push "V-Kick"      "V_KICK_KEY"      "V_KICK_URL"      "V_KICK"
+add_push "V-X"         "V_X_KEY"         "V_X_URL"         "V_X"
+add_push "V-Trovo"     "V_TROVO_KEY"     "V_TROVO_URL"     "V_TROVO"
+add_push "V-RTMP1"     "V_RTMP1_KEY"     "V_RTMP1_URL"     "V_RTMP1"
 
 # Manual Vertical TikTok push (only if dynamic is not set)
 if [ -z "$TIKTOK_SL_TOKEN" ]; then
-    add_push "V-TikTok"    "V_TIKTOK_KEY"    "V_TIKTOK_URL"    "v_tiktok"
+    add_push "V-TikTok" "V_TIKTOK_KEY"    "V_TIKTOK_URL"    "V_TIKTOK"
 else
-    sed -i "s|#v_tiktok| |g" $TMP_TEMPLATE
+    sed -i "s|{{PUSH_V_TIKTOK}}||g" $TMP_TEMPLATE
 fi
-
-add_push "V-Twitch"    "V_TWITCH_KEY"    "V_TWITCH_URL"    "v_twitch"
-add_push "V-Kick"      "V_KICK_KEY"      "V_KICK_URL"      "v_kick"
-add_push "V-X"         "V_X_KEY"         "V_X_URL"         "v_x"
-add_push "V-Trovo"     "V_TROVO_KEY"     "V_TROVO_URL"     "v_trovo"
-add_push "V-RTMP1"     "V_RTMP1_KEY"     "V_RTMP1_URL"     "v_rtmp1"
 
 # TikTok Dynamic Key Relay (Vertical Only)
 if [ -n "$TIKTOK_SL_TOKEN" ]; then
     echo "TikTok Dynamic Key Relay (Vertical) activated."
-    sed -i "s|#tiktok_v_dynamic|push rtmp://127.0.0.1:1935/tiktok_relay/vertical;|g" $TMP_TEMPLATE
+    sed -i "s|{{PUSH_V_TIKTOK_DYN}}|push rtmp://127.0.0.1:1935/tiktok_relay/vertical;|g" $TMP_TEMPLATE
     ENV_OK=1
 else
-    sed -i "s|#tiktok_v_dynamic||g" $TMP_TEMPLATE
+    sed -i "s|{{PUSH_V_TIKTOK_DYN}}||g" $TMP_TEMPLATE
 fi
 
 if [ $ENV_OK -eq 1 ]; then
@@ -173,9 +173,24 @@ echo "Starting Stunnel..."
 stunnel4 /etc/stunnel/stunnel.conf
 
 # --- NOALBS Integration ---
-if [ "$NOALBS_ENABLED" == "true" ] && [ -n "$OBS_WS_HOST" ]; then
-    echo "Starting NOALBS Switcher..."
-    python3 /app/noalbs/noalbs.py > /tmp/noalbs.log 2>&1 &
+if [ "$NOALBS_ENABLED" == "true" ]; then
+    if [ -z "$OBS_WS_HOST" ]; then
+        echo "ERROR: NOALBS is enabled but OBS_WS_HOST is not set. NOALBS will not start."
+    else
+        echo "Starting NOALBS Switcher..."
+        # Launch in background and check if it stays running for a few seconds
+        python3 /app/noalbs/noalbs.py > /tmp/noalbs.log 2>&1 &
+        NOALBS_PID=$!
+        (
+            sleep 3
+            if ! kill -0 $NOALBS_PID 2>/dev/null; then
+                echo "ERROR: NOALBS Switcher failed to start. Check /tmp/noalbs.log for details."
+                cat /tmp/noalbs.log
+            else
+                echo "NOALBS Switcher is running (PID: $NOALBS_PID)."
+            fi
+        ) &
+    fi
 fi
 
 echo "Starting Nginx..."

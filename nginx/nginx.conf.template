@@ -119,13 +119,17 @@ rtmp {
             on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
             on_publish_done http://127.0.0.1:8080/publish_done?key=$name&app=$app;
 
-            #youtube
-            #facebook
-            #instagram
-            #tiktok
-            #kick
-            #x
-            #twitch
+            {{PUSH_YOUTUBE}}
+            {{PUSH_FACEBOOK}}
+            {{PUSH_INSTAGRAM}}
+            {{PUSH_TIKTOK}}
+            {{PUSH_KICK}}
+            {{PUSH_X}}
+            {{PUSH_TWITCH}}
+            {{PUSH_TROVO}}
+            {{PUSH_RTMP1}}
+            {{PUSH_RTMP2}}
+            {{PUSH_RTMP3}}
         }
 
         application vertical {
@@ -133,14 +137,16 @@ rtmp {
             record off;
             on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
 
-            #v_youtube
-            #v_facebook
-            #v_instagram
-            #v_tiktok
-            #tiktok_v_dynamic
-            #v_kick
-            #v_x
-            #v_twitch
+            {{PUSH_V_YOUTUBE}}
+            {{PUSH_V_FACEBOOK}}
+            {{PUSH_V_INSTAGRAM}}
+            {{PUSH_V_TIKTOK}}
+            {{PUSH_V_TIKTOK_DYN}}
+            {{PUSH_V_KICK}}
+            {{PUSH_V_X}}
+            {{PUSH_V_TWITCH}}
+            {{PUSH_V_TROVO}}
+            {{PUSH_V_RTMP1}}
         }
 
         application tiktok_relay {
