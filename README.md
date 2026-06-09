@@ -32,7 +32,7 @@ This fork also includes performance tuning (optimized `chunk_size`), updated cor
 *   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
 *   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
 *   **Nginx 1.30.2 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
-*   **Belabox (SRT) Integration:** Secure, high-quality, low-latency mobile streaming support via SRT with automatic OBS scene switching.
+*   **NOALBS Scene Switcher:** Integrated Nginx OBS Automatic Low Bitrate Switcher to autonomously manage OBS scenes based on real-time bitrate.
 *   **Unified Control Dashboard:** Integrated OAuth-powered dashboard for combined Twitch/YouTube chat and synchronized title management.
 *   **TikTok Dynamic Stream Key:** Integration with Streamlabs TikTok API to automatically generate and rotate TikTok stream keys each time you go live.
 
@@ -72,26 +72,23 @@ You'd need a VPS server. Key considerations:
 
 We advise testing with one or two destinations first.
 
-## Belabox (SRT) & OBS Automation Setup
+## NOALBS & OBS Automation Setup
 
-PrismRTMPS now supports **Belabox** (via SRT) for high-reliability mobile streaming and automatic OBS scene management.
+PrismRTMPS includes **NOALBS** to autonomously manage your OBS scenes based on your ingest bitrate. This ensures your viewers always see a "BRB" screen instead of a frozen frame if your connection weakens.
 
 ### 1. Configure in `install.sh`
-*   Run `./install.sh` and go to the **"Belabox & OBS Switcher"** menu.
-*   **SRT Ingest Port:** Set a UDP port (e.g., `2000`). Ensure this port is open in your VPS firewall.
-*   **SRT Passphrase:** (Optional) Set a secure passphrase for your SRT connection.
+*   Run `./install.sh` and go to the **"Configure NOALBS Scene Switcher"** menu.
+*   **Enable NOALBS:** Set to `true`.
+*   **Bitrate Thresholds:**
+    *   **Low Bitrate:** Below this speed (default `1000kbps`), OBS switches to your **"BRB"** scene.
+    *   **Restore Bitrate:** Above this speed (default `1500kbps`), OBS switches back to your **"Main"** scene.
 *   **OBS WebSocket:** Enter your OBS PC's IP and WebSocket credentials (v5).
-*   **Scene Names:** Define your "Intro", "Full Room" (Live), and "brb" scene names exactly as they appear in OBS.
+*   **Scene Names:** Define your **"Main"** and **"BRB"** scene names exactly as they appear in OBS.
 
-### 2. Set up Belabox / SRT Encoder
-*   **URL:** `srt://<your_vps_ip_address>:<srt_port>?mode=caller`
-*   **Passphrase:** Match the passphrase set in `install.sh`.
-*   **Latency:** Standard 1000-2000ms recommended for bonded cellular.
-
-### 3. How it Works
-*   **Auto-Start:** When you start your SRT stream, OBS will automatically switch to your **"Intro"** scene.
-*   **Timed Transition:** After **10 minutes**, the system autonomously transitions OBS to your **"Full Room"** scene.
-*   **Disconnection Protection:** If the stream drops, OBS immediately switches to the **"brb"** scene.
+### 2. How it Works
+*   **Real-time Monitoring:** NOALBS monitors the local Nginx stats page every second.
+*   **Automatic Switching:** If the bitrate drops below the "Low" threshold for 3 seconds, it triggers the "BRB" scene.
+*   **Instant Recovery:** As soon as the bitrate exceeds the "Restore" threshold, OBS instantly returns to the "Main" scene.
 
 ## TikTok Dynamic Key Setup
 
