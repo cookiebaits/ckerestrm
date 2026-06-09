@@ -31,10 +31,7 @@ This fork also includes performance tuning (optimized `chunk_size`), updated cor
 *   **Vertical Streaming Support:** Optimized for use with the **OBS Aitum Vertical plugin**. Push a second, independent vertical feed to specialized targets (TikTok, YouTube Vertical, Twitch Vertical) alongside your horizontal stream.
 *   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
 *   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
-*   **Nginx 1.30.2 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
-*   **NOALBS Scene Switcher:** Integrated Nginx OBS Automatic Low Bitrate Switcher to autonomously manage OBS scenes based on real-time bitrate.
-*   **Unified Control Dashboard:** Integrated OAuth-powered dashboard for combined Twitch/YouTube chat and synchronized title management.
-*   **TikTok Dynamic Stream Key:** Integration with Streamlabs TikTok API to automatically generate and rotate TikTok stream keys each time you go live.
+*   **Nginx 1.30.1 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
 
 ## Prequisites
 
@@ -71,45 +68,6 @@ You'd need a VPS server. Key considerations:
 *   5- **Begin streaming from OBS!**
 
 We advise testing with one or two destinations first.
-
-## NOALBS & OBS Automation Setup
-
-PrismRTMPS includes **NOALBS** to autonomously manage your OBS scenes based on your ingest bitrate. This ensures your viewers always see a "BRB" screen instead of a frozen frame if your connection weakens.
-
-### 1. Configure in `install.sh`
-*   Run `./install.sh` and go to the **"Configure NOALBS Scene Switcher"** menu.
-*   **Enable NOALBS:** Set to `true`.
-*   **Bitrate Thresholds:** 
-    *   **Low Bitrate:** Below this speed (default `1000kbps`), OBS switches to your **"BRB"** scene.
-    *   **Restore Bitrate:** Above this speed (default `1500kbps`), OBS switches back to your **"Main"** scene.
-*   **OBS WebSocket:** Enter your OBS PC's IP and WebSocket credentials (v5).
-*   **Scene Names:** Define your **"Main"** and **"BRB"** scene names exactly as they appear in OBS.
-
-### 2. How it Works
-*   **Real-time Monitoring:** NOALBS monitors the local Nginx stats page every second.
-*   **Automatic Switching:** If the bitrate drops below the "Low" threshold for 3 seconds, it triggers the "BRB" scene.
-*   **Instant Recovery:** As soon as the bitrate exceeds the "Restore" threshold, OBS instantly returns to the "Main" scene.
-
-## TikTok Dynamic Key Setup
-
-PrismRTMPS can automatically manage your TikTok Live sessions, generating a new URL and Key every time you start your stream.
-
-### 1. Obtain Streamlabs TikTok Token
-*   Install Streamlabs Desktop and log in with your TikTok account.
-*   Navigate to Settings -> Advanced -> API Token (or use a token retriever).
-
-### 2. Configure in `install.sh`
-*   Go to **"Configure TikTok Dynamic Key"**.
-*   Enter your **Streamlabs Token**.
-*   Search and select your **Game Category** (e.g., Minecraft, Just Chatting).
-*   Set your default **Stream Title**.
-
-### 3. Usage
-*   When you start streaming from OBS to PrismRTMPS, the system will automatically:
-    1. Call the Streamlabs API to start a new TikTok Live session.
-    2. Retrieve the fresh RTMP URL and Key.
-    3. Relay your stream to TikTok.
-    4. Automatically end the TikTok Live session when you stop streaming in OBS.
 
 ## How To Manage PrismRTMPS
 

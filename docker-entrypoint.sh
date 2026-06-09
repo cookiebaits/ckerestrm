@@ -102,14 +102,7 @@ add_push() {
 add_push "Youtube"    "YOUTUBE_KEY"    "YOUTUBE_URL"    "youtube"
 add_push "Facebook"   "FACEBOOK_KEY"   "FACEBOOK_URL"   "facebook"
 add_push "Instagram"  "INSTAGRAM_KEY"  "INSTAGRAM_URL"  "instagram"
-
-# Manual TikTok push (only if dynamic is not set)
-if [ -z "$TIKTOK_SL_TOKEN" ]; then
-    add_push "TikTok"     "TIKTOK_KEY"     "TIKTOK_URL"     "tiktok"
-else
-    sed -i "s|#tiktok| |g" $TMP_TEMPLATE
-fi
-
+add_push "TikTok"     "TIKTOK_KEY"     "TIKTOK_URL"     "tiktok"
 add_push "Twitch"     "TWITCH_KEY"     "TWITCH_URL"     "twitch"
 add_push "Kick"       "KICK_KEY"       "KICK_URL"       "kick"
 add_push "X (Twitter)" "X_KEY"          "X_URL"          "x"
@@ -122,28 +115,12 @@ add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
 add_push "V-Youtube"   "V_YOUTUBE_KEY"   "V_YOUTUBE_URL"   "v_youtube"
 add_push "V-Facebook"  "V_FACEBOOK_KEY"  "V_FACEBOOK_URL"  "v_facebook"
 add_push "V-Instagram" "V_INSTAGRAM_KEY" "V_INSTAGRAM_URL" "v_instagram"
-
-# Manual Vertical TikTok push (only if dynamic is not set)
-if [ -z "$TIKTOK_SL_TOKEN" ]; then
-    add_push "V-TikTok"    "V_TIKTOK_KEY"    "V_TIKTOK_URL"    "v_tiktok"
-else
-    sed -i "s|#v_tiktok| |g" $TMP_TEMPLATE
-fi
-
+add_push "V-TikTok"    "V_TIKTOK_KEY"    "V_TIKTOK_URL"    "v_tiktok"
 add_push "V-Twitch"    "V_TWITCH_KEY"    "V_TWITCH_URL"    "v_twitch"
 add_push "V-Kick"      "V_KICK_KEY"      "V_KICK_URL"      "v_kick"
 add_push "V-X"         "V_X_KEY"         "V_X_URL"         "v_x"
 add_push "V-Trovo"     "V_TROVO_KEY"     "V_TROVO_URL"     "v_trovo"
 add_push "V-RTMP1"     "V_RTMP1_KEY"     "V_RTMP1_URL"     "v_rtmp1"
-
-# TikTok Dynamic Key Relay (Vertical Only)
-if [ -n "$TIKTOK_SL_TOKEN" ]; then
-    echo "TikTok Dynamic Key Relay (Vertical) activated."
-    sed -i "s|#tiktok_v_dynamic|push rtmp://127.0.0.1:1935/tiktok_relay/vertical;|g" $TMP_TEMPLATE
-    ENV_OK=1
-else
-    sed -i "s|#tiktok_v_dynamic||g" $TMP_TEMPLATE
-fi
 
 if [ $ENV_OK -eq 1 ]; then
     echo "Generating final Nginx configuration..."
@@ -172,10 +149,23 @@ echo "Starting Stunnel..."
 # Start stunnel in the background
 stunnel4 /etc/stunnel/stunnel.conf
 
-# --- NOALBS Integration ---
-if [ "$NOALBS_ENABLED" == "true" ] && [ -n "$OBS_WS_HOST" ]; then
-    echo "Starting NOALBS Switcher..."
-    python3 /app/noalbs/noalbs.py > /tmp/noalbs.log 2>&1 &
+# --- SRT Ingest Support ---
+if [ -n "$SRT_PORT" ]; then
+    echo "Starting SRT relay on port $SRT_PORT..."
+    # Relay SRT to local RTMP. We use OBS_KEY for the stream name.
+    # srt-live-transmit srt://:SRT_PORT rtmp://127.0.0.1:1935/${APP_NAME}/${OBS_KEY}
+    # We run it in a loop to ensure it restarts if it crashes
+    (
+        while true; do
+            SRT_OPTIONS="?mode=listener&port=${SRT_PORT}"
+            if [ -n "$SRT_PASSPHRASE" ]; then
+                SRT_OPTIONS="${SRT_OPTIONS}&passphrase=${SRT_PASSPHRASE}&pbkeylen=32"
+            fi
+            srt-live-transmit "srt://:${SRT_OPTIONS}" "rtmp://127.0.0.1:1935/${APP_NAME}/${OBS_KEY}"
+            echo "SRT relay crashed/stopped, restarting in 2 seconds..."
+            sleep 2
+        done
+    ) &
 fi
 
 echo "Starting Nginx..."

@@ -11,13 +11,8 @@ from flask_session import Session
 import requests
 import google_auth_oauthlib.flow
 from googleapiclient.discovery import build
-from flask_socketio import SocketIO, emit
-import asyncio
-import edge_tts
-from twitchio.ext import commands
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Session configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24))
@@ -150,7 +145,6 @@ def validate():
     raw_data = request.get_data(as_text=True)
     parsed_data = parse_qs(raw_data)
     stream_key_attempt = parsed_data.get('name', [''])[0]
-    app_name = request.args.get('app', '')
 
     # Cloudflare Real IP or fallback
     client_ip = request.headers.get('CF-Connecting-IP', request.remote_addr)
@@ -171,10 +165,9 @@ def validate():
         # Update titles in background to not block Nginx
         threading.Thread(target=run_update_titles).start()
         
-        # Only switch scenes if it's the primary horizontal stream
-        if app_name == os.getenv('APP_NAME', 'live'):
-            # Scene switching is now handled by NOALBS based on bitrate
-            pass
+        # Switch to Intro Scene immediately, then switch to Live Scene after 10 minutes (600s)
+        switch_obs_scene(OBS_SCENE_INTRO)
+        switch_obs_scene(OBS_SCENE_LIVE, delay=600)
         
         return Response('OK', status=200)
     else:
@@ -189,8 +182,8 @@ def publish_done():
         # Increment episode count when horizontal stream finishes
         increment_episode_count()
         app.logger.info("Horizontal stream finished. Episode count incremented.")
-        # Scene switching is now handled by NOALBS
-        pass
+        # Switch to BRB Scene
+        switch_obs_scene(OBS_SCENE_BRB)
     return Response('OK', status=200)
 
 # --- OAuth Routes ---
@@ -281,29 +274,9 @@ def callback_youtube():
 
 @app.route('/api/status')
 def api_status():
-    twitch_user = session.get('twitch_user')
-    youtube_user = session.get('youtube_user')
-    youtube_video_id = session.get('youtube_video_id')
-    
-    if 'youtube_token' in session and not youtube_video_id:
-        try:
-            # Try to fetch active live broadcast ID
-            headers = {'Authorization': f"Bearer {session['youtube_token']}"}
-            r = requests.get(
-                "https://www.googleapis.com/youtube/v3/liveBroadcasts?broadcastStatus=active&part=id",
-                headers=headers
-            )
-            data = r.json()
-            if 'items' in data and len(data['items']) > 0:
-                youtube_video_id = data['items'][0]['id']
-                session['youtube_video_id'] = youtube_video_id
-        except Exception as e:
-            app.logger.error(f"Error fetching YouTube video ID: {e}")
-
     return jsonify({
-        'twitch': twitch_user,
-        'youtube': youtube_user,
-        'youtube_video_id': youtube_video_id
+        'twitch': session.get('twitch_user'),
+        'youtube': session.get('youtube_user')
     })
 
 @app.route('/api/update_title', methods=['POST'])
@@ -323,27 +296,9 @@ def api_update_title():
         results['twitch'] = r.status_code == 204
 
     if 'youtube_token' in session:
-        vid = session.get('youtube_video_id')
-        if vid:
-            try:
-                from google.oauth2.credentials import Credentials
-                creds = Credentials(session['youtube_token'])
-                youtube = build('youtube', 'v3', credentials=creds)
-                
-                # Fetch the broadcast to get the full snippet
-                r = youtube.liveBroadcasts().list(id=vid, part='snippet').execute()
-                if 'items' in r and len(r['items']) > 0:
-                    broadcast = r['items'][0]
-                    broadcast['snippet']['title'] = title
-                    youtube.liveBroadcasts().update(part='snippet', body=broadcast).execute()
-                    results['youtube'] = True
-                else:
-                    results['youtube'] = "Broadcast not found"
-            except Exception as e:
-                app.logger.error(f"YouTube title update error: {e}")
-                results['youtube'] = str(e)
-        else:
-            results['youtube'] = "Active Video ID not found. Open Dashboard while live."
+        # Simplified: updating title requires finding the live broadcast ID first
+        # This is a placeholder for actual YouTube API title update logic
+        results['youtube'] = "Update not implemented yet"
 
     return jsonify(results)
 
@@ -351,84 +306,5 @@ def api_update_title():
 def health_check():
     return Response('OK', status=200)
 
-# --- TTS & Unified Chat ---
-
-@app.route('/api/tts')
-def api_tts():
-    text = request.args.get('text', '')
-    if not text:
-        return "No text", 400
-    
-    voice = "en-US-GuyNeural"
-    communicate = edge_tts.Communicate(text, voice)
-    
-    # We'll stream the audio back
-    def generate():
-        for chunk in communicate.stream_sync():
-            if chunk["type"] == "audio":
-                yield chunk["data"]
-                
-    return Response(generate(), mimetype="audio/mpeg")
-
-# Background Chat Managers
-twitch_bot = None
-youtube_active = False
-
-def start_chat_managers():
-    global twitch_bot, youtube_active
-    
-    # Twitch Chat
-    if 'twitch_token' in session and not twitch_bot:
-        try:
-            class Bot(commands.Bot):
-                def __init__(self, token):
-                    super().__init__(token=f"oauth:{token}", prefix='!', initial_channels=[session['twitch_user']])
-
-                async def event_message(self, message):
-                    if message.echo: return
-                    socketio.emit('chat_msg', {
-                        'platform': 'twitch',
-                        'user': message.author.name,
-                        'text': message.content
-                    })
-
-            twitch_bot = Bot(session['twitch_token'])
-            threading.Thread(target=lambda: twitch_bot.run(), daemon=True).start()
-        except Exception as e:
-            app.logger.error(f"Twitch Chat Error: {e}")
-
-    # YouTube Chat Polling
-    if 'youtube_token' in session and session.get('youtube_video_id') and not youtube_active:
-        youtube_active = True
-        def poll_yt():
-            from google.oauth2.credentials import Credentials
-            creds = Credentials(session['youtube_token'])
-            youtube = build('youtube', 'v3', credentials=creds)
-            
-            # Get Live Chat ID
-            r = youtube.liveBroadcasts().list(id=session['youtube_video_id'], part='snippet').execute()
-            if 'items' in r and len(r['items']) > 0:
-                chat_id = r['items'][0]['snippet']['liveChatId']
-                next_page_token = None
-                while youtube_active:
-                    try:
-                        c = youtube.liveChatMessages().list(liveChatId=chat_id, part='snippet,authorDetails', pageToken=next_page_token).execute()
-                        for item in c.get('items', []):
-                            socketio.emit('chat_msg', {
-                                'platform': 'youtube',
-                                'user': item['authorDetails']['displayName'],
-                                'text': item['snippet']['displayMessage']
-                            })
-                        next_page_token = c.get('nextPageToken')
-                        time.sleep(max(1, c.get('pollingIntervalMillis', 1000) / 1000))
-                    except:
-                        time.sleep(5)
-        threading.Thread(target=poll_yt, daemon=True).start()
-
-@app.route('/api/start_chat')
-def api_start_chat():
-    start_chat_managers()
-    return jsonify({'status': 'started'})
-
 if __name__ == '__main__':
-    socketio.run(app, host='127.0.0.1', port=8080, debug=False)
+    app.run(host='127.0.0.1', port=8080, debug=False)
