@@ -51,7 +51,8 @@ DESTINATION_KEYS = {
 for i in ['YOUTUBE', 'TWITCH', 'TIKTOK', 'KICK', 'FACEBOOK', 'INSTAGRAM', 'X', 'TROVO', 'RTMP1']:
     DESTINATION_KEYS[f'v_{i.lower()}'] = os.getenv(f'V_{i}_KEY', '')
 
-ACCEPTED_IP = os.getenv('ACCEPTED_IP', '')
+ACCEPTED_IP_RAW = os.getenv('ACCEPTED_IP', '')
+ACCEPTED_IPS = [ip.strip() for ip in ACCEPTED_IP_RAW.split(',')] if ACCEPTED_IP_RAW else []
 EPISODE_FILE = '/app/data/episode_count.txt'
 TITLE_LOCK = threading.Lock()
 
@@ -83,8 +84,8 @@ if VALID_KEYS:
 else:
     app.logger.warning("Stream validator starting. No keys found in environment.")
 
-if ACCEPTED_IP:
-    app.logger.info(f"IP Whitelist active: {ACCEPTED_IP}")
+if ACCEPTED_IP_RAW:
+    app.logger.info(f"IP Whitelist active: {ACCEPTED_IP_RAW}")
 
 def get_episode_count():
     try:
@@ -158,8 +159,8 @@ def validate():
         client_ip = parsed_data.get('addr', [request.remote_addr])[0]
 
     # IP Whitelist Check
-    if ACCEPTED_IP and client_ip != ACCEPTED_IP:
-        app.logger.warning(f"REJECTED IP: {client_ip}")
+    if ACCEPTED_IPS and client_ip not in ACCEPTED_IPS:
+        app.logger.warning(f"REJECTED IP: {client_ip} (Not in whitelist: {ACCEPTED_IPS})")
         return Response('IP not whitelisted', status=403)
 
     # Key Check

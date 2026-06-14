@@ -52,6 +52,7 @@ OBS_KEY=""
 APP_NAME="live"
 ACCEPTED_IP=""
 SERVER_DOMAIN=""
+LETSENCRYPT_EMAIL=""
 CHUNK_SIZE="8192"
 STREAM_BASE_TITLE="Live Stream"
 TWITCH_CLIENT_ID=""
@@ -140,6 +141,7 @@ CHAT_YOUTUBE="$CHAT_YOUTUBE"
 CHAT_KICK="$CHAT_KICK"
 CHAT_TIKTOK="$CHAT_TIKTOK"
 SERVER_DOMAIN="$SERVER_DOMAIN"
+LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL"
 CHUNK_SIZE="$CHUNK_SIZE"
 STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
@@ -727,43 +729,71 @@ configure_obs() {
 }
 
 configure_domain() {
-    clear
-    echo -e "${GREEN}=== Domain / Reverse Proxy Configuration ===${NC}"
-    echo -e "Current Domain: ${SERVER_DOMAIN:-None (Using IP)}"
-    echo -e "Enter your domain or Cloudflare reverse proxy (e.g. stream.yourdomain.com):"
-    echo -e "(Leave blank to keep current, type 'disable' to use IP)"
-    read -r dom_input
-    if [ "$dom_input" == "disable" ] || [ "$dom_input" == "DISABLE" ]; then
-        SERVER_DOMAIN=""
-        echo -e "${GREEN}Domain disabled, using IP.${NC}"
-    elif [ ! -z "$dom_input" ]; then
-        # Basic sanitization for domain
-        dom_input=$(echo "$dom_input" | sed 's/[^a-zA-Z0-9.-]//g')
-        if [ ! -z "$dom_input" ]; then
-            SERVER_DOMAIN="$dom_input"
-            echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
-            echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
-        else
-            echo -e "${RED}Invalid domain name. Keeping current.${NC}"
-        fi
-    fi
-    save_config
-    sleep 2
+    while true; do
+        clear
+        echo -e "${GREEN}=== Domain / Reverse Proxy Configuration ===${NC}"
+        echo -e "1) Domain Name (Current: ${SERVER_DOMAIN:-None})"
+        echo -e "2) Let's Encrypt Email (Current: ${LETSENCRYPT_EMAIL:-None})"
+        echo -e "3) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r dom_opt
+
+        case $dom_opt in
+            1)
+                echo -e "Enter your domain (e.g. stream.yourdomain.com):"
+                echo -e "(Leave blank to keep current, type 'disable' to use IP)"
+                read -r dom_input
+                if [ "$dom_input" == "disable" ] || [ "$dom_input" == "DISABLE" ]; then
+                    SERVER_DOMAIN=""
+                    echo -e "${GREEN}Domain disabled, using IP.${NC}"
+                elif [ ! -z "$dom_input" ]; then
+        # Basic sanitization for domain to prevent command injection
+                    dom_input=$(echo "$dom_input" | sed 's/[^a-zA-Z0-9.-]//g')
+                    if [ ! -z "$dom_input" ]; then
+                        SERVER_DOMAIN="$dom_input"
+                        echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
+                        echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
+                    else
+                        echo -e "${RED}Invalid domain name.${NC}"
+                    fi
+                fi
+                save_config
+                sleep 1
+                ;;
+            2)
+                echo -e "Enter Email for Let's Encrypt (required for SSL):"
+                read -r email_input
+                if [ ! -z "$email_input" ]; then
+                    LETSENCRYPT_EMAIL="$email_input"
+                    save_config
+                fi
+                ;;
+            3) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
 }
 
 configure_whitelist() {
     clear
     echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
-    echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
+    echo -e "Current Accepted IPs: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
     echo ""
-    echo -e "Enter IP address to whitelist (Leave blank to keep current, type 'disable' to allow all):"
+    echo -e "Enter IP addresses to whitelist (comma-separated for multiple, e.g. 1.2.3.4,5.6.7.8):"
+    echo -e "(Leave blank to keep current, type 'disable' to allow all):"
     read -r ip_input
     if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
         ACCEPTED_IP=""
         echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
     elif [ ! -z "$ip_input" ]; then
-        ACCEPTED_IP="$ip_input"
-        echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
+        # Basic sanitization: allow numbers, dots, and commas for whitelisted IPs
+        ip_input=$(echo "$ip_input" | sed 's/[^0-9.,]//g')
+        if [ ! -z "$ip_input" ]; then
+            ACCEPTED_IP="$ip_input"
+            echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
+        else
+            echo -e "${RED}Invalid IP format.${NC}"
+        fi
     fi
     save_config
     sleep 2
@@ -1157,8 +1187,12 @@ build_and_run() {
 
     docker run -d --name prism-rtmps \
         -v "$(pwd)/data:/app/data" \
+        -v "$(pwd)/letsencrypt:/etc/letsencrypt" \
+        -v "$(pwd)/certbot_www:/var/www/certbot" \
         $BRB_MAPPING \
         -p 1935:1935 \
+        -p 80:80 \
+        -p 443:443 \
         -p 8081:8081 \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
@@ -1211,6 +1245,8 @@ build_and_run() {
         -e YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET" \
         -e YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI" \
         -e SECRET_KEY="$SECRET_KEY" \
+        -e SERVER_DOMAIN="$SERVER_DOMAIN" \
+        -e LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL" \
         -e SRT_PORT="$SRT_PORT" \
         -e SRT_PASSPHRASE="$SRT_PASSPHRASE" \
         -e OBS_WS_HOST="$OBS_WS_HOST" \

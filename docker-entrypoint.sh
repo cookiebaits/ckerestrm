@@ -161,6 +161,99 @@ else
     rm $TMP_TEMPLATE
 fi
 
+# --- TLS / Let's Encrypt Logic ---
+# This section dynamically generates an Nginx HTTPS server block if a domain and email are provided.
+# It checks for existing certificates and attempts to obtain new ones if they are missing.
+HTTPS_SERVER_BLOCK=""
+if [ -n "$SERVER_DOMAIN" ] && [ -n "$LETSENCRYPT_EMAIL" ]; then
+    if [ -f "/etc/letsencrypt/live/$SERVER_DOMAIN/fullchain.pem" ]; then
+        echo "SSL Certificates found for $SERVER_DOMAIN"
+        HTTPS_SERVER_BLOCK="server {
+    listen 443 ssl;
+    server_name $SERVER_DOMAIN;
+
+    ssl_certificate /etc/letsencrypt/live/$SERVER_DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$SERVER_DOMAIN/privkey.pem;
+
+    # High-security SSL settings
+    ssl_protocols TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_ciphers TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;
+    ssl_ecdh_curve secp384r1;
+    ssl_session_timeout  10m;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_tickets off;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+    location /stat {
+        rtmp_stat all;
+        rtmp_stat_stylesheet stat.xsl;
+    }
+
+    location /stat.xsl {
+        root /usr/local/nginx/html;
+    }
+
+    location /login {
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    location /callback {
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    location /socket.io {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection \"upgrade\";
+    }
+
+    location / {
+        root /usr/local/nginx/html;
+        index index.html;
+    }
+}"
+    else
+        echo "SSL Certificates NOT found. Certbot will attempt to obtain them in the background."
+        (
+            sleep 15
+            echo "Certbot: Attempting to obtain certificates for $SERVER_DOMAIN..."
+            certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email "$LETSENCRYPT_EMAIL" -d "$SERVER_DOMAIN"
+            if [ $? -eq 0 ]; then
+                echo "Certbot: Success! Reloading to apply changes (Container may need a manual restart if config doesn't auto-update)."
+                # We can't easily regenerate the template from here without restarting,
+                # but certbot might have already modified the config if we used --nginx.
+                # However, we used --webroot for stability.
+            else
+                echo "Certbot: Failed to obtain certificates."
+            fi
+        ) &
+    fi
+fi
+
+# Apply the dynamic HTTPS block to a separate config file included by nginx.conf.template
+# This prevents Nginx from failing to start if the HTTPS block is empty.
+echo "$HTTPS_SERVER_BLOCK" > /etc/nginx/https.conf
+
+# --- Certbot Auto-Renewal Loop ---
+# Runs in the background every 12 hours to ensure certificates are always valid.
+# Calls 'nginx -s reload' after renewal to apply new certificates without downtime.
+(
+    while true; do
+        sleep 12h
+        echo "Certbot: Checking for certificate renewal..."
+        certbot renew --quiet
+        nginx -s reload
+    done
+) &
+
+
 # Debug output if requested
 if [ -n "${DEBUG}" ]; then
     echo "--- Final Nginx Configuration (${NGINX_CONF}) ---"
