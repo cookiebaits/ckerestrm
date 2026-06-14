@@ -74,21 +74,25 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     low_count += 1
+                    # Switch to BRB if bitrate is low for 3 consecutive checks (approx 6 seconds)
                     if low_count >= 3 and not self.is_low:
                         logger.warning(f"Low bitrate: {bitrate}kbps. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
                     low_count = 0
+                    # Switch back to Main only if speed is restored
                     if bitrate >= self.restore_threshold and self.is_low:
                         logger.info(f"Bitrate restored: {bitrate}kbps. Switching to {self.scene_main}")
                         self.switch_scene(self.scene_main)
                         self.is_low = False
             else:
+                # Handle complete disconnection
                 if self.is_streaming:
-                    logger.info("Stream disconnected.")
+                    logger.warning("Stream disconnected. Switching to BRB.")
+                    self.switch_scene(self.scene_brb)
                     self.is_streaming = False
-                    self.is_low = False
+                    self.is_low = True # Treat as low for restoration purposes
                     low_count = 0
 
             time.sleep(2)
