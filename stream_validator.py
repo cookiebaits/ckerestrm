@@ -152,9 +152,15 @@ def run_update_titles():
 
 @app.route('/validate', methods=['POST'])
 def validate():
-    raw_data = request.get_data(as_text=True)
-    parsed_data = parse_qs(raw_data)
-    stream_key_attempt = parsed_data.get('name', [''])[0]
+    # Nginx RTMP module sends data as application/x-www-form-urlencoded
+    # Flask populates request.form for us.
+    stream_key_attempt = request.form.get('name')
+    if not stream_key_attempt:
+        # Fallback to manual parsing if necessary
+        raw_data = request.get_data(as_text=True)
+        parsed_data = parse_qs(raw_data)
+        stream_key_attempt = parsed_data.get('name', [''])[0]
+
     app_name = request.args.get('app', '')
 
     # Cloudflare Real IP or fallback
