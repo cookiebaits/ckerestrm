@@ -228,19 +228,36 @@ if [ -n "$SERVER_DOMAIN" ] && [ -n "$LETSENCRYPT_EMAIL" ]; then
     }
 }"
     else
-        echo "SSL Certificates NOT found. Certbot will attempt to obtain them in the background."
+        echo "SSL Certificates NOT found. Certbot will attempt to obtain them in the background (with retry logic)."
         (
-            sleep 15
-            echo "Certbot: Attempting to obtain certificates for $SERVER_DOMAIN..."
-            certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email "$LETSENCRYPT_EMAIL" -d "$SERVER_DOMAIN"
-            if [ $? -eq 0 ]; then
-                echo "Certbot: Success! Reloading to apply changes (Container may need a manual restart if config doesn't auto-update)."
-                # We can't easily regenerate the template from here without restarting,
-                # but certbot might have already modified the config if we used --nginx.
-                # However, we used --webroot for stability.
-            else
-                echo "Certbot: Failed to obtain certificates."
-            fi
+            # Wait for Nginx to be fully up
+            sleep 20
+
+            MAX_CERT_ATTEMPTS=3
+            CERT_ATTEMPT=1
+            while [ $CERT_ATTEMPT -le $MAX_CERT_ATTEMPTS ]; do
+                echo "Certbot (Attempt $CERT_ATTEMPT/$MAX_CERT_ATTEMPTS): Obtaining certificates for $SERVER_DOMAIN..."
+
+                # Use --test-cert if email is dummy or requested for staging
+                STAGING_ARG=""
+                if [[ "$LETSENCRYPT_EMAIL" == *"example.com"* ]] || [[ "$LETSENCRYPT_EMAIL" == "dummy"* ]]; then
+                    echo "Notice: Using Let's Encrypt Staging Environment (--test-cert) for dummy/example email."
+                    STAGING_ARG="--test-cert"
+                fi
+
+                if certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email "$LETSENCRYPT_EMAIL" $STAGING_ARG -d "$SERVER_DOMAIN"; then
+                    echo "Certbot: Success! New certificates obtained."
+                    # Re-run entrypoint script logic to generate the HTTPS block now that certs exist
+                    # For now, we'll just advise a restart or reload if possible.
+                    # In a robust setup, we might trigger a container restart via a sidecar.
+                    nginx -s reload
+                    break
+                else
+                    echo "Certbot: Attempt $CERT_ATTEMPT failed."
+                    CERT_ATTEMPT=$((CERT_ATTEMPT + 1))
+                    [ $CERT_ATTEMPT -le $MAX_CERT_ATTEMPTS ] && sleep 60
+                fi
+            done
         ) &
     fi
 fi

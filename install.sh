@@ -772,6 +772,7 @@ configure_domain() {
                 ;;
             2)
                 echo -e "Enter Email for Let's Encrypt (required for SSL):"
+                echo -e "(Example: yourname@gmail.com, or 'dummy@example.com' for testing)"
                 read -r email_input
                 if [ ! -z "$email_input" ]; then
                     LETSENCRYPT_EMAIL="$email_input"
