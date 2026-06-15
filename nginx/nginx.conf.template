@@ -94,11 +94,11 @@ rtmp {
         include /etc/nginx/rtmp_access.conf;
 
         # Stability and Security Enhancements
-        max_connections 100;
-        max_streams 32;
+        max_connections 200;
+        max_streams 64;
 
         ping 30s;
-        ping_timeout 10s;
+        ping_timeout 15s;
         drop_idle_publisher 10s;
         deny play all; # Prevent unauthorized viewing
 

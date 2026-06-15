@@ -31,22 +31,27 @@ class TikTokStream:
             'audience_type': (None, audience_type),
         }
 
-        max_retries = 3
+        max_retries = 5
         for attempt in range(max_retries):
             try:
-                response = self.s.post(url, files=files, timeout=30).json()
-                if "rtmp" in response and "key" in response:
-                    self.stream_id = response["id"]
-                    return response["rtmp"], response["key"]
+                response = self.s.post(url, files=files, timeout=30)
+                response.raise_for_status()
+                data = response.json()
+                if "rtmp" in data and "key" in data:
+                    self.stream_id = data["id"]
+                    return data["rtmp"], data["key"]
                 else:
-                    logger.warning(f"TikTok API Start attempt {attempt+1} failed: {response}")
+                    logger.warning(f"TikTok API Start attempt {attempt+1} failed: {data}")
             except Exception as e:
                 logger.warning(f"TikTok API Start attempt {attempt+1} error: {e}")
 
             if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)
+                # Exponential backoff
+                wait_time = 2 ** (attempt + 1)
+                logger.info(f"Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
 
-        raise Exception("Failed to start TikTok stream after multiple retries")
+        raise Exception("Failed to start TikTok stream after 5 attempts")
 
     def end(self):
         if not self.stream_id:
@@ -77,35 +82,49 @@ def main():
         rtmp_out = f"{rtmp_out_base}{stream_key}"
         logger.info(f"TikTok Live Started. ID: {tiktok.stream_id}")
 
-        # Start FFmpeg relay
-        # Added -re for real-time and improved buffer settings
+        # Start FFmpeg relay with robust buffering
         ffmpeg_cmd = [
-            "ffmpeg", "-hide_banner", "-loglevel", "error",
+            "ffmpeg", "-hide_banner", "-loglevel", "warning",
             "-i", rtmp_in,
-            "-c", "copy", "-f", "flv", rtmp_out
+            "-c", "copy",
+            "-f", "flv",
+            "-flvflags", "no_duration_filesize",
+            rtmp_out
         ]
 
         process = subprocess.Popen(ffmpeg_cmd)
 
         def handle_signal(signum, frame):
-            logger.info("Received termination signal. Ending TikTok Live...")
+            logger.info(f"Received signal {signum}. Terminating...")
             process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
             tiktok.end()
             sys.exit(0)
 
         signal.signal(signal.SIGTERM, handle_signal)
         signal.signal(signal.SIGINT, handle_signal)
 
-        process.wait()
-        logger.info("Relay stream ended. Closing TikTok Live session...")
-        if not tiktok.end():
-            logger.warning("TikTok API reported failure when ending stream.")
+        # Monitor process
+        while process.poll() is None:
+            time.sleep(2)
 
+        logger.info("Relay process finished.")
+
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user.")
     except Exception as e:
         logger.error(f"Pusher Error: {e}")
-        if tiktok.stream_id:
-            tiktok.end()
         sys.exit(1)
+    finally:
+        if tiktok.stream_id:
+            logger.info(f"Ending TikTok session {tiktok.stream_id}...")
+            if tiktok.end():
+                logger.info("Session ended successfully.")
+            else:
+                logger.warning("Failed to end session via API.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

@@ -89,7 +89,7 @@ else:
     app.logger.warning("Stream validator starting. No keys found in environment.")
 
 if ACCEPTED_IP_RAW:
-    app.logger.info(f"IP Whitelist active: {ACCEPTED_IP_RAW}")
+    app.logger.info("IP Whitelist is active")
 
 def get_episode_count():
     try:

@@ -98,9 +98,10 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 save_config() {
-    # Ensure secure permissions before writing
+    # Ensure secure permissions before writing to prevent local info leakage
     touch "$CONFIG_FILE"
     chmod 600 "$CONFIG_FILE"
+    # Filter out potential internal shell variables if necessary, but keep keys
     cat <<ENV_EOF > "$CONFIG_FILE"
 YOUTUBE_URL="$YOUTUBE_URL"
 YOUTUBE_KEY="$YOUTUBE_KEY"
@@ -1109,16 +1110,33 @@ configure_noalbs() {
                 save_config
                 ;;
             9)
-                echo -e "Enter full path to BRB video file (e.g. /home/user/brb.mp4):"
-                read -r video_input
-                if [ -f "$video_input" ]; then
-                    BRB_VIDEO_PATH="$video_input"
-                    echo -e "${GREEN}Video path saved.${NC}"
-                    save_config
-                else
-                    echo -e "${RED}Error: File not found.${NC}"
-                    sleep 1
+                echo -e "Choose BRB Video Source:"
+                echo "1) Local Path"
+                echo "2) Remote URL (Download)"
+                read -r brb_src
+                if [ "$brb_src" == "1" ]; then
+                    echo -e "Enter full path to BRB video file (e.g. /home/user/brb.mp4):"
+                    read -r video_input
+                    if [ -f "$video_input" ]; then
+                        BRB_VIDEO_PATH="$video_input"
+                        echo -e "${GREEN}Video path saved.${NC}"
+                    else
+                        echo -e "${RED}Error: File not found.${NC}"
+                    fi
+                elif [ "$brb_src" == "2" ]; then
+                    echo -e "Enter URL to BRB video file:"
+                    read -r video_url
+                    mkdir -p ./data
+                    echo -e "${YELLOW}Downloading...${NC}"
+                    if curl -L "$video_url" -o ./data/brb_video.mp4; then
+                        BRB_VIDEO_PATH="$(pwd)/data/brb_video.mp4"
+                        echo -e "${GREEN}Downloaded and saved to $BRB_VIDEO_PATH${NC}"
+                    else
+                        echo -e "${RED}Download failed.${NC}"
+                    fi
                 fi
+                save_config
+                sleep 2
                 ;;
             10) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
@@ -1375,14 +1393,14 @@ while true; do
         fi
     }
 
-    echo -e "${GREEN}=====================================${NC}"
-    echo -e "${GREEN}     PrismRTMPS Quick Installer      ${NC}"
-    echo -e "${GREEN}=====================================${NC}"
+    echo -e "${GREEN}┌───────────────────────────────────────────┐${NC}"
+    echo -e "${GREEN}│       PrismRTMPS Universal Installer      │${NC}"
+    echo -e "${GREEN}└───────────────────────────────────────────┘${NC}"
     echo -e "${YELLOW}Quick Reference:${NC}"
-    echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
-    echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
-    echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
-    echo -e "  Control Dashboard: http://${DISPLAY_HOST}:8081/chat.html"
+    echo -e "  🚀 Ingest:    rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
+    echo -e "  📱 Vertical:  rtmp://${DISPLAY_HOST}:1935/vertical"
+    echo -e "  📊 Stats:     http://${DISPLAY_HOST}:8081/stat"
+    echo -e "  🎮 Dashboard: http://${DISPLAY_HOST}:8081/chat.html"
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"
