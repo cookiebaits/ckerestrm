@@ -6,8 +6,8 @@ ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --break-system-packages flask gunicorn requests obsws-python flask-session twitchio google-api-python-client google-auth-oauthlib google-auth-httplib2 edge-tts flask-socketio eventlet && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext ffmpeg certbot python3-certbot-nginx && \
+    pip3 install --break-system-packages flask gunicorn requests obsws-python flask-session twitchio google-api-python-client google-auth-oauthlib google-auth-httplib2 && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext srt-tools && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
@@ -55,22 +55,27 @@ COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Copy the validation server
 COPY stream_validator.py /stream_validator.py
-COPY tiktok_pusher.py /app/tiktok_pusher.py
-COPY tiktok_search.py /app/tiktok_search.py
-
-# Config NOALBS
-COPY noalbs /app/noalbs
 
 # Config Stunnel
-RUN mkdir -p /etc/stunnel/conf.d
+RUN mkdir -p  /etc/stunnel/conf.d
 # Set up config file 
 COPY stunnel/stunnel.conf /etc/stunnel/stunnel.conf
 COPY stunnel/stunnel4 /etc/default/stunnel4
 
-# Copy all platform-specific stunnel configs
-# Note: we filter out stunnel.conf to avoid duplicate inclusion if it ends in .conf
-RUN cp -r stunnel/*.conf /etc/stunnel/conf.d/ 2>/dev/null || true
-RUN rm -f /etc/stunnel/conf.d/stunnel.conf
+#Facebook Stunnel Port 19350
+COPY stunnel/facebook.conf /etc/stunnel/conf.d/facebook.conf
+
+#Instagram Stunnel Port 19351
+COPY stunnel/instagram.conf /etc/stunnel/conf.d/instagram.conf
+
+#Tiktok Stunnel Port 19358
+COPY stunnel/tiktok.conf /etc/stunnel/conf.d/tiktok.conf
+
+#Kick Stunnel Port 19353
+COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
+
+#X Stunnel Port 19354
+COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
 
 #Youtube
 ENV YOUTUBE_URL rtmp://x.rtmp.youtube.com/live2/
@@ -129,7 +134,7 @@ COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 1935 80 443 8081
+EXPOSE 1935
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 

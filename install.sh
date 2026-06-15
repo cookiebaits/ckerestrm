@@ -52,7 +52,6 @@ OBS_KEY=""
 APP_NAME="live"
 ACCEPTED_IP=""
 SERVER_DOMAIN=""
-LETSENCRYPT_EMAIL=""
 CHUNK_SIZE="8192"
 STREAM_BASE_TITLE="Live Stream"
 TWITCH_CLIENT_ID=""
@@ -64,26 +63,16 @@ YOUTUBE_CLIENT_ID=""
 YOUTUBE_CLIENT_SECRET=""
 YOUTUBE_REDIRECT_URI=""
 SECRET_KEY=$(openssl rand -hex 24)
-DASHBOARD_USER=""
-DASHBOARD_PASS=""
 
-# TikTok Dynamic Settings
-TIKTOK_SL_TOKEN=""
-TIKTOK_TITLE="Live Stream"
-TIKTOK_GAME_NAME="Other"
-TIKTOK_GAME_ID=""
-
-# NOALBS & OBS Scene Switcher Settings
-NOALBS_ENABLED="false"
-CLOUD_BRB="false"
-LOW_BITRATE="1000"
-RESTORE_BITRATE="1500"
-BRB_VIDEO_PATH=""
+# Belabox & OBS Scene Switcher Settings
+SRT_PORT=""
+SRT_PASSPHRASE=""
 OBS_WS_HOST=""
 OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
-OBS_SCENE_LIVE="Main"
-OBS_SCENE_BRB="BRB"
+OBS_SCENE_LIVE="Full Room"
+OBS_SCENE_BRB="brb"
+OBS_SCENE_INTRO="Intro"
 
 # Combined Chat Settings
 CHAT_TWITCH=""
@@ -99,10 +88,6 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 save_config() {
-    # Ensure secure permissions before writing to prevent local info leakage
-    touch "$CONFIG_FILE"
-    chmod 600 "$CONFIG_FILE"
-    # Filter out potential internal shell variables if necessary, but keep keys
     cat <<ENV_EOF > "$CONFIG_FILE"
 YOUTUBE_URL="$YOUTUBE_URL"
 YOUTUBE_KEY="$YOUTUBE_KEY"
@@ -148,7 +133,6 @@ CHAT_YOUTUBE="$CHAT_YOUTUBE"
 CHAT_KICK="$CHAT_KICK"
 CHAT_TIKTOK="$CHAT_TIKTOK"
 SERVER_DOMAIN="$SERVER_DOMAIN"
-LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL"
 CHUNK_SIZE="$CHUNK_SIZE"
 STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
@@ -160,22 +144,14 @@ YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID"
 YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET"
 YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI"
 SECRET_KEY="$SECRET_KEY"
-DASHBOARD_USER="$DASHBOARD_USER"
-DASHBOARD_PASS="$DASHBOARD_PASS"
-NOALBS_ENABLED="$NOALBS_ENABLED"
-LOW_BITRATE="$LOW_BITRATE"
-RESTORE_BITRATE="$RESTORE_BITRATE"
-CLOUD_BRB="$CLOUD_BRB"
-BRB_VIDEO_PATH="$BRB_VIDEO_PATH"
+SRT_PORT="$SRT_PORT"
+SRT_PASSPHRASE="$SRT_PASSPHRASE"
 OBS_WS_HOST="$OBS_WS_HOST"
 OBS_WS_PORT="$OBS_WS_PORT"
 OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
 OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
 OBS_SCENE_BRB="$OBS_SCENE_BRB"
-TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN"
-TIKTOK_TITLE="$TIKTOK_TITLE"
-TIKTOK_GAME_NAME="$TIKTOK_GAME_NAME"
-TIKTOK_GAME_ID="$TIKTOK_GAME_ID"
+OBS_SCENE_INTRO="$OBS_SCENE_INTRO"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -249,20 +225,12 @@ configure_keys() {
                echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
                echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
                echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US East: Chicago (rtmp://ord02.contribute.live-video.net/app/)"
-               echo "  6) US East: Miami (rtmp://mia05.contribute.live-video.net/app/)"
-               echo "  7) US Central: Dallas (rtmp://dfw01.contribute.live-video.net/app/)"
-               echo "  8) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  9) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  10) US West: Los Angeles (rtmp://lax05.contribute.live-video.net/app/)"
-               echo "  11) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  12) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  13) EU: Amsterdam (rtmp://ams03.contribute.live-video.net/app/)"
-               echo "  14) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  15) Asia: Seoul (rtmp://icn01.contribute.live-video.net/app/)"
-               echo "  16) Asia: Singapore (rtmp://sin01.contribute.live-video.net/app/)"
-               echo "  17) Australia: Sydney (rtmp://syd01.contribute.live-video.net/app/)"
-               echo "  18) Custom URL"
+               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
+               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
+               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
+               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
+               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
+               echo "  10) Custom URL"
                echo -e "Option (Current URL: $TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
@@ -270,20 +238,12 @@ configure_keys() {
                    2) TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
                    3) TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
                    4) TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) TWITCH_URL="rtmp://ord02.contribute.live-video.net/app/" ;;
-                   6) TWITCH_URL="rtmp://mia05.contribute.live-video.net/app/" ;;
-                   7) TWITCH_URL="rtmp://dfw01.contribute.live-video.net/app/" ;;
-                   8) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   9) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   10) TWITCH_URL="rtmp://lax05.contribute.live-video.net/app/" ;;
-                   11) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   12) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   13) TWITCH_URL="rtmp://ams03.contribute.live-video.net/app/" ;;
-                   14) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   15) TWITCH_URL="rtmp://icn01.contribute.live-video.net/app/" ;;
-                   16) TWITCH_URL="rtmp://sin01.contribute.live-video.net/app/" ;;
-                   17) TWITCH_URL="rtmp://syd01.contribute.live-video.net/app/" ;;
-                   18)
+                   5) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
+                   6) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
+                   7) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
+                   8) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
+                   9) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
+                   10)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -448,18 +408,14 @@ configure_vertical_keys() {
                prompt_for_key "YouTube Vertical Key" "V_YOUTUBE_KEY"
                echo -e "Select YouTube Server:"
                echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
-               echo "  2) Backup (rtmp://b.rtmp.youtube.com/live2?backup=1)"
-               echo "  3) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
-               echo "  4) Secure Backup (rtmps://b.rtmps.youtube.com/live2?backup=1 -> via Stunnel)"
-               echo "  5) Custom URL"
+               echo "  2) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
+               echo "  3) Custom URL"
                echo -e "Option (Current URL: $V_YOUTUBE_URL): \c"
                read -r y_opt
                case $y_opt in
                    1) V_YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
-                   2) V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1" ;;
-                   3) V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
-                   4) V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1" ;;
-                   5)
+                   2) V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
+                   3)
                       echo -e "Enter Custom YouTube Server URL: "
                       read -r y_url
                       if [ ! -z "$y_url" ]; then
@@ -476,20 +432,12 @@ configure_vertical_keys() {
                echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
                echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
                echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US East: Chicago (rtmp://ord02.contribute.live-video.net/app/)"
-               echo "  6) US East: Miami (rtmp://mia05.contribute.live-video.net/app/)"
-               echo "  7) US Central: Dallas (rtmp://dfw01.contribute.live-video.net/app/)"
-               echo "  8) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  9) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  10) US West: Los Angeles (rtmp://lax05.contribute.live-video.net/app/)"
-               echo "  11) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  12) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  13) EU: Amsterdam (rtmp://ams03.contribute.live-video.net/app/)"
-               echo "  14) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  15) Asia: Seoul (rtmp://icn01.contribute.live-video.net/app/)"
-               echo "  16) Asia: Singapore (rtmp://sin01.contribute.live-video.net/app/)"
-               echo "  17) Australia: Sydney (rtmp://syd01.contribute.live-video.net/app/)"
-               echo "  18) Custom URL"
+               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
+               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
+               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
+               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
+               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
+               echo "  10) Custom URL"
                echo -e "Option (Current URL: $V_TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
@@ -497,20 +445,12 @@ configure_vertical_keys() {
                    2) V_TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
                    3) V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
                    4) V_TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) V_TWITCH_URL="rtmp://ord02.contribute.live-video.net/app/" ;;
-                   6) V_TWITCH_URL="rtmp://mia05.contribute.live-video.net/app/" ;;
-                   7) V_TWITCH_URL="rtmp://dfw01.contribute.live-video.net/app/" ;;
-                   8) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   9) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   10) V_TWITCH_URL="rtmp://lax05.contribute.live-video.net/app/" ;;
-                   11) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   12) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   13) V_TWITCH_URL="rtmp://ams03.contribute.live-video.net/app/" ;;
-                   14) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   15) V_TWITCH_URL="rtmp://icn01.contribute.live-video.net/app/" ;;
-                   16) V_TWITCH_URL="rtmp://sin01.contribute.live-video.net/app/" ;;
-                   17) V_TWITCH_URL="rtmp://syd01.contribute.live-video.net/app/" ;;
-                   18)
+                   5) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
+                   6) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
+                   7) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
+                   8) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
+                   9) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
+                   10)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -648,18 +588,7 @@ configure_vertical_keys() {
             10)
                echo -e "${YELLOW}Mirroring Horizontal keys...${NC}"
                V_YOUTUBE_KEY="$YOUTUBE_KEY"
-               # For YouTube, if horizontal is using primary, automatically use backup for vertical to avoid conflicts
-               if [[ "$YOUTUBE_URL" == *"x.rtmp.youtube.com"* ]] || [[ "$YOUTUBE_URL" == *"19355"* ]]; then
-                   echo -e "${YELLOW}Note: Automatically selected YouTube Backup server for vertical stream.${NC}"
-                   # If horizontal is using secure primary (19355), use secure backup (19357)
-                   if [[ "$YOUTUBE_URL" == *"19355"* ]]; then
-                       V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1"
-                   else
-                       V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1"
-                   fi
-               else
-                   V_YOUTUBE_URL="$YOUTUBE_URL"
-               fi
+               V_YOUTUBE_URL="$YOUTUBE_URL"
                V_TWITCH_KEY="$TWITCH_KEY"
                V_TWITCH_URL="$TWITCH_URL"
                V_TIKTOK_KEY="$TIKTOK_KEY"
@@ -739,77 +668,25 @@ configure_obs() {
 }
 
 configure_domain() {
-    while true; do
-        clear
-        echo -e "${GREEN}=== Domain / Reverse Proxy Configuration ===${NC}"
-        echo -e "1) Domain Name (Current: ${SERVER_DOMAIN:-None})"
-        echo -e "2) Let's Encrypt Email (Current: ${LETSENCRYPT_EMAIL:-None})"
-        echo -e "3) Back to Main Menu"
-        echo -e "Select an option: \c"
-        read -r dom_opt
-
-        case $dom_opt in
-            1)
-                echo -e "Enter your domain (e.g. stream.yourdomain.com):"
-                echo -e "(Leave blank to keep current, type 'disable' to use IP)"
-                read -r dom_input
-                if [ "$dom_input" == "disable" ] || [ "$dom_input" == "DISABLE" ]; then
-                    SERVER_DOMAIN=""
-                    echo -e "${GREEN}Domain disabled, using IP.${NC}"
-                elif [ ! -z "$dom_input" ]; then
-        # Basic sanitization for domain to prevent command injection
-                    dom_input=$(echo "$dom_input" | sed 's/[^a-zA-Z0-9.-]//g')
-                    if [ ! -z "$dom_input" ]; then
-                        SERVER_DOMAIN="$dom_input"
-                        echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
-                        echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
-                    else
-                        echo -e "${RED}Invalid domain name.${NC}"
-                    fi
-                fi
-                save_config
-                sleep 1
-                ;;
-            2)
-                echo -e "Enter Email for Let's Encrypt (required for SSL):"
-                echo -e "(Example: yourname@gmail.com, or 'dummy@example.com' for testing)"
-                read -r email_input
-                if [ ! -z "$email_input" ]; then
-                    LETSENCRYPT_EMAIL="$email_input"
-                    save_config
-                fi
-                ;;
-            3) break ;;
-            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-        esac
-    done
-}
-
-configure_access_control() {
     clear
-    echo -e "${GREEN}=== Dashboard & Stats Access Control ===${NC}"
-    echo -e "Current User: ${YELLOW}${DASHBOARD_USER:-None (Public)}${NC}"
-    echo ""
-    echo -e "Enter Dashboard Username (alphanumeric only, leave blank to keep current):"
-    read -r user_input
-    if [ ! -z "$user_input" ]; then
-        DASHBOARD_USER=$(echo "$user_input" | sed 's/[^a-zA-Z0-9]//g')
-    fi
-
-    echo -e "Enter Dashboard Password (leave blank to keep current):"
-    read -s -r pass_input
-    if [ ! -z "$pass_input" ]; then
-        DASHBOARD_PASS="$pass_input"
-    fi
-
-    if [ -n "$DASHBOARD_USER" ] && [ -n "$DASHBOARD_PASS" ]; then
-        echo -e "\n${GREEN}Access control configured.${NC}"
-        # Create .htpasswd file in ./data
-        mkdir -p ./data
-        # Simple implementation using openssl since apache2-utils might not be installed
-        PASS_HASH=$(openssl passwd -apr1 "$DASHBOARD_PASS")
-        echo "${DASHBOARD_USER}:${PASS_HASH}" > ./data/.htpasswd
-        chmod 600 ./data/.htpasswd
+    echo -e "${GREEN}=== Domain / Reverse Proxy Configuration ===${NC}"
+    echo -e "Current Domain: ${SERVER_DOMAIN:-None (Using IP)}"
+    echo -e "Enter your domain or Cloudflare reverse proxy (e.g. stream.yourdomain.com):"
+    echo -e "(Leave blank to keep current, type 'disable' to use IP)"
+    read -r dom_input
+    if [ "$dom_input" == "disable" ] || [ "$dom_input" == "DISABLE" ]; then
+        SERVER_DOMAIN=""
+        echo -e "${GREEN}Domain disabled, using IP.${NC}"
+    elif [ ! -z "$dom_input" ]; then
+        # Basic sanitization for domain
+        dom_input=$(echo "$dom_input" | sed 's/[^a-zA-Z0-9.-]//g')
+        if [ ! -z "$dom_input" ]; then
+            SERVER_DOMAIN="$dom_input"
+            echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
+            echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
+        else
+            echo -e "${RED}Invalid domain name. Keeping current.${NC}"
+        fi
     fi
     save_config
     sleep 2
@@ -818,23 +695,16 @@ configure_access_control() {
 configure_whitelist() {
     clear
     echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
-    echo -e "Current Accepted IPs: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
+    echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
     echo ""
-    echo -e "Enter IP addresses to whitelist (comma-separated for multiple, e.g. 1.2.3.4,5.6.7.8):"
-    echo -e "(Leave blank to keep current, type 'disable' to allow all):"
+    echo -e "Enter IP address to whitelist (Leave blank to keep current, type 'disable' to allow all):"
     read -r ip_input
     if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
         ACCEPTED_IP=""
         echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
     elif [ ! -z "$ip_input" ]; then
-        # Basic sanitization: allow numbers, dots, and commas for whitelisted IPs
-        ip_input=$(echo "$ip_input" | sed 's/[^0-9.,]//g')
-        if [ ! -z "$ip_input" ]; then
-            ACCEPTED_IP="$ip_input"
-            echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
-        else
-            echo -e "${RED}Invalid IP format.${NC}"
-        fi
+        ACCEPTED_IP="$ip_input"
+        echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
     fi
     save_config
     sleep 2
@@ -960,193 +830,78 @@ configure_chat() {
     done
 }
 
-configure_tiktok_dynamic() {
+configure_belabox() {
     while true; do
         clear
-        echo -e "${GREEN}=== TikTok Dynamic Key Configuration (Streamlabs) ===${NC}"
-        echo -e "${YELLOW}This allows PrismRTMPS to automatically generate a new TikTok stream key each time you go live.${NC}"
-        echo -e "${YELLOW}Note: Dynamic keys are applied to the VERTICAL stream only.${NC}"
-        echo -e "${YELLOW}If enabled, this will override manual TikTok stream key settings.${NC}"
-        echo ""
-        echo "1) Streamlabs TikTok Token (Current: ${TIKTOK_SL_TOKEN:+********})"
-        echo "2) Stream Title (Current: $TIKTOK_TITLE)"
-        echo "3) Game Category (Current: $TIKTOK_GAME_NAME)"
-        echo "4) Back to Main Menu"
+        echo -e "${GREEN}=== Belabox (SRT) & OBS Scene Switcher ===${NC}"
+        echo "1) SRT Ingest Port (Current: ${SRT_PORT:-Disabled})"
+        echo "2) SRT Passphrase (Current: ${SRT_PASSPHRASE:+********})"
+        echo "3) OBS WebSocket Host (Current: ${OBS_WS_HOST:-None})"
+        echo "4) OBS WebSocket Port (Current: ${OBS_WS_PORT})"
+        echo "5) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
+        echo "6) OBS Live Scene Name (Current: ${OBS_SCENE_LIVE})"
+        echo "7) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
+        echo "8) OBS Intro Scene Name (Current: ${OBS_SCENE_INTRO})"
+        echo "9) Back to Main Menu"
         echo -e "Select an option: \c"
-        read -r tt_dyn_opt
+        read -r bel_opt
 
-        case $tt_dyn_opt in
+        case $bel_opt in
             1)
-                echo -e "Enter Streamlabs TikTok API Token:"
-                read -r token_input
-                TIKTOK_SL_TOKEN="$token_input"
-                save_config
-                ;;
-            2)
-                echo -e "Enter Stream Title:"
-                read -r title_input
-                TIKTOK_TITLE="$title_input"
-                save_config
-                ;;
-            3)
-                if [ -z "$TIKTOK_SL_TOKEN" ]; then
-                    echo -e "${RED}Error: Set Streamlabs Token first!${NC}"
-                    sleep 2
-                    continue
-                fi
-                echo -e "Enter Game Name to search (e.g. 'Just Chatting', 'Minecraft'):"
-                read -r search_query
-                echo "Searching..."
-                # Run search using a temporary python check
-                SEARCH_RESULTS=$(TIKTOK_TOKEN="$TIKTOK_SL_TOKEN" SEARCH_QUERY="$search_query" python3 -c "
-import requests, os
-token = os.getenv('TIKTOK_TOKEN')
-query = os.getenv('SEARCH_QUERY', '')[:25]
-s = requests.session()
-s.headers.update({'user-agent': 'Mozilla/5.0', 'authorization': f'Bearer {token}'})
-try:
-    r = s.get(f'https://streamlabs.com/api/v5/slobs/tiktok/info?category={query}').json()
-    for c in r.get('categories', []):
-        print(f\"{c['game_mask_id']}|{c['full_name']}\")
-except:
-    pass
-" 2>/dev/null)
-
-                if [ -z "$SEARCH_RESULTS" ]; then
-                    echo -e "${RED}No categories found.${NC}"
-                    sleep 2
+                echo -e "Enter SRT Port (e.g. 2000, leave blank to disable):"
+                read -r srt_input
+                # Basic validation: numeric or empty
+                if [[ "$srt_input" =~ ^[0-9]*$ ]]; then
+                    SRT_PORT="$srt_input"
+                    save_config
                 else
-                    echo -e "\n${YELLOW}Search Results:${NC}"
-                    IFS=$'\n'
-                    count=1
-                    declare -a ids
-                    declare -a names
-                    for line in $SEARCH_RESULTS; do
-                        id=$(echo "$line" | cut -d'|' -f1)
-                        name=$(echo "$line" | cut -d'|' -f2)
-                        ids[$count]=$id
-                        names[$count]=$name
-                        echo "$count) $name"
-                        ((count++))
-                    done
-                    echo -e "Select a category number: \c"
-                    read -r cat_choice
-                    if [[ "$cat_choice" =~ ^[0-9]+$ ]] && [ "$cat_choice" -lt "$count" ]; then
-                        TIKTOK_GAME_ID="${ids[$cat_choice]}"
-                        TIKTOK_GAME_NAME="${names[$cat_choice]}"
-                        echo -e "${GREEN}Selected: $TIKTOK_GAME_NAME${NC}"
-                        save_config
-                    else
-                        echo -e "${RED}Invalid selection.${NC}"
-                    fi
-                    sleep 2
+                    echo -e "${RED}Invalid port. Must be numeric.${NC}"
+                    sleep 1
                 fi
                 ;;
-            4) break ;;
-            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-        esac
-    done
-}
-
-configure_noalbs() {
-    while true; do
-        clear
-        echo -e "${GREEN}=== NOALBS & OBS Scene Switcher ===${NC}"
-        echo "1) Enable NOALBS (Current: ${NOALBS_ENABLED})"
-        echo "2) Enable Cloud BRB (Server-side) (Current: ${CLOUD_BRB})"
-        echo "3) Low Bitrate Threshold (Current: ${LOW_BITRATE} kbps)"
-        echo "4) Restore Bitrate Threshold (Current: ${RESTORE_BITRATE} kbps)"
-        echo "5) OBS WebSocket Host (Current: ${OBS_WS_HOST:-None})"
-        echo "6) OBS WebSocket Port (Current: ${OBS_WS_PORT})"
-        echo "7) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
-        echo "8) OBS Main Scene Name (Current: ${OBS_SCENE_LIVE})"
-        echo "9) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
-        echo "10) Upload BRB Video (Beta) (Current: ${BRB_VIDEO_PATH:-None})"
-        echo "11) Back to Main Menu"
-        echo -e "Select an option: \c"
-        read -r no_opt
-
-        case $no_opt in
-            1)
-                if [ "$NOALBS_ENABLED" == "true" ]; then NOALBS_ENABLED="false"; else NOALBS_ENABLED="true"; fi
-                save_config
-                ;;
             2)
-                if [ "$CLOUD_BRB" == "true" ]; then CLOUD_BRB="false"; else CLOUD_BRB="true"; fi
+                echo -e "Enter SRT Passphrase (leave blank to disable):"
+                read -r srt_pass
+                SRT_PASSPHRASE="$srt_pass"
                 save_config
                 ;;
             3)
-                echo -e "Enter Low Bitrate Threshold (kbps, e.g. 1000):"
-                read -r low_input
-                LOW_BITRATE="${low_input:-1000}"
-                save_config
-                ;;
-            4)
-                echo -e "Enter Restore Bitrate Threshold (kbps, e.g. 1500):"
-                read -r res_input
-                RESTORE_BITRATE="${res_input:-1500}"
-                save_config
-                ;;
-            5)
                 echo -e "Enter OBS WebSocket Host (IP of your OBS PC):"
                 read -r ws_host
                 OBS_WS_HOST="$ws_host"
                 save_config
                 ;;
-            6)
+            4)
                 echo -e "Enter OBS WebSocket Port (Default 4455):"
                 read -r ws_port
                 OBS_WS_PORT="${ws_port:-4455}"
                 save_config
                 ;;
-            7)
+            5)
                 echo -e "Enter OBS WebSocket Password:"
                 read -r ws_pass
                 OBS_WS_PASSWORD="$ws_pass"
                 save_config
                 ;;
-            8)
-                echo -e "Enter Main Scene Name (Default: Main):"
+            6)
+                echo -e "Enter Scene Name for Live (Default: Full Room):"
                 read -r scene_live
-                OBS_SCENE_LIVE="${scene_live:-Main}"
+                OBS_SCENE_LIVE="${scene_live:-Full Room}"
                 save_config
                 ;;
-            9)
-                echo -e "Enter BRB Scene Name (Default: BRB):"
+            7)
+                echo -e "Enter Scene Name for BRB (Default: brb):"
                 read -r scene_brb
-                OBS_SCENE_BRB="${scene_brb:-BRB}"
+                OBS_SCENE_BRB="${scene_brb:-brb}"
                 save_config
                 ;;
-            10)
-                echo -e "Choose BRB Video Source:"
-                echo "1) Local Path"
-                echo "2) Remote URL (Download)"
-                read -r brb_src
-                if [ "$brb_src" == "1" ]; then
-                    echo -e "Enter full path to BRB video file (e.g. /home/user/brb.mp4):"
-                    read -r video_input
-                    if [ -f "$video_input" ]; then
-                        BRB_VIDEO_PATH="$video_input"
-                        echo -e "${GREEN}Video path saved.${NC}"
-                    else
-                        echo -e "${RED}Error: File not found.${NC}"
-                    fi
-                elif [ "$brb_src" == "2" ]; then
-                    echo -e "Enter URL to BRB video file:"
-                    read -r video_url
-                    mkdir -p ./data
-                    echo -e "${YELLOW}Downloading...${NC}"
-                    if curl -L "$video_url" -o ./data/brb_video.mp4; then
-                        BRB_VIDEO_PATH="$(pwd)/data/brb_video.mp4"
-                        echo -e "${GREEN}Downloaded and saved to $BRB_VIDEO_PATH${NC}"
-                    else
-                        echo -e "${RED}Download failed.${NC}"
-                    fi
-                fi
+            8)
+                echo -e "Enter Scene Name for Intro (Default: Intro):"
+                read -r scene_intro
+                OBS_SCENE_INTRO="${scene_intro:-Intro}"
                 save_config
-                sleep 2
                 ;;
-            11) break ;;
+            9) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -1183,18 +938,6 @@ install_docker() {
     sleep 2
 }
 
-check_port_busy() {
-    local port=$1
-    if command -v ss &> /dev/null; then
-        ss -tuln | grep -q ":$port "
-        return $?
-    elif command -v netstat &> /dev/null; then
-        netstat -tuln | grep -q ":$port "
-        return $?
-    fi
-    return 1 # Assume not busy if we can't check
-}
-
 build_and_run() {
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
@@ -1202,51 +945,10 @@ build_and_run() {
         return
     fi
 
-    echo -e "${GREEN}Stopping any existing container...${NC}"
-    # Stop and remove existing container first to free up ports
-    docker stop prism-rtmps 2>/dev/null || true
-    docker rm prism-rtmps 2>/dev/null || true
-    # Brief sleep to allow OS to release ports
-    sleep 2
-
-    # Port availability check
-    BUSY_PORTS=""
-    for p in 1935 8081; do
-        if check_port_busy $p; then
-            BUSY_PORTS="$BUSY_PORTS $p"
-        fi
-    done
-
-    if [ -n "$SERVER_DOMAIN" ]; then
-        for p in 80 443; do
-            if check_port_busy $p; then
-                BUSY_PORTS="$BUSY_PORTS $p"
-            fi
-        done
-    fi
-
-    if [ -n "$BUSY_PORTS" ]; then
-        echo -e "${RED}Error: The following ports are already in use on your host: $BUSY_PORTS${NC}"
-        echo -e "${YELLOW}Please stop any services using these ports (e.g. another Nginx, Apache) and try again.${NC}"
-        echo -e "Press Enter to return to menu..."
-        read -r
-        return
-    fi
-
     # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok)
     if [ ! -z "$YOUTUBE_KEY" ] && [ -z "$V_YOUTUBE_KEY" ]; then
         V_YOUTUBE_KEY="$YOUTUBE_KEY"
-        # For YouTube, if horizontal is using primary, automatically use backup for vertical to avoid conflicts
-        if [[ "$YOUTUBE_URL" == *"x.rtmp.youtube.com"* ]] || [[ "$YOUTUBE_URL" == *"19355"* ]]; then
-            # If horizontal is using secure primary (19355), use secure backup (19357)
-            if [[ "$YOUTUBE_URL" == *"19355"* ]]; then
-                V_YOUTUBE_URL="rtmp://127.0.0.1:19357/live2?backup=1"
-            else
-                V_YOUTUBE_URL="rtmp://b.rtmp.youtube.com/live2?backup=1"
-            fi
-        else
-            V_YOUTUBE_URL="$YOUTUBE_URL"
-        fi
+        V_YOUTUBE_URL="$YOUTUBE_URL"
     fi
     if [ ! -z "$TWITCH_KEY" ] && [ -z "$V_TWITCH_KEY" ]; then
         V_TWITCH_KEY="$TWITCH_KEY"
@@ -1260,8 +962,7 @@ build_and_run() {
     # Check if any keys are set
     ANY_KEY_SET=0
     for key in "$YOUTUBE_KEY" "$FACEBOOK_KEY" "$INSTAGRAM_KEY" "$TIKTOK_KEY" "$TWITCH_KEY" "$KICK_KEY" "$X_KEY" "$TROVO_KEY" "$RTMP1_KEY" \
-               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY" \
-               "$TIKTOK_SL_TOKEN"; do
+               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY"; do
         if [ ! -z "$key" ]; then
             ANY_KEY_SET=1
             break
@@ -1279,26 +980,23 @@ build_and_run() {
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t prism-rtmps .
 
+    echo -e "${GREEN}Stopping any existing container...${NC}"
+    docker stop prism-rtmps 2>/dev/null || true
+    docker rm prism-rtmps 2>/dev/null || true
+
     echo -e "${GREEN}Starting container...${NC}"
     # Start the container
-    # Handle BRB video volume mapping
-    BRB_MAPPING=""
-    if [ -f "$BRB_VIDEO_PATH" ]; then
-        BRB_MAPPING="-v $BRB_VIDEO_PATH:/app/data/brb_video.mp4"
-    fi
-
-    # Dynamic port mapping
-    PORT_MAPPINGS="-p 1935:1935 -p 8081:8081"
-    if [ -n "$SERVER_DOMAIN" ]; then
-        PORT_MAPPINGS="$PORT_MAPPINGS -p 80:80 -p 443:443"
+    # Determine SRT Port Mapping
+    SRT_MAPPING=""
+    if [ ! -z "$SRT_PORT" ]; then
+        SRT_MAPPING="-p ${SRT_PORT}:${SRT_PORT}/udp"
     fi
 
     docker run -d --name prism-rtmps \
         -v "$(pwd)/data:/app/data" \
-        -v "$(pwd)/letsencrypt:/etc/letsencrypt" \
-        -v "$(pwd)/certbot_www:/var/www/certbot" \
-        $BRB_MAPPING \
-        $PORT_MAPPINGS \
+        -p 1935:1935 \
+        -p 8081:8081 \
+        $SRT_MAPPING \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
@@ -1350,8 +1048,6 @@ build_and_run() {
         -e YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET" \
         -e YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI" \
         -e SECRET_KEY="$SECRET_KEY" \
-        -e SERVER_DOMAIN="$SERVER_DOMAIN" \
-        -e LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL" \
         -e SRT_PORT="$SRT_PORT" \
         -e SRT_PASSPHRASE="$SRT_PASSPHRASE" \
         -e OBS_WS_HOST="$OBS_WS_HOST" \
@@ -1360,10 +1056,6 @@ build_and_run() {
         -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
         -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
         -e OBS_SCENE_INTRO="$OBS_SCENE_INTRO" \
-        -e CLOUD_BRB="$CLOUD_BRB" \
-        -e TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN" \
-        -e TIKTOK_TITLE="$TIKTOK_TITLE" \
-        -e TIKTOK_GAME_ID="$TIKTOK_GAME_ID" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
@@ -1434,41 +1126,29 @@ SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
 while true; do
     clear
     DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-
-    # Helper function to get status label
-    get_status() {
-        if [ "$1" == "true" ] || ([ "$1" != "false" ] && [ -n "$1" ]); then
-            echo -e "${GREEN}(Enabled)${NC}"
-        else
-            echo -e "${YELLOW}(Optional; disabled)${NC}"
-        fi
-    }
-
-    echo -e "${GREEN}┌───────────────────────────────────────────┐${NC}"
-    echo -e "${GREEN}│       PrismRTMPS Universal Installer      │${NC}"
-    echo -e "${GREEN}└───────────────────────────────────────────┘${NC}"
+    echo -e "${GREEN}=====================================${NC}"
+    echo -e "${GREEN}     PrismRTMPS Quick Installer      ${NC}"
+    echo -e "${GREEN}=====================================${NC}"
     echo -e "${YELLOW}Quick Reference:${NC}"
-    echo -e "  🚀 Ingest:    rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
-    echo -e "  📱 Vertical:  rtmp://${DISPLAY_HOST}:1935/vertical"
-    echo -e "  📊 Stats:     http://${DISPLAY_HOST}:8081/stat"
-    echo -e "  🎮 Dashboard: http://${DISPLAY_HOST}:8081/chat.html"
+    echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
+    echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
+    echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
+    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:8081/chat.html?twitch=USER&youtube=ID"
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"
     echo "3) Configure Stream Keys (Vertical)"
     echo "4) Configure OBS Setup & Security Key"
-    echo -e "5) Configure Domain / Reverse Proxy $(get_status $SERVER_DOMAIN)"
-    echo -e "6) Configure Combined Chat $(get_status $TWITCH_CLIENT_ID)"
-    echo -e "7) Configure Stream Titles & Twitch API $(get_status $TWITCH_OAUTH_TOKEN)"
-    echo -e "8) Configure IP Whitelist $(get_status $ACCEPTED_IP)"
-    echo -e "9) Configure Dashboard Auth $(get_status $DASHBOARD_USER)"
-    echo "10) Configure Optimizations (Chunk Size)"
-    echo -e "11) Configure NOALBS Scene Switcher $(get_status $NOALBS_ENABLED)"
-    echo -e "12) Configure TikTok Dynamic Key $(get_status $TIKTOK_SL_TOKEN)"
-    echo "13) Build & Start Server"
-    echo "14) Stop Server"
-    echo "15) View Logs"
-    echo "16) Quit"
+    echo "5) Configure Domain / Reverse Proxy (Optional)"
+    echo "6) Configure Combined Chat (Optional)"
+        echo "7) Configure Stream Titles & Twitch API (Optional)"
+        echo "8) Configure IP Whitelist (Optional)"
+        echo "9) Configure Optimizations (Chunk Size)"
+    echo "10) Configure Belabox & OBS Switcher (Optional)"
+    echo "11) Build & Start Server"
+    echo "12) Stop Server"
+    echo "13) View Logs"
+    echo "14) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1481,14 +1161,12 @@ while true; do
         6) configure_chat ;;
         7) configure_titles ;;
         8) configure_whitelist ;;
-        9) configure_access_control ;;
-        10) configure_optimizations ;;
-        11) configure_noalbs ;;
-        12) configure_tiktok_dynamic ;;
-        13) build_and_run ;;
-        14) stop_container ;;
-        15) view_logs ;;
-        16) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        9) configure_optimizations ;;
+        10) configure_belabox ;;
+        11) build_and_run ;;
+        12) stop_container ;;
+        13) view_logs ;;
+        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
