@@ -1202,6 +1202,13 @@ build_and_run() {
         return
     fi
 
+    echo -e "${GREEN}Stopping any existing container...${NC}"
+    # Stop and remove existing container first to free up ports
+    docker stop prism-rtmps 2>/dev/null || true
+    docker rm prism-rtmps 2>/dev/null || true
+    # Brief sleep to allow OS to release ports
+    sleep 2
+
     # Port availability check
     BUSY_PORTS=""
     for p in 1935 8081; do
@@ -1271,10 +1278,6 @@ build_and_run() {
 
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t prism-rtmps .
-
-    echo -e "${GREEN}Stopping any existing container...${NC}"
-    docker stop prism-rtmps 2>/dev/null || true
-    docker rm prism-rtmps 2>/dev/null || true
 
     echo -e "${GREEN}Starting container...${NC}"
     # Start the container
