@@ -89,6 +89,10 @@ rtmp {
         listen 1935;
         chunk_size ${CHUNK_SIZE};
 
+        # Performance Tuning for High Bitrate (1080p60+)
+        max_message 10M;
+        buflen 2s;
+
         # Security: Global publisher restrictions
         # dynamically populated via docker-entrypoint.sh if ACCEPTED_IP is set
         include /etc/nginx/rtmp_access.conf;

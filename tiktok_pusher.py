@@ -35,6 +35,18 @@ class TikTokStream:
         for attempt in range(max_retries):
             try:
                 response = self.s.post(url, files=files, timeout=30)
+                # Handle "Session already exists" case
+                if response.status_code == 400:
+                    data = response.json()
+                    if "already exists" in data.get("message", "").lower():
+                        logger.info("TikTok session already exists. Fetching existing stream info...")
+                        # If a session exists, we might need to find it via slobs/tiktok/info or similar
+                        # but often we can just try to end it and start again, or it might return the info.
+                        # For now, let's try to end the orphan session.
+                        self.s.post("https://streamlabs.com/api/v5/slobs/tiktok/stream/end_all", timeout=30)
+                        time.sleep(2)
+                        continue
+
                 response.raise_for_status()
                 data = response.json()
                 if "rtmp" in data and "key" in data:

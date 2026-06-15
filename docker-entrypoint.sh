@@ -167,6 +167,7 @@ CHUNK_SIZE=$(sanitize_nginx "$CHUNK_SIZE")
 
 SUBST_VARS="\$APP_NAME \$CHUNK_SIZE \$PUSH_YOUTUBE \$PUSH_FACEBOOK \$PUSH_INSTAGRAM \$PUSH_TIKTOK \$PUSH_KICK \$PUSH_X \$PUSH_TWITCH \$PUSH_TROVO \$PUSH_RTMP1 \$PUSH_RTMP2 \$PUSH_RTMP3 \$PUSH_V_YOUTUBE \$PUSH_V_FACEBOOK \$PUSH_V_INSTAGRAM \$PUSH_V_TIKTOK \$PUSH_V_TIKTOK_DYN \$PUSH_V_KICK \$PUSH_V_X \$PUSH_V_TWITCH \$PUSH_V_TROVO \$PUSH_V_RTMP1 \$FACEBOOK_URL \$FACEBOOK_KEY \$TWITCH_URL \$TWITCH_KEY \$YOUTUBE_URL \$YOUTUBE_KEY \$KICK_URL \$KICK_KEY \$X_URL \$X_KEY"
 envsubst "$SUBST_VARS" < $NGINX_TEMPLATE > $NGINX_CONF
+chmod 600 $NGINX_CONF
 
 # --- TLS / Let's Encrypt Logic ---
 # This section dynamically generates an Nginx HTTPS server block if a domain and email are provided.
@@ -227,19 +228,36 @@ if [ -n "$SERVER_DOMAIN" ] && [ -n "$LETSENCRYPT_EMAIL" ]; then
     }
 }"
     else
-        echo "SSL Certificates NOT found. Certbot will attempt to obtain them in the background."
+        echo "SSL Certificates NOT found. Certbot will attempt to obtain them in the background (with retry logic)."
         (
-            sleep 15
-            echo "Certbot: Attempting to obtain certificates for $SERVER_DOMAIN..."
-            certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email "$LETSENCRYPT_EMAIL" -d "$SERVER_DOMAIN"
-            if [ $? -eq 0 ]; then
-                echo "Certbot: Success! Reloading to apply changes (Container may need a manual restart if config doesn't auto-update)."
-                # We can't easily regenerate the template from here without restarting,
-                # but certbot might have already modified the config if we used --nginx.
-                # However, we used --webroot for stability.
-            else
-                echo "Certbot: Failed to obtain certificates."
-            fi
+            # Wait for Nginx to be fully up
+            sleep 20
+
+            MAX_CERT_ATTEMPTS=3
+            CERT_ATTEMPT=1
+            while [ $CERT_ATTEMPT -le $MAX_CERT_ATTEMPTS ]; do
+                echo "Certbot (Attempt $CERT_ATTEMPT/$MAX_CERT_ATTEMPTS): Obtaining certificates for $SERVER_DOMAIN..."
+
+                # Use --test-cert if email is dummy or requested for staging
+                STAGING_ARG=""
+                if [[ "$LETSENCRYPT_EMAIL" == *"example.com"* ]] || [[ "$LETSENCRYPT_EMAIL" == "dummy"* ]]; then
+                    echo "Notice: Using Let's Encrypt Staging Environment (--test-cert) for dummy/example email."
+                    STAGING_ARG="--test-cert"
+                fi
+
+                if certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email "$LETSENCRYPT_EMAIL" $STAGING_ARG -d "$SERVER_DOMAIN"; then
+                    echo "Certbot: Success! New certificates obtained."
+                    # Re-run entrypoint script logic to generate the HTTPS block now that certs exist
+                    # For now, we'll just advise a restart or reload if possible.
+                    # In a robust setup, we might trigger a container restart via a sidecar.
+                    nginx -s reload
+                    break
+                else
+                    echo "Certbot: Attempt $CERT_ATTEMPT failed."
+                    CERT_ATTEMPT=$((CERT_ATTEMPT + 1))
+                    [ $CERT_ATTEMPT -le $MAX_CERT_ATTEMPTS ] && sleep 60
+                fi
+            done
         ) &
     fi
 fi
@@ -247,6 +265,7 @@ fi
 # Apply the dynamic HTTPS block to a separate config file included by nginx.conf.template
 # This prevents Nginx from failing to start if the HTTPS block is empty.
 echo "$HTTPS_SERVER_BLOCK" > /etc/nginx/https.conf
+chmod 600 /etc/nginx/https.conf
 
 # --- Basic Auth for Stats & Dashboard ---
 if [ -f "/etc/nginx/.htpasswd" ]; then
@@ -256,8 +275,10 @@ if [ -f "/etc/nginx/.htpasswd" ]; then
 else
     echo "" > /etc/nginx/auth.conf
 fi
+chmod 600 /etc/nginx/auth.conf
 
 # --- RTMP IP Access Restrictions ---
+touch /etc/nginx/rtmp_access.conf
 if [ -n "$ACCEPTED_IP" ]; then
     echo "Configuring RTMP IP Whitelist (Defense in Depth)..."
     # Convert comma-separated list to Nginx allow directives
@@ -270,6 +291,7 @@ if [ -n "$ACCEPTED_IP" ]; then
 else
     echo "" > /etc/nginx/rtmp_access.conf
 fi
+chmod 600 /etc/nginx/rtmp_access.conf
 
 # --- Certbot Auto-Renewal Loop ---
 # Runs in the background every 12 hours to ensure certificates are always valid.

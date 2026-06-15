@@ -75,6 +75,7 @@ TIKTOK_GAME_ID=""
 
 # NOALBS & OBS Scene Switcher Settings
 NOALBS_ENABLED="false"
+CLOUD_BRB="false"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
 BRB_VIDEO_PATH=""
@@ -164,6 +165,7 @@ DASHBOARD_PASS="$DASHBOARD_PASS"
 NOALBS_ENABLED="$NOALBS_ENABLED"
 LOW_BITRATE="$LOW_BITRATE"
 RESTORE_BITRATE="$RESTORE_BITRATE"
+CLOUD_BRB="$CLOUD_BRB"
 BRB_VIDEO_PATH="$BRB_VIDEO_PATH"
 OBS_WS_HOST="$OBS_WS_HOST"
 OBS_WS_PORT="$OBS_WS_PORT"
@@ -770,6 +772,7 @@ configure_domain() {
                 ;;
             2)
                 echo -e "Enter Email for Let's Encrypt (required for SSL):"
+                echo -e "(Example: yourname@gmail.com, or 'dummy@example.com' for testing)"
                 read -r email_input
                 if [ ! -z "$email_input" ]; then
                     LETSENCRYPT_EMAIL="$email_input"
@@ -1050,15 +1053,16 @@ configure_noalbs() {
         clear
         echo -e "${GREEN}=== NOALBS & OBS Scene Switcher ===${NC}"
         echo "1) Enable NOALBS (Current: ${NOALBS_ENABLED})"
-        echo "2) Low Bitrate Threshold (Current: ${LOW_BITRATE} kbps)"
-        echo "3) Restore Bitrate Threshold (Current: ${RESTORE_BITRATE} kbps)"
-        echo "4) OBS WebSocket Host (Current: ${OBS_WS_HOST:-None})"
-        echo "5) OBS WebSocket Port (Current: ${OBS_WS_PORT})"
-        echo "6) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
-        echo "7) OBS Main Scene Name (Current: ${OBS_SCENE_LIVE})"
-        echo "8) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
-        echo "9) Upload BRB Video (Beta) (Current: ${BRB_VIDEO_PATH:-None})"
-        echo "10) Back to Main Menu"
+        echo "2) Enable Cloud BRB (Server-side) (Current: ${CLOUD_BRB})"
+        echo "3) Low Bitrate Threshold (Current: ${LOW_BITRATE} kbps)"
+        echo "4) Restore Bitrate Threshold (Current: ${RESTORE_BITRATE} kbps)"
+        echo "5) OBS WebSocket Host (Current: ${OBS_WS_HOST:-None})"
+        echo "6) OBS WebSocket Port (Current: ${OBS_WS_PORT})"
+        echo "7) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:+********})"
+        echo "8) OBS Main Scene Name (Current: ${OBS_SCENE_LIVE})"
+        echo "9) OBS BRB Scene Name (Current: ${OBS_SCENE_BRB})"
+        echo "10) Upload BRB Video (Beta) (Current: ${BRB_VIDEO_PATH:-None})"
+        echo "11) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r no_opt
 
@@ -1068,48 +1072,52 @@ configure_noalbs() {
                 save_config
                 ;;
             2)
+                if [ "$CLOUD_BRB" == "true" ]; then CLOUD_BRB="false"; else CLOUD_BRB="true"; fi
+                save_config
+                ;;
+            3)
                 echo -e "Enter Low Bitrate Threshold (kbps, e.g. 1000):"
                 read -r low_input
                 LOW_BITRATE="${low_input:-1000}"
                 save_config
                 ;;
-            3)
+            4)
                 echo -e "Enter Restore Bitrate Threshold (kbps, e.g. 1500):"
                 read -r res_input
                 RESTORE_BITRATE="${res_input:-1500}"
                 save_config
                 ;;
-            4)
+            5)
                 echo -e "Enter OBS WebSocket Host (IP of your OBS PC):"
                 read -r ws_host
                 OBS_WS_HOST="$ws_host"
                 save_config
                 ;;
-            5)
+            6)
                 echo -e "Enter OBS WebSocket Port (Default 4455):"
                 read -r ws_port
                 OBS_WS_PORT="${ws_port:-4455}"
                 save_config
                 ;;
-            6)
+            7)
                 echo -e "Enter OBS WebSocket Password:"
                 read -r ws_pass
                 OBS_WS_PASSWORD="$ws_pass"
                 save_config
                 ;;
-            7)
+            8)
                 echo -e "Enter Main Scene Name (Default: Main):"
                 read -r scene_live
                 OBS_SCENE_LIVE="${scene_live:-Main}"
                 save_config
                 ;;
-            8)
+            9)
                 echo -e "Enter BRB Scene Name (Default: BRB):"
                 read -r scene_brb
                 OBS_SCENE_BRB="${scene_brb:-BRB}"
                 save_config
                 ;;
-            9)
+            10)
                 echo -e "Choose BRB Video Source:"
                 echo "1) Local Path"
                 echo "2) Remote URL (Download)"
@@ -1138,7 +1146,7 @@ configure_noalbs() {
                 save_config
                 sleep 2
                 ;;
-            10) break ;;
+            11) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -1175,10 +1183,46 @@ install_docker() {
     sleep 2
 }
 
+check_port_busy() {
+    local port=$1
+    if command -v ss &> /dev/null; then
+        ss -tuln | grep -q ":$port "
+        return $?
+    elif command -v netstat &> /dev/null; then
+        netstat -tuln | grep -q ":$port "
+        return $?
+    fi
+    return 1 # Assume not busy if we can't check
+}
+
 build_and_run() {
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
         sleep 2
+        return
+    fi
+
+    # Port availability check
+    BUSY_PORTS=""
+    for p in 1935 8081; do
+        if check_port_busy $p; then
+            BUSY_PORTS="$BUSY_PORTS $p"
+        fi
+    done
+
+    if [ -n "$SERVER_DOMAIN" ]; then
+        for p in 80 443; do
+            if check_port_busy $p; then
+                BUSY_PORTS="$BUSY_PORTS $p"
+            fi
+        done
+    fi
+
+    if [ -n "$BUSY_PORTS" ]; then
+        echo -e "${RED}Error: The following ports are already in use on your host: $BUSY_PORTS${NC}"
+        echo -e "${YELLOW}Please stop any services using these ports (e.g. another Nginx, Apache) and try again.${NC}"
+        echo -e "Press Enter to return to menu..."
+        read -r
         return
     fi
 
@@ -1240,15 +1284,18 @@ build_and_run() {
         BRB_MAPPING="-v $BRB_VIDEO_PATH:/app/data/brb_video.mp4"
     fi
 
+    # Dynamic port mapping
+    PORT_MAPPINGS="-p 1935:1935 -p 8081:8081"
+    if [ -n "$SERVER_DOMAIN" ]; then
+        PORT_MAPPINGS="$PORT_MAPPINGS -p 80:80 -p 443:443"
+    fi
+
     docker run -d --name prism-rtmps \
         -v "$(pwd)/data:/app/data" \
         -v "$(pwd)/letsencrypt:/etc/letsencrypt" \
         -v "$(pwd)/certbot_www:/var/www/certbot" \
         $BRB_MAPPING \
-        -p 1935:1935 \
-        -p 80:80 \
-        -p 443:443 \
-        -p 8081:8081 \
+        $PORT_MAPPINGS \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
@@ -1310,6 +1357,7 @@ build_and_run() {
         -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
         -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
         -e OBS_SCENE_INTRO="$OBS_SCENE_INTRO" \
+        -e CLOUD_BRB="$CLOUD_BRB" \
         -e TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN" \
         -e TIKTOK_TITLE="$TIKTOK_TITLE" \
         -e TIKTOK_GAME_ID="$TIKTOK_GAME_ID" \

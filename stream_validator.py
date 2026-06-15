@@ -152,15 +152,24 @@ def run_update_titles():
 
 @app.route('/validate', methods=['POST'])
 def validate():
-    raw_data = request.get_data(as_text=True)
-    parsed_data = parse_qs(raw_data)
-    stream_key_attempt = parsed_data.get('name', [''])[0]
+    # Nginx RTMP module sends data as application/x-www-form-urlencoded
+    # Flask populates request.form for us.
+    stream_key_attempt = request.form.get('name')
+    client_ip_from_data = request.form.get('addr')
+
+    if not stream_key_attempt:
+        # Fallback to manual parsing if necessary
+        raw_data = request.get_data(as_text=True)
+        parsed_data = parse_qs(raw_data)
+        stream_key_attempt = parsed_data.get('name', [''])[0]
+        client_ip_from_data = parsed_data.get('addr', [request.remote_addr])[0]
+
     app_name = request.args.get('app', '')
 
     # Cloudflare Real IP or fallback
     client_ip = request.headers.get('CF-Connecting-IP', request.remote_addr)
     if not client_ip or client_ip == '127.0.0.1':
-        client_ip = parsed_data.get('addr', [request.remote_addr])[0]
+        client_ip = client_ip_from_data or request.remote_addr
 
     # IP Whitelist Check
     if ACCEPTED_IPS and client_ip not in ACCEPTED_IPS:
