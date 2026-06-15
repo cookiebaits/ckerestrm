@@ -45,6 +45,10 @@ http {
     server {
         listen 8081;
 
+        # Optional Auth for Dashboard and Stats
+        # Included if /etc/nginx/.htpasswd exists
+        include /etc/nginx/auth.conf;
+
         location /stat {
             rtmp_stat all;
             rtmp_stat_stylesheet stat.xsl;
@@ -55,6 +59,7 @@ http {
         }
 
         location /login {
+            # Authentication is handled at the server/location level
             proxy_pass http://127.0.0.1:8080;
         }
 
@@ -84,7 +89,14 @@ rtmp {
         listen 1935;
         chunk_size ${CHUNK_SIZE};
 
+        # Security: Global publisher restrictions
+        # dynamically populated via docker-entrypoint.sh if ACCEPTED_IP is set
+        include /etc/nginx/rtmp_access.conf;
+
         # Stability and Security Enhancements
+        max_connections 100;
+        max_streams 32;
+
         ping 30s;
         ping_timeout 10s;
         drop_idle_publisher 10s;

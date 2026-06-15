@@ -23,6 +23,10 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24))
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = '/app/data/sessions'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True if os.getenv('SERVER_DOMAIN') else False
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 Session(app)
 logging.basicConfig(
@@ -160,8 +164,9 @@ def validate():
 
     # IP Whitelist Check
     if ACCEPTED_IPS and client_ip not in ACCEPTED_IPS:
-        app.logger.warning(f"REJECTED IP: {client_ip} (Not in whitelist: {ACCEPTED_IPS})")
-        return Response('IP not whitelisted', status=403)
+        # Don't leak the whitelist in logs if we are being paranoid, but for now just logging the fail
+        app.logger.warning(f"REJECTED IP: {client_ip} (Not in whitelist)")
+        return Response('Unauthorized connection source', status=403)
 
     # Key Check
     if not VALID_KEYS:

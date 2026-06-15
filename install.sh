@@ -64,6 +64,8 @@ YOUTUBE_CLIENT_ID=""
 YOUTUBE_CLIENT_SECRET=""
 YOUTUBE_REDIRECT_URI=""
 SECRET_KEY=$(openssl rand -hex 24)
+DASHBOARD_USER=""
+DASHBOARD_PASS=""
 
 # TikTok Dynamic Settings
 TIKTOK_SL_TOKEN=""
@@ -96,6 +98,9 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 save_config() {
+    # Ensure secure permissions before writing
+    touch "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE"
     cat <<ENV_EOF > "$CONFIG_FILE"
 YOUTUBE_URL="$YOUTUBE_URL"
 YOUTUBE_KEY="$YOUTUBE_KEY"
@@ -153,6 +158,8 @@ YOUTUBE_CLIENT_ID="$YOUTUBE_CLIENT_ID"
 YOUTUBE_CLIENT_SECRET="$YOUTUBE_CLIENT_SECRET"
 YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI"
 SECRET_KEY="$SECRET_KEY"
+DASHBOARD_USER="$DASHBOARD_USER"
+DASHBOARD_PASS="$DASHBOARD_PASS"
 NOALBS_ENABLED="$NOALBS_ENABLED"
 LOW_BITRATE="$LOW_BITRATE"
 RESTORE_BITRATE="$RESTORE_BITRATE"
@@ -774,6 +781,36 @@ configure_domain() {
     done
 }
 
+configure_access_control() {
+    clear
+    echo -e "${GREEN}=== Dashboard & Stats Access Control ===${NC}"
+    echo -e "Current User: ${YELLOW}${DASHBOARD_USER:-None (Public)}${NC}"
+    echo ""
+    echo -e "Enter Dashboard Username (alphanumeric only, leave blank to keep current):"
+    read -r user_input
+    if [ ! -z "$user_input" ]; then
+        DASHBOARD_USER=$(echo "$user_input" | sed 's/[^a-zA-Z0-9]//g')
+    fi
+
+    echo -e "Enter Dashboard Password (leave blank to keep current):"
+    read -s -r pass_input
+    if [ ! -z "$pass_input" ]; then
+        DASHBOARD_PASS="$pass_input"
+    fi
+
+    if [ -n "$DASHBOARD_USER" ] && [ -n "$DASHBOARD_PASS" ]; then
+        echo -e "\n${GREEN}Access control configured.${NC}"
+        # Create .htpasswd file in ./data
+        mkdir -p ./data
+        # Simple implementation using openssl since apache2-utils might not be installed
+        PASS_HASH=$(openssl passwd -apr1 "$DASHBOARD_PASS")
+        echo "${DASHBOARD_USER}:${PASS_HASH}" > ./data/.htpasswd
+        chmod 600 ./data/.htpasswd
+    fi
+    save_config
+    sleep 2
+}
+
 configure_whitelist() {
     clear
     echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
@@ -1355,13 +1392,14 @@ while true; do
     echo -e "6) Configure Combined Chat $(get_status $TWITCH_CLIENT_ID)"
     echo -e "7) Configure Stream Titles & Twitch API $(get_status $TWITCH_OAUTH_TOKEN)"
     echo -e "8) Configure IP Whitelist $(get_status $ACCEPTED_IP)"
-    echo "9) Configure Optimizations (Chunk Size)"
-    echo -e "10) Configure NOALBS Scene Switcher $(get_status $NOALBS_ENABLED)"
-    echo -e "11) Configure TikTok Dynamic Key $(get_status $TIKTOK_SL_TOKEN)"
-    echo "12) Build & Start Server"
-    echo "13) Stop Server"
-    echo "14) View Logs"
-    echo "15) Quit"
+    echo -e "9) Configure Dashboard Auth $(get_status $DASHBOARD_USER)"
+    echo "10) Configure Optimizations (Chunk Size)"
+    echo -e "11) Configure NOALBS Scene Switcher $(get_status $NOALBS_ENABLED)"
+    echo -e "12) Configure TikTok Dynamic Key $(get_status $TIKTOK_SL_TOKEN)"
+    echo "13) Build & Start Server"
+    echo "14) Stop Server"
+    echo "15) View Logs"
+    echo "16) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1374,13 +1412,14 @@ while true; do
         6) configure_chat ;;
         7) configure_titles ;;
         8) configure_whitelist ;;
-        9) configure_optimizations ;;
-        10) configure_noalbs ;;
-        11) configure_tiktok_dynamic ;;
-        12) build_and_run ;;
-        13) stop_container ;;
-        14) view_logs ;;
-        15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        9) configure_access_control ;;
+        10) configure_optimizations ;;
+        11) configure_noalbs ;;
+        12) configure_tiktok_dynamic ;;
+        13) build_and_run ;;
+        14) stop_container ;;
+        15) view_logs ;;
+        16) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done

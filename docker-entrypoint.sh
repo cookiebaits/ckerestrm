@@ -82,6 +82,15 @@ for p in $V_PLATFORMS; do
 done
 export PUSH_V_TIKTOK_DYN=""
 
+# --- Input Sanitization ---
+# Sanitize variables that will be injected into Nginx configuration
+# to prevent configuration injection attacks.
+sanitize_nginx() {
+    local val="$1"
+    # Remove semicolons, newlines, and quotes
+    echo "$val" | tr -d ';\n\r"'"'"
+}
+
 # Function to set push directive variable if key is present
 set_push_var() {
     local platform_name="$1"
@@ -92,6 +101,8 @@ set_push_var() {
     local key_value="${!env_key_var}" # Indirect variable expansion
 
     if [ -n "$key_value" ]; then
+        key_value=$(sanitize_nginx "$key_value")
+        push_url=$(sanitize_nginx "$push_url")
         if [ -z "$push_url" ]; then
              echo "Warning: ${platform_name} key (${env_key_var}) is set, but URL (${env_url_var}) is empty. Skipping push."
              export "$export_var_name"=""
@@ -151,6 +162,9 @@ fi
 echo "Generating final Nginx configuration..."
 # Use envsubst to generate the config. It's safe against special characters in keys.
 # We explicitly define the variables to substitute to avoid accidentally wiping out unrelated ${...} in future edits.
+APP_NAME=$(sanitize_nginx "$APP_NAME")
+CHUNK_SIZE=$(sanitize_nginx "$CHUNK_SIZE")
+
 SUBST_VARS="\$APP_NAME \$CHUNK_SIZE \$PUSH_YOUTUBE \$PUSH_FACEBOOK \$PUSH_INSTAGRAM \$PUSH_TIKTOK \$PUSH_KICK \$PUSH_X \$PUSH_TWITCH \$PUSH_TROVO \$PUSH_RTMP1 \$PUSH_RTMP2 \$PUSH_RTMP3 \$PUSH_V_YOUTUBE \$PUSH_V_FACEBOOK \$PUSH_V_INSTAGRAM \$PUSH_V_TIKTOK \$PUSH_V_TIKTOK_DYN \$PUSH_V_KICK \$PUSH_V_X \$PUSH_V_TWITCH \$PUSH_V_TROVO \$PUSH_V_RTMP1 \$FACEBOOK_URL \$FACEBOOK_KEY \$TWITCH_URL \$TWITCH_KEY \$YOUTUBE_URL \$YOUTUBE_KEY \$KICK_URL \$KICK_KEY \$X_URL \$X_KEY"
 envsubst "$SUBST_VARS" < $NGINX_TEMPLATE > $NGINX_CONF
 
@@ -233,6 +247,29 @@ fi
 # Apply the dynamic HTTPS block to a separate config file included by nginx.conf.template
 # This prevents Nginx from failing to start if the HTTPS block is empty.
 echo "$HTTPS_SERVER_BLOCK" > /etc/nginx/https.conf
+
+# --- Basic Auth for Stats & Dashboard ---
+if [ -f "/etc/nginx/.htpasswd" ]; then
+    echo "Enabling Basic Auth for Dashboard and Stats..."
+    echo "auth_basic \"Restricted Access\";" > /etc/nginx/auth.conf
+    echo "auth_basic_user_file /etc/nginx/.htpasswd;" >> /etc/nginx/auth.conf
+else
+    echo "" > /etc/nginx/auth.conf
+fi
+
+# --- RTMP IP Access Restrictions ---
+if [ -n "$ACCEPTED_IP" ]; then
+    echo "Configuring RTMP IP Whitelist (Defense in Depth)..."
+    # Convert comma-separated list to Nginx allow directives
+    echo "$ACCEPTED_IP" | tr ',' '\n' | while read -r ip; do
+        if [ -n "$ip" ]; then
+            echo "allow publish $ip;" >> /etc/nginx/rtmp_access.conf
+        fi
+    done
+    echo "deny publish all;" >> /etc/nginx/rtmp_access.conf
+else
+    echo "" > /etc/nginx/rtmp_access.conf
+fi
 
 # --- Certbot Auto-Renewal Loop ---
 # Runs in the background every 12 hours to ensure certificates are always valid.
