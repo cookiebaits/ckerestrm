@@ -62,25 +62,15 @@ COPY tiktok_search.py /app/tiktok_search.py
 COPY noalbs /app/noalbs
 
 # Config Stunnel
-RUN mkdir -p  /etc/stunnel/conf.d
+RUN mkdir -p /etc/stunnel/conf.d
 # Set up config file 
 COPY stunnel/stunnel.conf /etc/stunnel/stunnel.conf
 COPY stunnel/stunnel4 /etc/default/stunnel4
 
-#Facebook Stunnel Port 19350
-COPY stunnel/facebook.conf /etc/stunnel/conf.d/facebook.conf
-
-#Instagram Stunnel Port 19351
-COPY stunnel/instagram.conf /etc/stunnel/conf.d/instagram.conf
-
-#Tiktok Stunnel Port 19358
-COPY stunnel/tiktok.conf /etc/stunnel/conf.d/tiktok.conf
-
-#Kick Stunnel Port 19353
-COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
-
-#X Stunnel Port 19354
-COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
+# Copy all platform-specific stunnel configs
+# Note: we filter out stunnel.conf to avoid duplicate inclusion if it ends in .conf
+RUN cp -r stunnel/*.conf /etc/stunnel/conf.d/ 2>/dev/null || true
+RUN rm -f /etc/stunnel/conf.d/stunnel.conf
 
 #Youtube
 ENV YOUTUBE_URL rtmp://x.rtmp.youtube.com/live2/
