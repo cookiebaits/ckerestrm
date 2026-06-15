@@ -27,7 +27,7 @@ http {
     # HTTP server for ACME challenges
     server {
         listen 80;
-        
+
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
         }
@@ -45,6 +45,10 @@ http {
     server {
         listen 8081;
 
+        # Optional Auth for Dashboard and Stats
+        # Included if /etc/nginx/.htpasswd exists
+        include /etc/nginx/auth.conf;
+
         location /stat {
             rtmp_stat all;
             rtmp_stat_stylesheet stat.xsl;
@@ -55,6 +59,7 @@ http {
         }
 
         location /login {
+            # Authentication is handled at the server/location level
             proxy_pass http://127.0.0.1:8080;
         }
 
@@ -84,9 +89,16 @@ rtmp {
         listen 1935;
         chunk_size ${CHUNK_SIZE};
 
+        # Security: Global publisher restrictions
+        # dynamically populated via docker-entrypoint.sh if ACCEPTED_IP is set
+        include /etc/nginx/rtmp_access.conf;
+
         # Stability and Security Enhancements
+        max_connections 200;
+        max_streams 64;
+
         ping 30s;
-        ping_timeout 10s;
+        ping_timeout 15s;
         drop_idle_publisher 10s;
         deny play all; # Prevent unauthorized viewing
 
@@ -137,17 +149,17 @@ rtmp {
             on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
             on_publish_done http://127.0.0.1:8080/publish_done?key=$name&app=$app;
 
-            {{PUSH_YOUTUBE}}
-            {{PUSH_FACEBOOK}}
-            {{PUSH_INSTAGRAM}}
-            {{PUSH_TIKTOK}}
-            {{PUSH_KICK}}
-            {{PUSH_X}}
-            {{PUSH_TWITCH}}
-            {{PUSH_TROVO}}
-            {{PUSH_RTMP1}}
-            {{PUSH_RTMP2}}
-            {{PUSH_RTMP3}}
+            ${PUSH_YOUTUBE}
+            ${PUSH_FACEBOOK}
+            ${PUSH_INSTAGRAM}
+            ${PUSH_TIKTOK}
+            ${PUSH_KICK}
+            ${PUSH_X}
+            ${PUSH_TWITCH}
+            ${PUSH_TROVO}
+            ${PUSH_RTMP1}
+            ${PUSH_RTMP2}
+            ${PUSH_RTMP3}
         }
 
         application vertical {
@@ -155,16 +167,16 @@ rtmp {
             record off;
             on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
 
-            {{PUSH_V_YOUTUBE}}
-            {{PUSH_V_FACEBOOK}}
-            {{PUSH_V_INSTAGRAM}}
-            {{PUSH_V_TIKTOK}}
-            {{PUSH_V_TIKTOK_DYN}}
-            {{PUSH_V_KICK}}
-            {{PUSH_V_X}}
-            {{PUSH_V_TWITCH}}
-            {{PUSH_V_TROVO}}
-            {{PUSH_V_RTMP1}}
+            ${PUSH_V_YOUTUBE}
+            ${PUSH_V_FACEBOOK}
+            ${PUSH_V_INSTAGRAM}
+            ${PUSH_V_TIKTOK}
+            ${PUSH_V_TIKTOK_DYN}
+            ${PUSH_V_KICK}
+            ${PUSH_V_X}
+            ${PUSH_V_TWITCH}
+            ${PUSH_V_TROVO}
+            ${PUSH_V_RTMP1}
         }
 
         application tiktok_relay {

@@ -51,7 +51,7 @@
             <a href="/login/twitch" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-twitch hover:bg-opacity-90 text-white text-sm font-bold transition-all shadow-lg shadow-twitch/20 active:scale-95">
                 Login Twitch
             </a>
-            
+
             <div id="youtube-status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-400 transition-all duration-300">
                 <div class="w-2 h-2 rounded-full bg-zinc-600 shadow-[0_0_8px_rgba(82,82,91,0.5)]"></div>
                 YouTube: <span id="youtube-user-name">Offline</span>
@@ -99,7 +99,7 @@
                 </h3>
                 <div class="space-y-2">
                     <label class="text-xs font-medium text-zinc-500 uppercase tracking-widest">Broadcast Title</label>
-                    <input type="text" id="stream-title" placeholder="What are we doing today?" 
+                    <input type="text" id="stream-title" placeholder="What are we doing today?"
                         class="w-full bg-zinc-900 border border-zinc-700 focus:border-brand focus:ring-1 focus:ring-brand rounded-xl px-4 py-3 text-sm outline-none transition-all placeholder:text-zinc-600">
                 </div>
                 <button onclick="updateTitle()" class="w-full bg-brand hover:bg-opacity-90 active:scale-95 text-black font-bold py-3 rounded-xl transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
@@ -143,7 +143,7 @@
         socket.on('connect', () => {
             document.getElementById('connection-status').innerText = 'System Connected';
             document.getElementById('connection-status').classList.replace('text-zinc-400', 'text-brand');
-            fetch('/api/start_chat'); 
+            fetch('/api/start_chat');
         });
 
         socket.on('disconnect', () => {
@@ -160,7 +160,7 @@
 
         function addMessage(msg) {
             const container = document.getElementById('chat-messages');
-            
+
             // Remove placeholder if it exists
             if (container.querySelector('.opacity-50')) {
                 container.innerHTML = '';
@@ -169,7 +169,7 @@
 
             const div = document.createElement('div');
             div.className = 'flex gap-3 items-start message-anim group';
-            
+
             const colorClass = msg.platform === 'twitch' ? 'text-twitch' : 'text-youtube';
 
             div.innerHTML = `
@@ -183,7 +183,7 @@
             `;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
-            
+
             if (container.children.length > 50) container.removeChild(container.firstChild);
         }
 
@@ -197,7 +197,7 @@
             try {
                 const r = await fetch('/api/status');
                 const status = await r.json();
-                
+
                 if (status.twitch) {
                     document.getElementById('twitch-user-name').innerText = status.twitch;
                     const pill = document.getElementById('twitch-status-pill');
@@ -205,7 +205,7 @@
                     pill.classList.replace('text-zinc-400', 'text-twitch');
                     pill.querySelector('div').classList.replace('bg-zinc-600', 'bg-twitch');
                 }
-                
+
                 if (status.youtube) {
                     document.getElementById('youtube-user-name').innerText = status.youtube;
                     const pill = document.getElementById('youtube-status-pill');
@@ -225,7 +225,7 @@
             const msg = document.getElementById('update-msg');
             msg.innerText = 'Syncing labels...';
             msg.className = 'text-[10px] text-center font-medium text-zinc-500';
-            
+
             try {
                 const r = await fetch('/api/update_title', {
                     method: 'POST',
@@ -233,7 +233,7 @@
                     body: JSON.stringify({ title })
                 });
                 const res = await r.json();
-                
+
                 let results = [];
                 if (res.twitch) results.push('Twitch ✅');
                 if (res.youtube === true) results.push('YouTube ✅');
