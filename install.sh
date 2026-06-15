@@ -1331,7 +1331,7 @@ while true; do
 
     # Helper function to get status label
     get_status() {
-        if [ "$1" == "true" ] || [ -n "$1" ]; then
+        if [ "$1" == "true" ] || ([ "$1" != "false" ] && [ -n "$1" ]); then
             echo -e "${GREEN}(Enabled)${NC}"
         else
             echo -e "${YELLOW}(Optional; disabled)${NC}"
