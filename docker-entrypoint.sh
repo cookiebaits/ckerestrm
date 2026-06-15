@@ -167,6 +167,7 @@ CHUNK_SIZE=$(sanitize_nginx "$CHUNK_SIZE")
 
 SUBST_VARS="\$APP_NAME \$CHUNK_SIZE \$PUSH_YOUTUBE \$PUSH_FACEBOOK \$PUSH_INSTAGRAM \$PUSH_TIKTOK \$PUSH_KICK \$PUSH_X \$PUSH_TWITCH \$PUSH_TROVO \$PUSH_RTMP1 \$PUSH_RTMP2 \$PUSH_RTMP3 \$PUSH_V_YOUTUBE \$PUSH_V_FACEBOOK \$PUSH_V_INSTAGRAM \$PUSH_V_TIKTOK \$PUSH_V_TIKTOK_DYN \$PUSH_V_KICK \$PUSH_V_X \$PUSH_V_TWITCH \$PUSH_V_TROVO \$PUSH_V_RTMP1 \$FACEBOOK_URL \$FACEBOOK_KEY \$TWITCH_URL \$TWITCH_KEY \$YOUTUBE_URL \$YOUTUBE_KEY \$KICK_URL \$KICK_KEY \$X_URL \$X_KEY"
 envsubst "$SUBST_VARS" < $NGINX_TEMPLATE > $NGINX_CONF
+chmod 600 $NGINX_CONF
 
 # --- TLS / Let's Encrypt Logic ---
 # This section dynamically generates an Nginx HTTPS server block if a domain and email are provided.
@@ -247,6 +248,7 @@ fi
 # Apply the dynamic HTTPS block to a separate config file included by nginx.conf.template
 # This prevents Nginx from failing to start if the HTTPS block is empty.
 echo "$HTTPS_SERVER_BLOCK" > /etc/nginx/https.conf
+chmod 600 /etc/nginx/https.conf
 
 # --- Basic Auth for Stats & Dashboard ---
 if [ -f "/etc/nginx/.htpasswd" ]; then
@@ -256,8 +258,10 @@ if [ -f "/etc/nginx/.htpasswd" ]; then
 else
     echo "" > /etc/nginx/auth.conf
 fi
+chmod 600 /etc/nginx/auth.conf
 
 # --- RTMP IP Access Restrictions ---
+touch /etc/nginx/rtmp_access.conf
 if [ -n "$ACCEPTED_IP" ]; then
     echo "Configuring RTMP IP Whitelist (Defense in Depth)..."
     # Convert comma-separated list to Nginx allow directives
@@ -270,6 +274,7 @@ if [ -n "$ACCEPTED_IP" ]; then
 else
     echo "" > /etc/nginx/rtmp_access.conf
 fi
+chmod 600 /etc/nginx/rtmp_access.conf
 
 # --- Certbot Auto-Renewal Loop ---
 # Runs in the background every 12 hours to ensure certificates are always valid.
