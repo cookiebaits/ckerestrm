@@ -1,111 +1,254 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" class="dark">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PrismRTMPS - Control Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; padding: 20px; background: #0e0e10; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; box-sizing: border-box; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0; }
-        .login-buttons { display: flex; gap: 10px; }
-        .btn { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; }
-        .btn-twitch { background: #9146ff; color: white; }
-        .btn-youtube { background: #ff0000; color: white; }
-        .btn-update { background: #00ff7f; color: black; }
-        
-        .main-content { display: flex; gap: 20px; flex-grow: 1; overflow: hidden; }
-        .chat-section { flex: 2; display: flex; flex-direction: column; background: #18181b; border-radius: 8px; overflow: hidden; }
-        .chat-header { padding: 10px; background: #26262c; display: flex; gap: 10px; }
-        .chat-container { display: flex; flex-grow: 1; gap: 1px; background: #26262c; }
-        .chat-column { flex: 1; background: #0e0e10; position: relative; }
-        
-        .control-section { flex: 1; background: #18181b; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        .input-group { display: flex; flex-direction: column; gap: 8px; }
-        input[type="text"] { background: #26262c; border: 1px solid #3f3f46; color: white; padding: 10px; border-radius: 4px; }
-        
-        .platform-icon { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; opacity: 0.8; z-index: 5; }
-        iframe { border: none; width: 100%; height: 100%; }
-        .status-badge { font-size: 0.8em; padding: 2px 6px; border-radius: 10px; }
-        .status-online { background: #00ff7f; color: black; }
-        .status-offline { background: #3f3f46; color: #a1a1aa; }
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(24, 24, 27, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(63, 63, 70, 0.4); }
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        .chat-scroll::-webkit-scrollbar-thumb:hover { background: #52525b; }
+        @keyframes message-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .message-anim { animation: message-in 0.2s ease-out forwards; }
     </style>
-</head>
-<body>
-    <div class="header">
-        <h1>PrismRTMPS Dashboard</h1>
-        <div class="login-buttons">
-            <span id="twitch-status" class="status-badge status-offline">Twitch Offline</span>
-            <a href="/login/twitch" class="btn btn-twitch">Login Twitch</a>
-            <span id="youtube-status" class="status-badge status-offline">YouTube Offline</span>
-            <a href="/login/youtube" class="btn btn-youtube">Login YouTube</a>
-        </div>
-    </div>
-
-    <div class="main-content">
-        <div class="chat-section">
-            <div class="chat-header">Combined Stream Chat</div>
-            <div class="chat-container" id="chat-container">
-                <!-- Chats will be injected here -->
-            </div>
-        </div>
-
-        <div class="control-section">
-            <h3>Stream Control</h3>
-            <div class="input-group">
-                <label>Update Stream Title (Unified)</label>
-                <input type="text" id="stream-title" placeholder="Enter new title...">
-                <button onclick="updateTitle()" class="btn btn-update">Sync Title</button>
-            </div>
-            <div id="update-msg"></div>
-        </div>
-    </div>
-
     <script>
-        async function checkStatus() {
-            const r = await fetch('/api/status');
-            const status = await r.json();
-            
-            const container = document.getElementById('chat-container');
-            container.innerHTML = '';
-
-            if (status.twitch) {
-                document.getElementById('twitch-status').innerText = `Twitch: ${status.twitch}`;
-                document.getElementById('twitch-status').className = 'status-badge status-online';
-                addChatColumn('twitch', `https://www.twitch.tv/embed/${status.twitch}/chat?parent=${window.location.hostname || 'localhost'}&darkpopout`, 'https://upload.wikimedia.org/wikipedia/commons/d/d3/Twitch_Glitch_Logo_Purple.svg');
-            }
-
-            if (status.youtube) {
-                document.getElementById('youtube-status').innerText = `YouTube: ${status.youtube}`;
-                document.getElementById('youtube-status').className = 'status-badge status-online';
-                // Note: YouTube chat embed requires Video ID which we don't have from just the user profile.
-                // This is a placeholder. In a real scenario, you'd fetch the active broadcast.
-                addChatColumn('youtube', 'about:blank', 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg');
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        twitch: '#9146ff',
+                        youtube: '#ff0000',
+                        brand: '#00ff7f',
+                    }
+                }
             }
         }
+    </script>
+</head>
+<body class="bg-[#0e0e10] text-zinc-100 min-h-screen flex flex-col p-4 md:p-6 lg:p-8">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-brand rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(0,255,127,0.3)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight">Prism<span class="text-brand">RTMPS</span> Dashboard</h1>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <div id="twitch-status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-400 transition-all duration-300">
+                <div class="w-2 h-2 rounded-full bg-zinc-600 shadow-[0_0_8px_rgba(82,82,91,0.5)]"></div>
+                Twitch: <span id="twitch-user-name">Offline</span>
+            </div>
+            <a href="/login/twitch" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-twitch hover:bg-opacity-90 text-white text-sm font-bold transition-all shadow-lg shadow-twitch/20 active:scale-95">
+                Login Twitch
+            </a>
+            
+            <div id="youtube-status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-400 transition-all duration-300">
+                <div class="w-2 h-2 rounded-full bg-zinc-600 shadow-[0_0_8px_rgba(82,82,91,0.5)]"></div>
+                YouTube: <span id="youtube-user-name">Offline</span>
+            </div>
+            <a href="/login/youtube" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-youtube hover:bg-opacity-90 text-white text-sm font-bold transition-all shadow-lg shadow-youtube/20 active:scale-95">
+                Login YouTube
+            </a>
+        </div>
+    </header>
 
-        function addChatColumn(id, url, icon) {
-            const col = document.createElement('div');
-            col.className = 'chat-column';
-            col.innerHTML = `
-                <img src="${icon}" class="platform-icon">
-                <iframe src="${url}"></iframe>
+    <main class="flex-grow flex flex-col lg:flex-row gap-6 overflow-hidden">
+        <!-- Chat Section -->
+        <section class="flex-[2] flex flex-col glass rounded-2xl overflow-hidden shadow-2xl min-h-[400px]">
+            <div class="px-6 py-4 bg-zinc-800/50 border-b border-zinc-700 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold uppercase tracking-wider text-zinc-400">Unified Live Chat</span>
+                    <span id="chat-badge" class="hidden px-2 py-0.5 rounded-md bg-brand/10 text-brand text-[10px] font-bold border border-brand/20">LIVE</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3 group">
+                        <label for="tts-toggle" class="text-xs font-medium text-zinc-400 group-hover:text-zinc-200 cursor-pointer transition-colors">Natural TTS</label>
+                        <div class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="tts-toggle" class="sr-only peer">
+                            <div class="w-10 h-5 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="chat-messages" class="flex-grow overflow-y-auto p-6 flex flex-col gap-4 chat-scroll bg-zinc-900/30">
+                <div class="flex flex-col items-center justify-center h-full text-zinc-500 opacity-50 italic text-sm">
+                    <p>Connecting to stream relay...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sidebar Controls -->
+        <aside class="flex-1 flex flex-col gap-6">
+            <!-- Title Control -->
+            <div class="glass p-6 rounded-2xl shadow-xl space-y-4">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Stream Control
+                </h3>
+                <div class="space-y-2">
+                    <label class="text-xs font-medium text-zinc-500 uppercase tracking-widest">Broadcast Title</label>
+                    <input type="text" id="stream-title" placeholder="What are we doing today?" 
+                        class="w-full bg-zinc-900 border border-zinc-700 focus:border-brand focus:ring-1 focus:ring-brand rounded-xl px-4 py-3 text-sm outline-none transition-all placeholder:text-zinc-600">
+                </div>
+                <button onclick="updateTitle()" class="w-full bg-brand hover:bg-opacity-90 active:scale-95 text-black font-bold py-3 rounded-xl transition-all shadow-lg shadow-brand/20 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Sync Across Platforms
+                </button>
+                <div id="update-msg" class="text-[10px] text-center font-medium min-h-[15px]"></div>
+            </div>
+
+            <!-- Stats/Info -->
+            <div class="glass p-6 rounded-2xl shadow-xl flex-grow space-y-4">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-zinc-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Relay Info
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                        <span class="text-xs text-zinc-500">Status</span>
+                        <span id="connection-status" class="text-xs font-bold text-zinc-400">Initializing...</span>
+                    </div>
+                    <div class="p-3 bg-zinc-900/50 rounded-xl border border-zinc-800 space-y-1">
+                        <span class="text-[10px] text-zinc-600 uppercase font-bold tracking-tighter">Instructions</span>
+                        <p class="text-[11px] text-zinc-400 leading-relaxed">Login to your platforms above to enable unified chat and title management. TTS uses high-quality neural voices.</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        const socket = io();
+        const logos = {
+            twitch: 'https://upload.wikimedia.org/wikipedia/commons/d/d3/Twitch_Glitch_Logo_Purple.svg',
+            youtube: 'https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg'
+        };
+
+        socket.on('connect', () => {
+            document.getElementById('connection-status').innerText = 'System Connected';
+            document.getElementById('connection-status').classList.replace('text-zinc-400', 'text-brand');
+            fetch('/api/start_chat'); 
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connection-status').innerText = 'Disconnected';
+            document.getElementById('connection-status').classList.replace('text-brand', 'text-youtube');
+        });
+
+        socket.on('chat_msg', (msg) => {
+            addMessage(msg);
+            if (document.getElementById('tts-toggle').checked) {
+                playTTS(msg.text);
+            }
+        });
+
+        function addMessage(msg) {
+            const container = document.getElementById('chat-messages');
+            
+            // Remove placeholder if it exists
+            if (container.querySelector('.opacity-50')) {
+                container.innerHTML = '';
+                document.getElementById('chat-badge').classList.remove('hidden');
+            }
+
+            const div = document.createElement('div');
+            div.className = 'flex gap-3 items-start message-anim group';
+            
+            const colorClass = msg.platform === 'twitch' ? 'text-twitch' : 'text-youtube';
+
+            div.innerHTML = `
+                <div class="mt-1 flex-shrink-0">
+                    <img src="${logos[msg.platform]}" class="w-4 h-4" alt="${msg.platform}">
+                </div>
+                <div class="bg-zinc-800/40 group-hover:bg-zinc-800/70 p-3 rounded-2xl rounded-tl-none border border-zinc-700/30 transition-colors">
+                    <span class="text-xs font-bold ${colorClass} mr-2">${msg.user}</span>
+                    <span class="text-sm text-zinc-200 leading-snug">${msg.text}</span>
+                </div>
             `;
-            document.getElementById('chat-container').appendChild(col);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            
+            if (container.children.length > 50) container.removeChild(container.firstChild);
+        }
+
+        async function playTTS(text) {
+            const cleanText = text.replace(/https?:\/\/\S+/g, 'link');
+            const audio = new Audio(`/api/tts?text=${encodeURIComponent(cleanText)}`);
+            audio.play().catch(e => console.warn('Audio playback failed', e));
+        }
+
+        async function checkStatus() {
+            try {
+                const r = await fetch('/api/status');
+                const status = await r.json();
+                
+                if (status.twitch) {
+                    document.getElementById('twitch-user-name').innerText = status.twitch;
+                    const pill = document.getElementById('twitch-status-pill');
+                    pill.classList.replace('bg-zinc-800', 'bg-twitch/10');
+                    pill.classList.replace('text-zinc-400', 'text-twitch');
+                    pill.querySelector('div').classList.replace('bg-zinc-600', 'bg-twitch');
+                }
+                
+                if (status.youtube) {
+                    document.getElementById('youtube-user-name').innerText = status.youtube;
+                    const pill = document.getElementById('youtube-status-pill');
+                    pill.classList.replace('bg-zinc-800', 'bg-youtube/10');
+                    pill.classList.replace('text-zinc-400', 'text-youtube');
+                    pill.querySelector('div').classList.replace('bg-zinc-600', 'bg-youtube');
+                }
+            } catch (e) {
+                console.error('Status check failed', e);
+            }
         }
 
         async function updateTitle() {
             const title = document.getElementById('stream-title').value;
+            if (!title) return;
+
             const msg = document.getElementById('update-msg');
-            msg.innerText = 'Updating...';
+            msg.innerText = 'Syncing labels...';
+            msg.className = 'text-[10px] text-center font-medium text-zinc-500';
             
-            const r = await fetch('/api/update_title', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title })
-            });
-            const res = await r.json();
-            msg.innerText = `Update Status - Twitch: ${res.twitch ? 'Success' : 'Failed'}, YouTube: ${res.youtube}`;
+            try {
+                const r = await fetch('/api/update_title', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title })
+                });
+                const res = await r.json();
+                
+                let results = [];
+                if (res.twitch) results.push('Twitch ✅');
+                if (res.youtube === true) results.push('YouTube ✅');
+                else if (res.youtube) results.push(`YouTube ❌ (${res.youtube})`);
+
+                msg.innerText = results.length > 0 ? `Status: ${results.join(' | ')}` : 'No platforms logged in.';
+                msg.classList.replace('text-zinc-500', 'text-brand');
+            } catch (e) {
+                msg.innerText = 'Network error during sync.';
+                msg.classList.replace('text-zinc-500', 'text-youtube');
+            }
         }
 
         checkStatus();
+        setInterval(checkStatus, 30000);
     </script>
 </body>
 </html>

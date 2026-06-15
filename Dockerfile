@@ -6,8 +6,8 @@ ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --break-system-packages flask gunicorn requests obsws-python flask-session twitchio google-api-python-client google-auth-oauthlib google-auth-httplib2 && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext srt-tools && \
+    pip3 install --break-system-packages flask gunicorn requests obsws-python flask-session twitchio google-api-python-client google-auth-oauthlib google-auth-httplib2 edge-tts flask-socketio eventlet && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext ffmpeg certbot python3-certbot-nginx && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
@@ -55,6 +55,11 @@ COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Copy the validation server
 COPY stream_validator.py /stream_validator.py
+COPY tiktok_pusher.py /app/tiktok_pusher.py
+COPY tiktok_search.py /app/tiktok_search.py
+
+# Config NOALBS
+COPY noalbs /app/noalbs
 
 # Config Stunnel
 RUN mkdir -p  /etc/stunnel/conf.d
@@ -134,7 +139,7 @@ COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 1935
+EXPOSE 1935 80 443 8081
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 

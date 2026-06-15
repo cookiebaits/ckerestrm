@@ -25,8 +25,10 @@ class Noalbs:
 
     def get_bitrate(self):
         try:
-            r = requests.get(self.stats_url, timeout=2)
-            if r.status_code != 200: return 0
+            r = requests.get(self.stats_url, timeout=5)
+            if r.status_code != 200:
+                logger.error(f"Nginx Stats HTTP {r.status_code}")
+                return 0
             
             root = ET.fromstring(r.text)
             # Find the live application and its inbound stream
@@ -44,9 +46,11 @@ class Noalbs:
             return 0
 
     def switch_scene(self, scene):
-        if not self.obs_host: return
+        if not self.obs_host:
+            logger.error("OBS_WS_HOST not configured")
+            return
         try:
-            cl = obs.ReqClient(host=self.obs_host, port=self.obs_port, password=self.obs_password, timeout=3)
+            cl = obs.ReqClient(host=self.obs_host, port=self.obs_port, password=self.obs_password, timeout=5)
             cl.set_current_program_scene(scene)
             logger.info(f"Switched OBS to: {scene}")
         except Exception as e:
@@ -70,21 +74,25 @@ class Noalbs:
                 
                 if bitrate < self.low_threshold:
                     low_count += 1
+                    # Switch to BRB if bitrate is low for 3 consecutive checks (approx 6 seconds)
                     if low_count >= 3 and not self.is_low:
                         logger.warning(f"Low bitrate: {bitrate}kbps. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
                     low_count = 0
+                    # Switch back to Main only if speed is restored
                     if bitrate >= self.restore_threshold and self.is_low:
                         logger.info(f"Bitrate restored: {bitrate}kbps. Switching to {self.scene_main}")
                         self.switch_scene(self.scene_main)
                         self.is_low = False
             else:
+                # Handle complete disconnection
                 if self.is_streaming:
-                    logger.info("Stream disconnected.")
+                    logger.warning("Stream disconnected. Switching to BRB.")
+                    self.switch_scene(self.scene_brb)
                     self.is_streaming = False
-                    self.is_low = False
+                    self.is_low = True # Treat as low for restoration purposes
                     low_count = 0
             
             time.sleep(2)

@@ -2,102 +2,90 @@
 
 [![Discord](https://img.shields.io/discord/1303046473985818654?label=Discord&logo=discord&style=for-the-badge)](http://wubu.cookiebaits.com)
 
-**CRITICAL SECURITY ADVISORY & PROJECT CONTEXT (Read First!)**
-
-This project (`cookiebaits/PrismRTMPS`) is a **fork** of the `MorrowShore/Prism` RTMP relay. It was created primarily to address a **critical security vulnerability** in the original version that allows for **stream hijacking**, and to provide ongoing maintenance and improvements.
-
-*   **The Vulnerability (Original `MorrowShore/Prism` Pre-May 2025):** The original project historically lacked mandatory stream key validation (`on_publish` check). This meant if a server's IP address and port (usually 1935) were known, **anyone could stream to the server using *any* stream key**, and the original Prism would relay that unauthorized stream to all configured destinations (Twitch, YouTube, etc.).
-*   **Attempted Contribution:** A Pull Request was submitted to `MorrowShore/Prism` with a robust fix for this vulnerability (implementing `on_publish` key validation via `stream_validator.py`). Unfortunately, this PR was closed by the original maintainer with comments focusing on the perceived use of AI in its generation and an unrelated, since-reverted funding file modification, rather than the technical merits of the security fix. Communication on the PR was subsequently limited.
-*   **The "Fix" in Original `MorrowShore/Prism` (Post-May 7, 2025):** Following the closure of the PR, the original maintainer implemented their own changes. These changes include randomizing the RTMP application path (e.g., `rtmp://<ip>/<random_string>`). While this adds a minor layer of *obscurity*, it **does not fundamentally fix the stream hijacking vulnerability**. The random path is often logged and easily discoverable, and if found, hijacking is still possible because the stream key itself is *still not validated*. Their README continues to state "Your Stream Key Does Not Matter," and their commit messages for this "fix" reflect a focus on issues other than robust authentication.
-*   **The Solution in This Fork (`cookiebaits/PrismRTMPS`):** This fork implements **proper stream key validation**. When a stream connects, its key is checked against your configured destination keys. Only streams with a matching key are relayed. This is the industry-standard approach to securing RTMP relays.
-
-**Recommendation:** Due to the persistent lack of true stream key validation in the `MorrowShore/Prism` repository, users concerned about stream security are strongly advised to use this fork (`cookiebaits/PrismRTMPS`) or implement their own robust validation.
+**PrismRTMPS** is a high-performance, secure RTMP relay designed to empower streamers with total control over their broadcasts. Built on Nginx and a hardened RTMP module, it allows you to stream to multiple platforms simultaneously (Twitch, YouTube, TikTok, Kick, etc.) from a single ingest point, reducing your local upload requirements and eliminating third-party subscription fees.
 
 ---
 
-## Introduction (cookiebaits/PrismRTMPS)
+## ⚡ Quick Reference: Network Ports
 
-Would you like to stream to Twitch, YouTube, Kick, Trovo, Facebook, Instagram, X (Twitter), Cloudflare, and custom RTMP destinations at once, without the upload strain on your computer or recurring fees of commercial services?
+For full functionality, ensure the following ports are open on your VPS firewall:
 
-You can host **PrismRTMPS** on a server to act as a **secure and efficient** prism for your streamed content!
-
-You stream **one** high-quality feed to your PrismRTMPS server, and it will:
-1.  **Validate** the incoming stream to ensure it's from you, preventing unauthorized access.
-2.  **Relay** your stream to all the platforms you configure.
-
-This fork also includes performance tuning (optimized `chunk_size`), updated core components for better stability and security, and active maintenance.
-
-### Key New Features (v3.4+)
-*   **Vertical Streaming Support:** Optimized for use with the **OBS Aitum Vertical plugin**. Push a second, independent vertical feed to specialized targets (TikTok, YouTube Vertical, Twitch Vertical) alongside your horizontal stream.
-*   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
-*   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
-*   **Nginx 1.30.1 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
-
-## Prequisites
-
-You'd need a VPS server. Key considerations:
-*   **Network Performance:** Good bandwidth, low latency, and stable routing between your VPS and your chosen streaming platforms are crucial, especially for 1080p 60fps.
-*   **Resources:** A 2 vCore, 2GB RAM VPS (like those from Ionos, Linode, Digital Ocean, Vultr, Hetzner Cloud) is often sufficient. This fork has been tested and runs effectively on such configurations. Choose a location strategically.
-
-## How To Set up `cookiebaits/PrismRTMPS`
-
-*   1- **SSH into your VPS server:**
-    ```bash
-    ssh root@<your_server_ip_address>
-    ```
-
-*   2- **Clone the repository & Set permissions:**
-    ```bash
-    git clone https://github.com/cookiebaits/prism-rtmps.git && cd prism-rtmps && chmod +x install.sh && ./install.sh
-    ```
-
-*   3- **Run the Interactive Installer:**
-    ```bash
-  [Automatically integrated in the previous step now] for manual execution ./install.sh
-    ```
-    *   Use the menu to easily install Docker (if needed).
-    *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
-    *   Select "Build & Start Server" to launch your customized RTMP relay.
-
-*   4- **Configure OBS (or other streaming software):**
-    *   Service: `Custom...`
-    *   **Horizontal Server:** `rtmp://<your_vps_ip_address>:1935/live`
-    *   **Vertical Server:** `rtmp://<your_vps_ip_address>:1935/vertical` (For Aitum Vertical)
-    *   Stream Key: **Use ONE of the actual stream keys you configured during the setup process** (or the custom Master OBS Key if you set one).
-
-*   5- **Begin streaming from OBS!**
-
-We advise testing with one or two destinations first.
-
-## How To Manage PrismRTMPS
-
-*   **STOP** the container: `docker stop prism-rtmps`
-*   **START** the container: `docker start prism-rtmps`
-*   **VIEW LOGS:** `docker logs prism-rtmps` (or `docker logs -f prism-rtmps` for live logs)
-*   **EDIT Destinations / Keys:** Stop, remove (`docker rm prism-rtmps`), and re-run the `docker run` command.
-*   **UNINSTALL:** Stop, remove container, then `docker rmi prism-rtmps`.
-
-## Troubleshooting Common Issues
-
-*   **Lag / Falling Behind Stream:** Often a network bottleneck. This fork uses `chunk_size: 8192` for improved performance.
-    *   **Diagnosis:** Test one destination at a time. Use `mtr <destination_hostname>` from VPS.
-    *   **Solutions:** Different ingest servers, different VPS location, or lower stream bitrate.
-*   **Stream Rejects / "Invalid Key":**
-    *   OBS key *must exactly match* one key from `docker run`.
-    *   Ensure at least one destination key is active in `docker run`.
-    *   Check validator logs: `docker exec prism-rtmps tail /tmp/validator.log` or `docker logs prism-rtmps`.
-*   **One Destination Not Working:** Check URL/Key in `docker run`. Check Nginx/Stunnel logs. Ensure stream is active on the platform.
-
-## Support & Contributing to This Fork
-
-Need help or have suggestions for **this fork**? Your contributions and feedback are welcome!
-
-*   Raise an Issue: [https://github.com/cookiebaits/PrismRTMPS/issues](https://github.com/cookiebaits/PrismRTMPS/issues)
-*   Join our Discord: [http://wubu.cookiebaits.com](http://wubu.cookiebaits.com) (Shield above also links here)
+| Port | Protocol | Description |
+| :--- | :--- | :--- |
+| **1935** | TCP | **RTMP Ingest** (Primary & Vertical stream entry) |
+| **80** | TCP | **HTTP** (Let's Encrypt challenges & Automated Redirection) |
+| **443** | TCP | **HTTPS** (Secure Dashboard & Stats access) |
+| **8081** | TCP | **RTMP Stats** (Optional direct access, usually proxied) |
 
 ---
-**Regarding the Original `MorrowShore/Prism` Repository:**
 
-As noted in the advisory at the top, attempts to contribute essential security fixes to the original `MorrowShore/Prism` repository were met with dismissal and a subsequent "fix" that does not adequately address the core stream hijacking vulnerability. The maintainer's focus appeared to be on the perceived method of contribution rather than the critical security implications for users.
+## ✨ Key Features
 
-Given this, `cookiebaits/PrismRTMPS` will serve as an actively maintained, secure, and performance-tuned alternative for the community. We encourage users to prioritize their security.
+- **🛡️ Mandatory Authentication:** Prevents stream hijacking via `on_publish` validation against your configured keys.
+- **📱 Dual-Format Streaming:** Dedicated support for simultaneous Horizontal and Vertical (Aitum Vertical) feeds.
+- **🔒 Automated TLS (SSL):** Integrated Certbot with Let's Encrypt for automatic certificate generation and **auto-renewal**.
+- **🤖 NOALBS Integration:** Bitrate-aware scene switcher that autonomously manages OBS via WebSocket.
+- **🎵 Unified Dashboard:** A polished, modern dark-themed control panel for aggregated chat and title management.
+- **🎬 TikTok Automation:** Dynamic stream key rotation via Streamlabs API (auto-starts/ends TikTok sessions).
+- **🚀 Hardened Infrastructure:** Nginx 1.30.2, Stunnel TLS 1.3, and Enhanced RTMP support (HEVC/AV1/VP9).
+- **📋 Multiple IP Whitelist:** Restrict ingest access to specific trusted IP addresses.
+
+---
+
+## 🚀 Deployment Steps
+
+### 1. Connect to your VPS
+Login via SSH to your clean Ubuntu/Debian server:
+```bash
+ssh root@your_server_ip
+```
+
+### 2. Run the Universal Installer
+Clone the repository and launch the interactive setup script:
+```bash
+git clone https://github.com/cookiebaits/prism-rtmps.git && cd prism-rtmps
+chmod +x install.sh
+./install.sh
+```
+
+### 3. Configure Your Environment
+Follow the menu prompts in order:
+1. **Install Docker** (if not already present).
+2. **Configure Stream Keys** for your destinations.
+3. **Configure Domain / Reverse Proxy (#5):** Enter your domain and email for **Automated SSL**.
+4. **Configure IP Whitelist (#8):** (Optional) Add your home IP to restrict access.
+5. **Build & Start Server:** Launches the containerized environment.
+
+### 4. Setup OBS Encoder
+- **Service:** Custom...
+- **Server:** `rtmp://your-domain.com:1935/live` (or `rtmps://...` if SSL is active)
+- **Stream Key:** Use any of your configured destination keys or your custom Master Key.
+
+---
+
+## 🛠️ Advanced Automation
+
+### NOALBS (OBS Scene Switcher)
+Configure bitrate thresholds in the installer. If your bitrate drops below **1000kbps**, PrismRTMPS will tell OBS to switch to your "BRB" scene. When it recovers above **1500kbps**, it switches back to "Main" instantly.
+
+### Automated SSL Auto-Renewal
+The system includes a background watchdog process that runs every 12 hours. It automatically checks for certificate expiration and performs a `certbot renew` followed by an Nginx reload, ensuring your HTTPS dashboard and RTMPS ingest points never go down.
+
+### TikTok Dynamic Key Setup
+1. Enter your **Streamlabs TikTok Token** in the installer.
+2. Select your **Game Category**.
+3. PrismRTMPS will now automatically fetch a fresh key and start your TikTok Live session every time you begin streaming to the vertical app.
+
+---
+
+## 📂 Data Persistence
+Your configuration, stream keys, OAuth sessions, and episode counts are persisted in the `./data` and `./letsencrypt` directories on the host machine. You can safely rebuild or update the container without losing your settings.
+
+---
+
+## 🤝 Support & Community
+- **Join Discord:** [http://wubu.cookiebaits.com](http://wubu.cookiebaits.com)
+- **Security Audit:** This fork was created to patch critical hijacking vulnerabilities in the original Prism project. We prioritize security and reliability (P0).
+
+---
+*Maintained with ❤️ by the Cookiebaits team.*
