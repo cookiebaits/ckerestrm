@@ -173,7 +173,7 @@ chmod 600 $NGINX_CONF
 # This section dynamically generates an Nginx HTTPS server block if a domain and email are provided.
 # It checks for existing certificates and attempts to obtain new ones if they are missing.
 HTTPS_SERVER_BLOCK=""
-if [ -n "$SERVER_DOMAIN" ] && [ -n "$LETSENCRYPT_EMAIL" ]; then
+if [ "$ENABLE_SSL" == "true" ] && [ -n "$SERVER_DOMAIN" ] && [ -n "$LETSENCRYPT_EMAIL" ]; then
     if [ -f "/etc/letsencrypt/live/$SERVER_DOMAIN/fullchain.pem" ]; then
         echo "SSL Certificates found for $SERVER_DOMAIN"
         HTTPS_SERVER_BLOCK="server {

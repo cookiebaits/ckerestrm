@@ -53,6 +53,7 @@ APP_NAME="live"
 ACCEPTED_IP=""
 SERVER_DOMAIN=""
 LETSENCRYPT_EMAIL=""
+ENABLE_SSL="false"
 CHUNK_SIZE="8192"
 STREAM_BASE_TITLE="Live Stream"
 TWITCH_CLIENT_ID=""
@@ -149,6 +150,7 @@ CHAT_KICK="$CHAT_KICK"
 CHAT_TIKTOK="$CHAT_TIKTOK"
 SERVER_DOMAIN="$SERVER_DOMAIN"
 LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL"
+ENABLE_SSL="$ENABLE_SSL"
 CHUNK_SIZE="$CHUNK_SIZE"
 STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
@@ -743,8 +745,10 @@ configure_domain() {
         clear
         echo -e "${GREEN}=== Domain / Reverse Proxy Configuration ===${NC}"
         echo -e "1) Domain Name (Current: ${SERVER_DOMAIN:-None})"
-        echo -e "2) Let's Encrypt Email (Current: ${LETSENCRYPT_EMAIL:-None})"
-        echo -e "3) Back to Main Menu"
+        echo -e "2) Built-in SSL (Certbot) (Current: ${ENABLE_SSL})"
+        echo -e "   ${YELLOW}Note: Enabling SSL requires ports 80 and 443 to be free on host.${NC}"
+        echo -e "3) Let's Encrypt Email (Current: ${LETSENCRYPT_EMAIL:-None})"
+        echo -e "4) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r dom_opt
 
@@ -771,6 +775,10 @@ configure_domain() {
                 sleep 1
                 ;;
             2)
+                if [ "$ENABLE_SSL" == "true" ]; then ENABLE_SSL="false"; else ENABLE_SSL="true"; fi
+                save_config
+                ;;
+            3)
                 echo -e "Enter Email for Let's Encrypt (required for SSL):"
                 echo -e "(Example: yourname@gmail.com, or 'dummy@example.com' for testing)"
                 read -r email_input
@@ -779,7 +787,7 @@ configure_domain() {
                     save_config
                 fi
                 ;;
-            3) break ;;
+            4) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -1183,18 +1191,6 @@ install_docker() {
     sleep 2
 }
 
-check_port_busy() {
-    local port=$1
-    if command -v ss &> /dev/null; then
-        ss -tuln | grep -q ":$port "
-        return $?
-    elif command -v netstat &> /dev/null; then
-        netstat -tuln | grep -q ":$port "
-        return $?
-    fi
-    return 1 # Assume not busy if we can't check
-}
-
 build_and_run() {
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
@@ -1209,29 +1205,9 @@ build_and_run() {
     # Brief sleep to allow OS to release ports
     sleep 2
 
-    # Port availability check
-    BUSY_PORTS=""
-    for p in 1935 8081; do
-        if check_port_busy $p; then
-            BUSY_PORTS="$BUSY_PORTS $p"
-        fi
-    done
-
-    if [ -n "$SERVER_DOMAIN" ]; then
-        for p in 80 443; do
-            if check_port_busy $p; then
-                BUSY_PORTS="$BUSY_PORTS $p"
-            fi
-        done
-    fi
-
-    if [ -n "$BUSY_PORTS" ]; then
-        echo -e "${RED}Error: The following ports are already in use on your host: $BUSY_PORTS${NC}"
-        echo -e "${YELLOW}Please stop any services using these ports (e.g. another Nginx, Apache) and try again.${NC}"
-        echo -e "Press Enter to return to menu..."
-        read -r
-        return
-    fi
+    # Aggressive port checks removed to allow Docker to handle binding directly.
+    # This prevents false-positives during container restarts and allows standard deployments
+    # that worked previously to continue working.
 
     # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok)
     if [ ! -z "$YOUTUBE_KEY" ] && [ -z "$V_YOUTUBE_KEY" ]; then
@@ -1289,7 +1265,7 @@ build_and_run() {
 
     # Dynamic port mapping
     PORT_MAPPINGS="-p 1935:1935 -p 8081:8081"
-    if [ -n "$SERVER_DOMAIN" ]; then
+    if [ "$ENABLE_SSL" == "true" ]; then
         PORT_MAPPINGS="$PORT_MAPPINGS -p 80:80 -p 443:443"
     fi
 
@@ -1351,6 +1327,7 @@ build_and_run() {
         -e YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI" \
         -e SECRET_KEY="$SECRET_KEY" \
         -e SERVER_DOMAIN="$SERVER_DOMAIN" \
+        -e ENABLE_SSL="$ENABLE_SSL" \
         -e LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL" \
         -e SRT_PORT="$SRT_PORT" \
         -e SRT_PASSPHRASE="$SRT_PASSPHRASE" \
