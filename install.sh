@@ -52,8 +52,6 @@ OBS_KEY=""
 APP_NAME="live"
 ACCEPTED_IP=""
 SERVER_DOMAIN=""
-LETSENCRYPT_EMAIL=""
-ENABLE_SSL="false"
 CHUNK_SIZE="8192"
 STREAM_BASE_TITLE="Live Stream"
 TWITCH_CLIENT_ID=""
@@ -149,8 +147,6 @@ CHAT_YOUTUBE="$CHAT_YOUTUBE"
 CHAT_KICK="$CHAT_KICK"
 CHAT_TIKTOK="$CHAT_TIKTOK"
 SERVER_DOMAIN="$SERVER_DOMAIN"
-LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL"
-ENABLE_SSL="$ENABLE_SSL"
 CHUNK_SIZE="$CHUNK_SIZE"
 STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
@@ -741,56 +737,27 @@ configure_obs() {
 }
 
 configure_domain() {
-    while true; do
-        clear
-        echo -e "${GREEN}=== Domain / Reverse Proxy Configuration ===${NC}"
-        echo -e "1) Domain Name (Current: ${SERVER_DOMAIN:-None})"
-        echo -e "2) Built-in SSL (Certbot) (Current: ${ENABLE_SSL})"
-        echo -e "   ${YELLOW}Note: Enabling SSL requires ports 80 and 443 to be free on host.${NC}"
-        echo -e "3) Let's Encrypt Email (Current: ${LETSENCRYPT_EMAIL:-None})"
-        echo -e "4) Back to Main Menu"
-        echo -e "Select an option: \c"
-        read -r dom_opt
-
-        case $dom_opt in
-            1)
-                echo -e "Enter your domain (e.g. stream.yourdomain.com):"
-                echo -e "(Leave blank to keep current, type 'disable' to use IP)"
-                read -r dom_input
-                if [ "$dom_input" == "disable" ] || [ "$dom_input" == "DISABLE" ]; then
-                    SERVER_DOMAIN=""
-                    echo -e "${GREEN}Domain disabled, using IP.${NC}"
-                elif [ ! -z "$dom_input" ]; then
-        # Basic sanitization for domain to prevent command injection
-                    dom_input=$(echo "$dom_input" | sed 's/[^a-zA-Z0-9.-]//g')
-                    if [ ! -z "$dom_input" ]; then
-                        SERVER_DOMAIN="$dom_input"
-                        echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
-                        echo -e "${YELLOW}Note: If using Cloudflare, ensure the record is 'DNS Only' (Grey Cloud).${NC}"
-                    else
-                        echo -e "${RED}Invalid domain name.${NC}"
-                    fi
-                fi
-                save_config
-                sleep 1
-                ;;
-            2)
-                if [ "$ENABLE_SSL" == "true" ]; then ENABLE_SSL="false"; else ENABLE_SSL="true"; fi
-                save_config
-                ;;
-            3)
-                echo -e "Enter Email for Let's Encrypt (required for SSL):"
-                echo -e "(Example: yourname@gmail.com, or 'dummy@example.com' for testing)"
-                read -r email_input
-                if [ ! -z "$email_input" ]; then
-                    LETSENCRYPT_EMAIL="$email_input"
-                    save_config
-                fi
-                ;;
-            4) break ;;
-            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-        esac
-    done
+    clear
+    echo -e "${GREEN}=== Domain Configuration ===${NC}"
+    echo -e "${YELLOW}Note: This is used for generating OBS instructions only.${NC}"
+    echo -e "Enter your domain (e.g. stream.yourdomain.com):"
+    echo -e "(Leave blank to keep current, type 'disable' to use IP)"
+    read -r dom_input
+    if [ "$dom_input" == "disable" ] || [ "$dom_input" == "DISABLE" ]; then
+        SERVER_DOMAIN=""
+        echo -e "${GREEN}Domain disabled, using IP.${NC}"
+    elif [ ! -z "$dom_input" ]; then
+        # Basic sanitization for domain
+        dom_input=$(echo "$dom_input" | sed 's/[^a-zA-Z0-9.-]//g')
+        if [ ! -z "$dom_input" ]; then
+            SERVER_DOMAIN="$dom_input"
+            echo -e "${GREEN}Domain updated to: $SERVER_DOMAIN${NC}"
+        else
+            echo -e "${RED}Invalid domain name.${NC}"
+        fi
+    fi
+    save_config
+    sleep 2
 }
 
 configure_access_control() {
@@ -1263,18 +1230,12 @@ build_and_run() {
         BRB_MAPPING="-v $BRB_VIDEO_PATH:/app/data/brb_video.mp4"
     fi
 
-    # Dynamic port mapping
-    PORT_MAPPINGS="-p 1935:1935 -p 8081:8081"
-    if [ "$ENABLE_SSL" == "true" ]; then
-        PORT_MAPPINGS="$PORT_MAPPINGS -p 80:80 -p 443:443"
-    fi
-
     docker run -d --name prism-rtmps \
         -v "$(pwd)/data:/app/data" \
-        -v "$(pwd)/letsencrypt:/etc/letsencrypt" \
-        -v "$(pwd)/certbot_www:/var/www/certbot" \
+        -v "/etc/ssl/certs:/etc/ssl/certs:ro" \
         $BRB_MAPPING \
-        $PORT_MAPPINGS \
+        -p 1935:1935 \
+        -p 8081:8081 \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
@@ -1327,8 +1288,6 @@ build_and_run() {
         -e YOUTUBE_REDIRECT_URI="$YOUTUBE_REDIRECT_URI" \
         -e SECRET_KEY="$SECRET_KEY" \
         -e SERVER_DOMAIN="$SERVER_DOMAIN" \
-        -e ENABLE_SSL="$ENABLE_SSL" \
-        -e LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL" \
         -e SRT_PORT="$SRT_PORT" \
         -e SRT_PASSPHRASE="$SRT_PASSPHRASE" \
         -e OBS_WS_HOST="$OBS_WS_HOST" \
@@ -1434,7 +1393,7 @@ while true; do
     echo "2) Configure Stream Keys (Horizontal)"
     echo "3) Configure Stream Keys (Vertical)"
     echo "4) Configure OBS Setup & Security Key"
-    echo -e "5) Configure Domain / Reverse Proxy $(get_status $SERVER_DOMAIN)"
+    echo -e "5) Configure Domain (for OBS) $(get_status $SERVER_DOMAIN)"
     echo -e "6) Configure Combined Chat $(get_status $TWITCH_CLIENT_ID)"
     echo -e "7) Configure Stream Titles & Twitch API $(get_status $TWITCH_OAUTH_TOKEN)"
     echo -e "8) Configure IP Whitelist $(get_status $ACCEPTED_IP)"

@@ -169,103 +169,8 @@ SUBST_VARS="\$APP_NAME \$CHUNK_SIZE \$PUSH_YOUTUBE \$PUSH_FACEBOOK \$PUSH_INSTAG
 envsubst "$SUBST_VARS" < $NGINX_TEMPLATE > $NGINX_CONF
 chmod 600 $NGINX_CONF
 
-# --- TLS / Let's Encrypt Logic ---
-# This section dynamically generates an Nginx HTTPS server block if a domain and email are provided.
-# It checks for existing certificates and attempts to obtain new ones if they are missing.
-HTTPS_SERVER_BLOCK=""
-if [ "$ENABLE_SSL" == "true" ] && [ -n "$SERVER_DOMAIN" ] && [ -n "$LETSENCRYPT_EMAIL" ]; then
-    if [ -f "/etc/letsencrypt/live/$SERVER_DOMAIN/fullchain.pem" ]; then
-        echo "SSL Certificates found for $SERVER_DOMAIN"
-        HTTPS_SERVER_BLOCK="server {
-    listen 443 ssl;
-    server_name $SERVER_DOMAIN;
-
-    ssl_certificate /etc/letsencrypt/live/$SERVER_DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$SERVER_DOMAIN/privkey.pem;
-
-    # High-security SSL settings
-    ssl_protocols TLSv1.3;
-    ssl_prefer_server_ciphers off;
-    ssl_ciphers TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;
-    ssl_ecdh_curve secp384r1;
-    ssl_session_timeout  10m;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_tickets off;
-    ssl_stapling on;
-    ssl_stapling_verify on;
-
-    location /stat {
-        rtmp_stat all;
-        rtmp_stat_stylesheet stat.xsl;
-    }
-
-    location /stat.xsl {
-        root /usr/local/nginx/html;
-    }
-
-    location /login {
-        proxy_pass http://127.0.0.1:8080;
-    }
-
-    location /callback {
-        proxy_pass http://127.0.0.1:8080;
-    }
-
-    location /api {
-        proxy_pass http://127.0.0.1:8080;
-    }
-
-    location /socket.io {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection \"upgrade\";
-    }
-
-    location / {
-        root /usr/local/nginx/html;
-        index index.html;
-    }
-}"
-    else
-        echo "SSL Certificates NOT found. Certbot will attempt to obtain them in the background (with retry logic)."
-        (
-            # Wait for Nginx to be fully up
-            sleep 20
-
-            MAX_CERT_ATTEMPTS=3
-            CERT_ATTEMPT=1
-            while [ $CERT_ATTEMPT -le $MAX_CERT_ATTEMPTS ]; do
-                echo "Certbot (Attempt $CERT_ATTEMPT/$MAX_CERT_ATTEMPTS): Obtaining certificates for $SERVER_DOMAIN..."
-
-                # Use --test-cert if email is dummy or requested for staging
-                STAGING_ARG=""
-                if [[ "$LETSENCRYPT_EMAIL" == *"example.com"* ]] || [[ "$LETSENCRYPT_EMAIL" == "dummy"* ]]; then
-                    echo "Notice: Using Let's Encrypt Staging Environment (--test-cert) for dummy/example email."
-                    STAGING_ARG="--test-cert"
-                fi
-
-                if certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos --email "$LETSENCRYPT_EMAIL" $STAGING_ARG -d "$SERVER_DOMAIN"; then
-                    echo "Certbot: Success! New certificates obtained."
-                    # Re-run entrypoint script logic to generate the HTTPS block now that certs exist
-                    # For now, we'll just advise a restart or reload if possible.
-                    # In a robust setup, we might trigger a container restart via a sidecar.
-                    nginx -s reload
-                    break
-                else
-                    echo "Certbot: Attempt $CERT_ATTEMPT failed."
-                    CERT_ATTEMPT=$((CERT_ATTEMPT + 1))
-                    [ $CERT_ATTEMPT -le $MAX_CERT_ATTEMPTS ] && sleep 60
-                fi
-            done
-        ) &
-    fi
-fi
-
-# Apply the dynamic HTTPS block to a separate config file included by nginx.conf.template
-# This prevents Nginx from failing to start if the HTTPS block is empty.
-echo "$HTTPS_SERVER_BLOCK" > /etc/nginx/https.conf
-chmod 600 /etc/nginx/https.conf
+# --- TLS / HTTPS ---
+# Inbound SSL is handled by a host-level reverse proxy.
 
 # --- Basic Auth for Stats & Dashboard ---
 if [ -f "/etc/nginx/.htpasswd" ]; then
@@ -293,17 +198,6 @@ else
 fi
 chmod 600 /etc/nginx/rtmp_access.conf
 
-# --- Certbot Auto-Renewal Loop ---
-# Runs in the background every 12 hours to ensure certificates are always valid.
-# Calls 'nginx -s reload' after renewal to apply new certificates without downtime.
-(
-    while true; do
-        sleep 12h
-        echo "Certbot: Checking for certificate renewal..."
-        certbot renew --quiet
-        nginx -s reload
-    done
-) &
 
 
 # Debug output if requested

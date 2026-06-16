@@ -7,7 +7,7 @@ ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
     pip3 install --break-system-packages flask gunicorn requests obsws-python flask-session twitchio google-api-python-client google-auth-oauthlib google-auth-httplib2 edge-tts flask-socketio eventlet && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext ffmpeg certbot python3-certbot-nginx && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext ffmpeg && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
@@ -129,7 +129,7 @@ COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 1935 80 443 8081
+EXPOSE 1935 8081
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 

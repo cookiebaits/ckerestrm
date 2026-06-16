@@ -1,4 +1,5 @@
 from flask import Flask, request, Response, redirect, url_for, session, jsonify
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import logging
 from urllib.parse import parse_qs, urlencode
@@ -17,6 +18,8 @@ import edge_tts
 from twitchio.ext import commands
 
 app = Flask(__name__)
+# Support host-level reverse proxy headers
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Session configuration
