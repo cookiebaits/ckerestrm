@@ -32,7 +32,7 @@ class Noalbs:
             if r.status_code != 200:
                 logger.error(f"Nginx Stats HTTP {r.status_code}")
                 return 0
-
+            
             root = ET.fromstring(r.text)
             # Find the live application and its inbound stream
             for app in root.findall('.//application'):
@@ -65,11 +65,11 @@ class Noalbs:
         if start:
             if self.cloud_process and self.cloud_process.poll() is None:
                 return
-
+            
             logger.info("Starting Cloud BRB stream...")
             # We push to the same ingest application name but with a 'brb' key or similar
             # In our setup, we can push to rtmp://127.0.0.1:1935/${APP_NAME}/brb_loop
-            # but Nginx will only relay what it knows.
+            # but Nginx will only relay what it knows. 
             # Better approach: We push to the same destinations directly or via a relay app.
             # Simplified: This NOALBS version will focus on OBS scene switching.
             # Real 'Cloud BRB' requires Nginx config to fallback to a loop.
@@ -86,16 +86,16 @@ class Noalbs:
             return
 
         logger.info(f"NOALBS Started. Monitoring {self.app_name} on {self.stats_url}")
-
+        
         low_count = 0
         while True:
             bitrate = self.get_bitrate()
-
+            
             if bitrate > 0:
                 if not self.is_streaming:
                     logger.info("Stream detected.")
                     self.is_streaming = True
-
+                
                 if bitrate < self.low_threshold:
                     low_count += 1
                     # Switch to BRB if bitrate is low for 3 consecutive checks (approx 6 seconds)
@@ -118,7 +118,7 @@ class Noalbs:
                     self.is_streaming = False
                     self.is_low = True # Treat as low for restoration purposes
                     low_count = 0
-
+            
             time.sleep(2)
 
 if __name__ == "__main__":
