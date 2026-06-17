@@ -986,7 +986,7 @@ try:
 except:
     pass
 " 2>/dev/null)
-                
+
                 if [ -z "$SEARCH_RESULTS" ]; then
                     echo -e "${RED}No categories found.${NC}"
                     sleep 2
@@ -1370,7 +1370,7 @@ SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
 while true; do
     clear
     DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-    
+
     # Helper function to get status label
     get_status() {
         if [ "$1" == "true" ] || ([ "$1" != "false" ] && [ -n "$1" ]); then

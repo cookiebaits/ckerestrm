@@ -155,45 +155,50 @@ def run_update_titles():
 
 @app.route('/validate', methods=['POST'])
 def validate():
-    # Nginx RTMP module sends data as application/x-www-form-urlencoded
-    # Flask populates request.form for us.
-    stream_key_attempt = request.form.get('name')
-    client_ip_from_data = request.form.get('addr')
+    # Align core logic with v3.0-Stable for proven reliability
+    # Nginx sends key as 'name' by default in on_publish
+    # Extraction priority: Query String -> Form Body -> Raw Data
+    raw_data = request.get_data(as_text=True)
+    parsed_data = parse_qs(raw_data)
 
-    if not stream_key_attempt:
-        # Fallback to manual parsing if necessary
-        raw_data = request.get_data(as_text=True)
-        parsed_data = parse_qs(raw_data)
-        stream_key_attempt = parsed_data.get('name', [''])[0]
-        client_ip_from_data = parsed_data.get('addr', [request.remote_addr])[0]
-    
-    app_name = request.args.get('app', '')
+    stream_key_attempt = request.args.get('key') or \
+                         request.form.get('key') or \
+                         request.args.get('name') or \
+                         request.form.get('name') or \
+                         parsed_data.get('key', [''])[0] or \
+                         parsed_data.get('name', [''])[0]
 
-    # Cloudflare Real IP or fallback
-    client_ip = request.headers.get('CF-Connecting-IP', request.remote_addr)
-    if not client_ip or client_ip == '127.0.0.1':
-        client_ip = client_ip_from_data or request.remote_addr
+    # Resolve Client IP (Match v3.0-Stable logic)
+    # Prefer 'addr' field sent by Nginx, then Cloudflare header, then remote_addr
+    client_ip = request.form.get('addr') or \
+                request.args.get('addr') or \
+                parsed_data.get('addr', [''])[0] or \
+                request.headers.get('CF-Connecting-IP') or \
+                request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or \
+                request.remote_addr
+
+    app.logger.info(f"Ingest validation: Key={stream_key_attempt[:4] if stream_key_attempt else 'NONE'}..., IP={client_ip}")
 
     # IP Whitelist Check
     if ACCEPTED_IPS and client_ip not in ACCEPTED_IPS:
-        # Don't leak the whitelist in logs if we are being paranoid, but for now just logging the fail
-        app.logger.warning(f"REJECTED IP: {client_ip} (Not in whitelist)")
+        app.logger.warning(f"REJECTED IP: {client_ip} (Not in whitelist: {ACCEPTED_IPS})")
         return Response('Unauthorized connection source', status=403)
 
     # Key Check
     if not VALID_KEYS:
+        app.logger.error("REJECTED: No destination keys configured in environment.")
         return Response('No keys configured', status=403)
 
-    if stream_key_attempt in VALID_KEYS:
+    if stream_key_attempt and stream_key_attempt in VALID_KEYS:
         app.logger.info(f"ACCEPTED stream from {client_ip}")
         # Update titles in background to not block Nginx
         threading.Thread(target=run_update_titles).start()
-        
+
         # Only switch scenes if it's the primary horizontal stream
         if app_name == os.getenv('APP_NAME', 'live'):
             # Scene switching is now handled by NOALBS based on bitrate
             pass
-        
+
         return Response('OK', status=200)
     else:
         app.logger.warning(f"REJECTED invalid key from {client_ip}")
@@ -202,7 +207,7 @@ def validate():
 @app.route('/publish_done', methods=['POST', 'GET'])
 def publish_done():
     # Nginx sends GET by default for on_publish_done in some versions, but usually POST
-    app_name = request.args.get('app', '')
+    app_name = request.args.get('app', '') or request.form.get('app', '')
     if app_name == os.getenv('APP_NAME', 'live'):
         # Increment episode count when horizontal stream finishes
         increment_episode_count()
@@ -238,7 +243,7 @@ def callback_twitch():
     r = requests.post("https://id.twitch.tv/oauth2/token", data=data)
     res = r.json()
     session['twitch_token'] = res.get('access_token')
-    
+
     # Get user info
     headers = {'Authorization': f"Bearer {session['twitch_token']}", 'Client-Id': TWITCH_CLIENT_ID}
     u = requests.get("https://api.twitch.tv/helix/users", headers=headers)
@@ -289,7 +294,7 @@ def callback_youtube():
     flow.fetch_token(authorization_response=request.url)
     credentials = flow.credentials
     session['youtube_token'] = credentials.token
-    
+
     youtube = build('youtube', 'v3', credentials=credentials)
     r = youtube.channels().list(mine=True, part='snippet').execute()
     if 'items' in r:
@@ -302,7 +307,7 @@ def api_status():
     twitch_user = session.get('twitch_user')
     youtube_user = session.get('youtube_user')
     youtube_video_id = session.get('youtube_video_id')
-    
+
     if 'youtube_token' in session and not youtube_video_id:
         try:
             # Try to fetch active live broadcast ID
@@ -347,7 +352,7 @@ def api_update_title():
                 from google.oauth2.credentials import Credentials
                 creds = Credentials(session['youtube_token'])
                 youtube = build('youtube', 'v3', credentials=creds)
-                
+
                 # Fetch the broadcast to get the full snippet
                 r = youtube.liveBroadcasts().list(id=vid, part='snippet').execute()
                 if 'items' in r and len(r['items']) > 0:
@@ -376,16 +381,16 @@ def api_tts():
     text = request.args.get('text', '')
     if not text:
         return "No text", 400
-    
+
     voice = "en-US-GuyNeural"
     communicate = edge_tts.Communicate(text, voice)
-    
+
     # We'll stream the audio back
     def generate():
         for chunk in communicate.stream_sync():
             if chunk["type"] == "audio":
                 yield chunk["data"]
-                
+
     return Response(generate(), mimetype="audio/mpeg")
 
 # Background Chat Managers
@@ -394,7 +399,7 @@ youtube_active = False
 
 def start_chat_managers():
     global twitch_bot, youtube_active
-    
+
     # Twitch Chat
     if 'twitch_token' in session and not twitch_bot:
         try:
@@ -422,7 +427,7 @@ def start_chat_managers():
             from google.oauth2.credentials import Credentials
             creds = Credentials(session['youtube_token'])
             youtube = build('youtube', 'v3', credentials=creds)
-            
+
             # Get Live Chat ID
             r = youtube.liveBroadcasts().list(id=session['youtube_video_id'], part='snippet').execute()
             if 'items' in r and len(r['items']) > 0:
@@ -449,4 +454,4 @@ def api_start_chat():
     return jsonify({'status': 'started'})
 
 if __name__ == '__main__':
-    socketio.run(app, host='127.0.0.1', port=8080, debug=False)
+    socketio.run(app, host="127.0.0.1", port=8080, debug=False)

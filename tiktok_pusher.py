@@ -30,7 +30,7 @@ class TikTokStream:
             'category': (None, category),
             'audience_type': (None, audience_type),
         }
-        
+
         max_retries = 5
         for attempt in range(max_retries):
             try:
@@ -56,13 +56,13 @@ class TikTokStream:
                     logger.warning(f"TikTok API Start attempt {attempt+1} failed: {data}")
             except Exception as e:
                 logger.warning(f"TikTok API Start attempt {attempt+1} error: {e}")
-            
+
             if attempt < max_retries - 1:
                 # Exponential backoff
                 wait_time = 2 ** (attempt + 1)
                 logger.info(f"Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
-        
+
         raise Exception("Failed to start TikTok stream after 5 attempts")
 
     def end(self):
@@ -87,13 +87,13 @@ def main():
         sys.exit(1)
 
     tiktok = TikTokStream(token)
-    
+
     try:
         logger.info(f"Starting TikTok Vertical Live: {title}...")
         rtmp_out_base, stream_key = tiktok.start(title, category)
         rtmp_out = f"{rtmp_out_base}{stream_key}"
         logger.info(f"TikTok Live Started. ID: {tiktok.stream_id}")
-        
+
         # Start FFmpeg relay with robust buffering
         ffmpeg_cmd = [
             "ffmpeg", "-hide_banner", "-loglevel", "warning",
@@ -103,9 +103,9 @@ def main():
             "-flvflags", "no_duration_filesize",
             rtmp_out
         ]
-        
+
         process = subprocess.Popen(ffmpeg_cmd)
-        
+
         def handle_signal(signum, frame):
             logger.info(f"Received signal {signum}. Terminating...")
             process.terminate()
@@ -122,7 +122,7 @@ def main():
         # Monitor process
         while process.poll() is None:
             time.sleep(2)
-            
+
         logger.info("Relay process finished.")
 
     except KeyboardInterrupt:
