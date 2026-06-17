@@ -1,13 +1,13 @@
-FROM buildpack-deps:trixie
+FROM buildpack-deps:bookworm
 
 # Versions of Nginx and nginx-rtmp-module to use
-ENV NGINX_VERSION nginx-1.30.2
+ENV NGINX_VERSION nginx-1.26.2
 ENV NGINX_RTMP_MODULE_VERSION cookie-nginx-rtmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --break-system-packages flask gunicorn requests obsws-python && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext srt-tools && \
+    pip3 install --break-system-packages flask gunicorn requests && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge
