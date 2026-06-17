@@ -97,8 +97,10 @@ set_push_var() {
     local env_key_var="$2"
     local env_url_var="$3"
     local export_var_name="PUSH_$4"
-    local push_url="${!env_url_var}" # Indirect variable expansion
-    local key_value="${!env_key_var}" # Indirect variable expansion
+
+    # Use indirect reference carefully to avoid shell mangling
+    local push_url=$(eval "echo \$$env_url_var")
+    local key_value=$(eval "echo \$$env_key_var")
 
     if [ -n "$key_value" ]; then
         key_value=$(sanitize_nginx "$key_value")
@@ -108,7 +110,10 @@ set_push_var() {
              export "$export_var_name"=""
         else
             echo "${platform_name} activated."
-            export "$export_var_name"="push ${push_url}${key_value};"
+            # Use printf to set the variable safely without shell expansion of its content
+            local cmd="push ${push_url}${key_value};"
+            printf -v "$export_var_name" "%s" "$cmd"
+            export "$export_var_name"
             ENV_OK=1
        fi
     else
@@ -183,20 +188,7 @@ fi
 chmod 600 /etc/nginx/auth.conf
 
 # --- RTMP IP Access Restrictions ---
-touch /etc/nginx/rtmp_access.conf
-if [ -n "$ACCEPTED_IP" ]; then
-    echo "Configuring RTMP IP Whitelist (Defense in Depth)..."
-    # Convert comma-separated list to Nginx allow directives
-    echo "$ACCEPTED_IP" | tr ',' '\n' | while read -r ip; do
-        if [ -n "$ip" ]; then
-            echo "allow publish $ip;" >> /etc/nginx/rtmp_access.conf
-        fi
-    done
-    echo "deny publish all;" >> /etc/nginx/rtmp_access.conf
-else
-    echo "" > /etc/nginx/rtmp_access.conf
-fi
-chmod 600 /etc/nginx/rtmp_access.conf
+# IP Whitelisting is now handled exclusively by the Python validator for better Docker compatibility.
 
 
 

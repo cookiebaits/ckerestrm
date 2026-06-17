@@ -6,6 +6,9 @@ http {
     include       mime.types;
     default_type  application/octet-stream;
 
+    # DNS Resolver for outbound pushes
+    resolver 1.1.1.1 8.8.8.8 ipv6=off;
+
     # Cloudflare Real IP (IPv4 only)
     set_real_ip_from 103.21.244.0/22;
     set_real_ip_from 103.22.200.0/22;
@@ -92,20 +95,9 @@ rtmp {
         listen 1935;
         chunk_size ${CHUNK_SIZE};
 
-        # Performance Tuning for High Bitrate (1080p60+)
-        max_message 10M;
-        buflen 2s;
-
-        # Security: Global publisher restrictions
-        # dynamically populated via docker-entrypoint.sh if ACCEPTED_IP is set
-        include /etc/nginx/rtmp_access.conf;
-
         # Stability and Security Enhancements
-        max_connections 200;
-        max_streams 64;
-
         ping 30s;
-        ping_timeout 15s;
+        ping_timeout 10s;
         drop_idle_publisher 10s;
         deny play all; # Prevent unauthorized viewing
 
@@ -113,7 +105,7 @@ rtmp {
         application facebook {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${FACEBOOK_URL}${FACEBOOK_KEY};
         }
 
@@ -121,7 +113,7 @@ rtmp {
         application twitch {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${TWITCH_URL}${TWITCH_KEY};
         }
 
@@ -129,7 +121,7 @@ rtmp {
         application youtube {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${YOUTUBE_URL}${YOUTUBE_KEY};
         }
 
@@ -137,7 +129,7 @@ rtmp {
         application kick {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${KICK_URL}${KICK_KEY};
         }
 
@@ -145,7 +137,7 @@ rtmp {
         application x {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
             push ${X_URL}${X_KEY};
         }
 
@@ -153,8 +145,8 @@ rtmp {
         application ${APP_NAME} {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
-            on_publish_done http://127.0.0.1:8080/publish_done?key=$name&app=$app;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
+            on_publish_done http://127.0.0.1:8080/publish_done?key=$name;
 
             ${PUSH_YOUTUBE}
             ${PUSH_FACEBOOK}
@@ -172,7 +164,7 @@ rtmp {
         application vertical {
             live on;
             record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name&app=$app;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
 
             ${PUSH_V_YOUTUBE}
             ${PUSH_V_FACEBOOK}
