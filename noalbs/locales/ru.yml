@@ -1,0 +1,97 @@
+start:
+    success: Стрим запущен
+    error: "Ошибка: %{error}"
+startTwitchTranscoding:
+    trying: Пробую запустить стрим с транскодингом
+    successNoTranscoding: Стрим запущен без транскодинга
+    success: Стрим запущен с транскодингом %{attemptsMessage}
+    attempts: " за %{count} попыток"
+stop:
+    success: Стрим остановлен
+    raid: "Стрим остановлен после рейда на %{display_channel}, перейти: %{channel}"
+    error: "Ошибка: %{error}"
+switch:
+    noParams: "Ошибка: сцена не указана"
+    success: Сцена переключена на "%{scene}"
+    error: 'Ошибка: не удалось переключиться на сцену "%{scene}"'
+source:
+    noParams: "Ошибка: источник не указан"
+    success: Источник "%{name}" %{status}
+    error: Ошибка при переключении источника "%{name}"
+    enabled: включен
+    disabled: выключен
+bitrate:
+    success: "%{name}: %{message}"
+    error: "Нет сигнала"
+trigger:
+    success: Установлен триггер на %{number}
+    successDisabled: Триггер отключен
+    error: "Ошибка изменения триггера на %{number} — задано неверное значение"
+    current: Триггер установлен на %{number}
+    disabled: Триггер отключен
+sourceinfo:
+    noInfo: Нет информации об источнике
+    notFound: 'Ошибка: нет сервера с названием "%{name}"'
+serverinfo:
+    noInfo: Нет информации о сервере
+    success: "Сцена: %{scene}, битрейт: %{bitrate} Kbps, FPS: %{fps}, пропуск кадров (сеть): %{network}, задержка рендера: %{rendering}, задержка кодирования: %{encoding}, CPU: %{cpu}, память: %{memory}, свободно на диске: %{disk}"
+rec:
+    started: Запись начата
+    stopped: Запись остановлена
+    errorStatus: Не удалось получить состояние записи
+    errorToggle: Ошибка запуска записи
+fix:
+    try: Пробую починить стрим...
+    error: Не получилось починить стрим
+refresh:
+    try: Перезапускаю стрим
+    error: Ошибка перезапуска стрима
+    success: Стрим перезапущен
+    noScene: Сцена для обновления стрима не настроена, попробуй команду fix
+alias:
+    success: Псевдоним команды добавлен %{alias} -> %{command}
+    removed: Удален псевдоним %{alias}
+    errorCommand: "Ошибка: команда %{command} не существует"
+    errorAlias: "Ошибка: псевдоним %{alias} не существует"
+    errorAlreadyUsed: "Ошибка: %{alias} уже используется как псевдоним"
+    errorIncorrectArguments: "Ошибка: аргументы заданы неверно"
+sceneSwitch:
+    switch: Сцена переключена на "%{scene}"
+offlineTimeout:
+    timeout: Достигнут лимит времени ожидания, остановка стрима
+handleCommands:
+    public: Публичные команды %{condition}
+    mod: Команды модераторов %{condition}
+    notify: Уведомление о переключении %{condition}
+    autostop: Авто-стоп %{condition}
+    enabled: вкл.
+    disabled: выкл.
+noalbs:
+    prefix: Префикс NOALBS изменён на %{prefix}
+    errorPrefix: Не удается изменить префикс NOALBS
+    switcherEnabled: Переключение сцен включено
+    switcherDisabled: Переключение сцен выключено
+    instantSwitch: Мгновенное переключение при восстановлении %{condition}
+    langError: Ошибка смены языка NOALBS
+    langErrorInvalid: "Ошибка при смене языка %{lang}: задано неверное значение"
+    langSuccess: NOALBS язык изменён на %{lang}
+    retryCount: "Количество попыток переподключения: %{count}"
+    retryError: "Невозможно изменить количество попыток переподключения на %{count}: задано неверное значение"
+    retrySuccess: Количество попыток переподключения изменено на %{count}
+    ignoreAdded: Added %{username} to NOALBS ignore list
+    ignoreRemoved: Removed %{username} from NOALBS ignore list
+    ignoreNoUsername: No username provided
+scene:
+    success: Сцена переключена на "%{scene}"
+    error: Ошибка переключения на сцену "%{scene}"
+collection:
+    noParams: Коллекция сцен не указана
+    notFound: 'Ошибка: нет коллекции сцен с названием "%{collection}"'
+    success: Коллекция сцен переключена на "%{collection}"
+    error: Ошибка переключения на коллекцию сцен "%{collection}"
+    note: "Внимание: профиль может быть переключен только при остановленно стриме"
+streamserver:
+    noParams: No stream server specified
+    notFound: "Error no stream server found with the name: %{name}"
+    successEnabled: Stream server %{name} successfully enabled
+    successDisabled: Stream server %{name} successfully disabled
