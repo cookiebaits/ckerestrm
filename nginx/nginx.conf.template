@@ -6,9 +6,6 @@ http {
     include       mime.types;
     default_type  application/octet-stream;
 
-    # DNS Resolver for outbound pushes
-    resolver 1.1.1.1 8.8.8.8 ipv6=off;
-
     # Cloudflare Real IP (IPv4 only)
     set_real_ip_from 103.21.244.0/22;
     set_real_ip_from 103.22.200.0/22;
@@ -25,24 +22,10 @@ http {
     set_real_ip_from 190.93.240.0/20;
     set_real_ip_from 197.234.240.0/22;
     set_real_ip_from 198.41.128.0/17;
-    # Trust Docker bridge and Localhost for host-level reverse proxying
-    set_real_ip_from 127.0.0.1;
-    set_real_ip_from 172.16.0.0/12;
-    set_real_ip_from 192.168.0.0/16;
-    set_real_ip_from 10.0.0.0/8;
-
-    # Extract real client IP from X-Forwarded-For or CF-Connecting-IP
-    real_ip_header X-Forwarded-For;
-    real_ip_recursive on;
-
-    # Inbound SSL handled by host-level reverse proxy
+    real_ip_header CF-Connecting-IP;
 
     server {
         listen 8081;
-
-        # Optional Auth for Dashboard and Stats
-        # Included if /etc/nginx/.htpasswd exists
-        include /etc/nginx/auth.conf;
 
         location /stat {
             rtmp_stat all;
@@ -51,37 +34,6 @@ http {
 
         location /stat.xsl {
             root /usr/local/nginx/html;
-        }
-
-        location /login {
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_pass http://127.0.0.1:8080;
-        }
-
-        location /callback {
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_pass http://127.0.0.1:8080;
-        }
-
-        location /api {
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_pass http://127.0.0.1:8080;
-        }
-
-        location /socket.io {
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_pass http://127.0.0.1:8080;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
         }
 
         location / {
@@ -146,42 +98,14 @@ rtmp {
             live on;
             record off;
             on_publish http://127.0.0.1:8080/validate?key=$name;
-            on_publish_done http://127.0.0.1:8080/publish_done?key=$name;
-
-            ${PUSH_YOUTUBE}
-            ${PUSH_FACEBOOK}
-            ${PUSH_INSTAGRAM}
-            ${PUSH_TIKTOK}
-            ${PUSH_KICK}
-            ${PUSH_X}
-            ${PUSH_TWITCH}
-            ${PUSH_TROVO}
-            ${PUSH_RTMP1}
-            ${PUSH_RTMP2}
-            ${PUSH_RTMP3}
-        }
-
-        application vertical {
-            live on;
-            record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
-
-            ${PUSH_V_YOUTUBE}
-            ${PUSH_V_FACEBOOK}
-            ${PUSH_V_INSTAGRAM}
-            ${PUSH_V_TIKTOK}
-            ${PUSH_V_TIKTOK_DYN}
-            ${PUSH_V_KICK}
-            ${PUSH_V_X}
-            ${PUSH_V_TWITCH}
-            ${PUSH_V_TROVO}
-            ${PUSH_V_RTMP1}
-        }
-
-        application tiktok_relay {
-            live on;
-            record off;
-            exec_push python3 /app/tiktok_pusher.py rtmp://127.0.0.1:1935/tiktok_relay/$name;
+            
+            #youtube
+            #facebook
+            #instagram
+            #tiktok
+            #kick
+            #x
+            #twitch
         }
     }
 }
