@@ -163,6 +163,52 @@ prompt_for_key() {
     fi
 }
 
+get_alternative_url() {
+    local platform=$1
+    local current_url=$2
+
+    case $platform in
+        "youtube")
+            if [[ "$current_url" == *"x.rtmp.youtube.com"* ]] || [[ "$current_url" == *"127.0.0.1:19355"* ]]; then
+                # It is a primary URL, return the corresponding backup URL
+                if [[ "$current_url" == *"127.0.0.1"* ]]; then
+                    echo "rtmp://127.0.0.1:19357/live2?backup=1"
+                else
+                    echo "rtmp://b.rtmp.youtube.com/live2?backup=1"
+                fi
+            else
+                # It is a backup URL or something else, return the corresponding primary URL
+                if [[ "$current_url" == *"127.0.0.1"* ]]; then
+                    echo "rtmp://127.0.0.1:19355/live2/"
+                else
+                    echo "rtmp://x.rtmp.youtube.com/live2/"
+                fi
+            fi
+            ;;
+        "twitch")
+            # If it is using the global ingest, switch to US East (Ashburn) as a reliable alternative
+            if [[ "$current_url" == *"ingest.global"* ]]; then
+                echo "rtmp://use10.contribute.live-video.net/app/"
+            else
+                # If it is using a regional ingest, switch to the global ingest
+                echo "rtmp://ingest.global-contribute.live-video.net/app/"
+            fi
+            ;;
+        "kick")
+            # If it is using standard/secure, switch to the South Africa relay as an alternative
+            if [[ "$current_url" == *"live.kick.com"* ]] || [[ "$current_url" == *"127.0.0.1:19356"* ]]; then
+                echo "rtmp://kick.cisp.co.za/live"
+            else
+                # Otherwise switch to the secure global endpoint
+                echo "rtmp://127.0.0.1:19356/kick/"
+            fi
+            ;;
+        *)
+            echo "$current_url"
+            ;;
+    esac
+}
+
 configure_keys() {
     while true; do
         clear
@@ -204,6 +250,12 @@ configure_keys() {
                       fi
                       ;;
                esac
+               if [ "$V_YOUTUBE_URL" == "$YOUTUBE_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_YOUTUBE_URL=$(get_alternative_url "youtube" "$V_YOUTUBE_URL")
+                   echo -e "New Vertical URL: $V_YOUTUBE_URL"
+                   sleep 2
+               fi
                save_config
                ;;
             2)
@@ -247,6 +299,12 @@ configure_keys() {
                       fi
                       ;;
                esac
+               if [ "$V_TWITCH_URL" == "$TWITCH_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_TWITCH_URL=$(get_alternative_url "twitch" "$V_TWITCH_URL")
+                   echo -e "New Vertical URL: $V_TWITCH_URL"
+                   sleep 2
+               fi
                save_config
                ;;
             3)
@@ -270,6 +328,12 @@ configure_keys() {
                       fi
                       ;;
                esac
+               if [ "$V_KICK_URL" == "$KICK_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_KICK_URL=$(get_alternative_url "kick" "$V_KICK_URL")
+                   echo -e "New Vertical URL: $V_KICK_URL"
+                   sleep 2
+               fi
                save_config
                ;;
             4)
@@ -594,15 +658,15 @@ configure_vertical_keys() {
                prompt_for_key "Custom RTMP Vertical Key" "V_RTMP1_KEY"
                ;;
             10)
-               echo -e "${YELLOW}Mirroring Horizontal keys...${NC}"
+               echo -e "${YELLOW}Mirroring Horizontal keys with alternative ingest servers...${NC}"
                V_YOUTUBE_KEY="$YOUTUBE_KEY"
-               V_YOUTUBE_URL="$YOUTUBE_URL"
+               V_YOUTUBE_URL=$(get_alternative_url "youtube" "$YOUTUBE_URL")
                V_TWITCH_KEY="$TWITCH_KEY"
-               V_TWITCH_URL="$TWITCH_URL"
+               V_TWITCH_URL=$(get_alternative_url "twitch" "$TWITCH_URL")
                V_TIKTOK_KEY="$TIKTOK_KEY"
                V_TIKTOK_URL="$TIKTOK_URL"
                V_KICK_KEY="$KICK_KEY"
-               V_KICK_URL="$KICK_URL"
+               V_KICK_URL=$(get_alternative_url "kick" "$KICK_URL")
                V_FACEBOOK_KEY="$FACEBOOK_KEY"
                V_FACEBOOK_URL="$FACEBOOK_URL"
                V_INSTAGRAM_KEY="$INSTAGRAM_KEY"
@@ -614,7 +678,7 @@ configure_vertical_keys() {
                V_RTMP1_KEY="$RTMP1_KEY"
                V_RTMP1_URL="$RTMP1_URL"
                save_config
-               echo -e "${GREEN}Mirrored.${NC}"
+               echo -e "${GREEN}Mirrored with diversified ingest servers.${NC}"
                sleep 1
                ;;
             11) break ;;
@@ -930,15 +994,32 @@ build_and_run() {
         return
     fi
 
-    # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok)
+    # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok, Kick)
+    # Automatically chooses an alternative ingest server to avoid conflicts
     if [ ! -z "$YOUTUBE_KEY" ] && [ -z "$V_YOUTUBE_KEY" ]; then
         V_YOUTUBE_KEY="$YOUTUBE_KEY"
-        V_YOUTUBE_URL="$YOUTUBE_URL"
+        V_YOUTUBE_URL=$(get_alternative_url "youtube" "$YOUTUBE_URL")
     fi
     if [ ! -z "$TWITCH_KEY" ] && [ -z "$V_TWITCH_KEY" ]; then
         V_TWITCH_KEY="$TWITCH_KEY"
-        V_TWITCH_URL="$TWITCH_URL"
+        V_TWITCH_URL=$(get_alternative_url "twitch" "$TWITCH_URL")
     fi
+    if [ ! -z "$KICK_KEY" ] && [ -z "$V_KICK_KEY" ]; then
+        V_KICK_KEY="$KICK_KEY"
+        V_KICK_URL=$(get_alternative_url "kick" "$KICK_URL")
+    fi
+
+    # Hard Enforcement: Always ensure horizontal and vertical ingest URLs are different for YT, Twitch, Kick
+    if [ ! -z "$YOUTUBE_KEY" ] && [ "$YOUTUBE_URL" == "$V_YOUTUBE_URL" ]; then
+        V_YOUTUBE_URL=$(get_alternative_url "youtube" "$V_YOUTUBE_URL")
+    fi
+    if [ ! -z "$TWITCH_KEY" ] && [ "$TWITCH_URL" == "$V_TWITCH_URL" ]; then
+        V_TWITCH_URL=$(get_alternative_url "twitch" "$V_TWITCH_URL")
+    fi
+    if [ ! -z "$KICK_KEY" ] && [ "$KICK_URL" == "$V_KICK_URL" ]; then
+        V_KICK_URL=$(get_alternative_url "kick" "$V_KICK_URL")
+    fi
+
     if [ ! -z "$TIKTOK_KEY" ] && [ -z "$V_TIKTOK_KEY" ]; then
         V_TIKTOK_KEY="$TIKTOK_KEY"
         V_TIKTOK_URL="$TIKTOK_URL"
