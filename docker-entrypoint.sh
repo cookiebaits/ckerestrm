@@ -17,12 +17,14 @@ echo "Starting stream key validation server..."
 # -b 127.0.0.1:8080: Bind to the same internal host and port
 # --log-level info: Set the log level
 # stream_validator:app: Point to the 'app' object in your python file
+export PYTHONPATH=$PYTHONPATH:/app
 gunicorn \
     --workers 1 \
     --bind 127.0.0.1:8080 \
     --log-level info \
     --access-logfile "$VALIDATOR_LOG" \
     --error-logfile "$VALIDATOR_LOG" \
+    --chdir /app \
     stream_validator:app &
 VALIDATOR_PID=$!
 echo "Validator PID: $VALIDATOR_PID"
@@ -138,6 +140,24 @@ fi
 echo "Starting Stunnel..."
 # Start stunnel in the background
 stunnel4 /etc/stunnel/stunnel.conf
+
+# --- Certbot Renewal Loop ---
+if [ -n "$SERVER_DOMAIN" ]; then
+    echo "Starting Certbot renewal background loop..."
+    (
+        while true; do
+            echo "Checking for certificate renewal..."
+            certbot renew --webroot -w /var/www/certbot --quiet --post-hook "nginx -s reload"
+            sleep 12h
+        done
+    ) &
+fi
+
+# --- Start NOALBS ---
+if [ "${NOALBS_ENABLED}" = "true" ]; then
+    echo "Starting NOALBS background process..."
+    python3 /app/noalbs/noalbs.py &
+fi
 
 echo "Starting Nginx..."
 exec "$@" # Execute the CMD from Dockerfile (nginx -g 'daemon off;')
