@@ -987,10 +987,46 @@ install_docker() {
     sleep 2
 }
 
+check_port() {
+    local port=$1
+    if command -v ss &> /dev/null; then
+        ss -tuln | grep -q ":$port "
+    elif command -v netstat &> /dev/null; then
+        netstat -tuln | grep -q ":$port "
+    else
+        return 1 # Cannot check
+    fi
+}
+
 build_and_run() {
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
         sleep 2
+        return
+    fi
+
+    echo -e "${YELLOW}Checking for port conflicts...${NC}"
+    CONFLICTS=0
+    for port in 1935 8081; do
+        if check_port "$port"; then
+            echo -e "${RED}Error: Port $port is already in use on the host!${NC}"
+            CONFLICTS=1
+        fi
+    done
+
+    if [ ! -z "$SERVER_DOMAIN" ]; then
+        for port in 80 443; do
+            if check_port "$port"; then
+                echo -e "${RED}Error: Port $port is already in use on the host!${NC}"
+                CONFLICTS=1
+            fi
+        done
+    fi
+
+    if [ $CONFLICTS -eq 1 ]; then
+        echo -e "${YELLOW}Please stop the service using these ports and try again.${NC}"
+        echo -e "Press Enter to return to menu..."
+        read -r
         return
     fi
 
