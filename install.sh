@@ -64,6 +64,16 @@ CHAT_YOUTUBE=""
 CHAT_KICK=""
 CHAT_TIKTOK=""
 
+# NOALBS Settings
+NOALBS_ENABLED="false"
+OBS_WS_HOST="127.0.0.1"
+OBS_WS_PORT="4455"
+OBS_WS_PASSWORD=""
+OBS_SCENE_LIVE="Main"
+OBS_SCENE_BRB="BRB"
+LOW_BITRATE="1000"
+RESTORE_BITRATE="1500"
+
 CONFIG_FILE="rtmp_config.env"
 
 # Load saved configuration if it exists
@@ -122,6 +132,14 @@ STREAM_BASE_TITLE="$STREAM_BASE_TITLE"
 TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID"
 TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN"
 TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID"
+NOALBS_ENABLED="$NOALBS_ENABLED"
+OBS_WS_HOST="$OBS_WS_HOST"
+OBS_WS_PORT="$OBS_WS_PORT"
+OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
+OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
+OBS_SCENE_BRB="$OBS_SCENE_BRB"
+LOW_BITRATE="$LOW_BITRATE"
+RESTORE_BITRATE="$RESTORE_BITRATE"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -193,27 +211,35 @@ configure_keys() {
                echo -e "Select Twitch Server:"
                echo "  1) Global (rtmp://ingest.global-contribute.live-video.net/app/)"
                echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
-               echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
-               echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  10) Custom URL"
+               echo "  3) US East: Ashburn (rtmp://use10.contribute.live-video.net/app/)"
+               echo "  4) US East: Ohio (rtmp://use20.contribute.live-video.net/app/)"
+               echo "  5) US West: Oregon (rtmp://usw20.contribute.live-video.net/app/)"
+               echo "  6) EU: Ireland (rtmp://euw10.contribute.live-video.net/app/)"
+               echo "  7) EU: Frankfurt (rtmp://euc10.contribute.live-video.net/app/)"
+               echo "  8) EU: Paris (rtmp://euw30.contribute.live-video.net/app/)"
+               echo "  9) Asia: Tokyo (rtmp://apn10.contribute.live-video.net/app/)"
+               echo "  10) Asia: Seoul (rtmp://apn20.contribute.live-video.net/app/)"
+               echo "  11) Asia: Singapore (rtmp://aps10.contribute.live-video.net/app/)"
+               echo "  12) Asia: Sydney (rtmp://aps20.contribute.live-video.net/app/)"
+               echo "  13) South America: Brazil (rtmp://sae10.contribute.live-video.net/app/)"
+               echo "  14) Custom URL"
                echo -e "Option (Current URL: $TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
                    1) TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
                    2) TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
-                   3) TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
-                   4) TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   6) TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   7) TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   8) TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   9) TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   10)
+                   3) TWITCH_URL="rtmp://use10.contribute.live-video.net/app/" ;;
+                   4) TWITCH_URL="rtmp://use20.contribute.live-video.net/app/" ;;
+                   5) TWITCH_URL="rtmp://usw20.contribute.live-video.net/app/" ;;
+                   6) TWITCH_URL="rtmp://euw10.contribute.live-video.net/app/" ;;
+                   7) TWITCH_URL="rtmp://euc10.contribute.live-video.net/app/" ;;
+                   8) TWITCH_URL="rtmp://euw30.contribute.live-video.net/app/" ;;
+                   9) TWITCH_URL="rtmp://apn10.contribute.live-video.net/app/" ;;
+                   10) TWITCH_URL="rtmp://apn20.contribute.live-video.net/app/" ;;
+                   11) TWITCH_URL="rtmp://aps10.contribute.live-video.net/app/" ;;
+                   12) TWITCH_URL="rtmp://aps20.contribute.live-video.net/app/" ;;
+                   13) TWITCH_URL="rtmp://sae10.contribute.live-video.net/app/" ;;
+                   14)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -228,13 +254,15 @@ configure_keys() {
                echo -e "Select Kick Server:"
                echo "  1) Standard (rtmp://live.kick.com/app/)"
                echo "  2) Secure (rtmps://fa723fc1b171.global-contribute.live-video.net:443 -> via Stunnel)"
-               echo "  3) Custom URL"
+               echo "  3) South Africa Relay (rtmp://kick.cisp.co.za/live)"
+               echo "  4) Custom URL"
                echo -e "Option (Current URL: $KICK_URL): \c"
                read -r k_opt
                case $k_opt in
                    1) KICK_URL="rtmp://live.kick.com/app/" ;;
                    2) KICK_URL="rtmp://127.0.0.1:19356/kick/" ;;
-                   3)
+                   3) KICK_URL="rtmp://kick.cisp.co.za/live" ;;
+                   4)
                       echo -e "Enter Custom Kick Server URL: "
                       read -r k_url
                       if [ ! -z "$k_url" ]; then
@@ -400,27 +428,35 @@ configure_vertical_keys() {
                echo -e "Select Twitch Server:"
                echo "  1) Global (rtmp://ingest.global-contribute.live-video.net/app/)"
                echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
-               echo "  3) US East: Ashburn (rtmp://iad05.contribute.live-video.net/app/)"
-               echo "  4) US East: New York (rtmp://jfk05.contribute.live-video.net/app/)"
-               echo "  5) US West: San Jose (rtmp://sjc05.contribute.live-video.net/app/)"
-               echo "  6) US West: Seattle (rtmp://sea01.contribute.live-video.net/app/)"
-               echo "  7) EU: Frankfurt (rtmp://fra02.contribute.live-video.net/app/)"
-               echo "  8) EU: London (rtmp://lhr03.contribute.live-video.net/app/)"
-               echo "  9) Asia: Tokyo (rtmp://tyo01.contribute.live-video.net/app/)"
-               echo "  10) Custom URL"
+               echo "  3) US East: Ashburn (rtmp://use10.contribute.live-video.net/app/)"
+               echo "  4) US East: Ohio (rtmp://use20.contribute.live-video.net/app/)"
+               echo "  5) US West: Oregon (rtmp://usw20.contribute.live-video.net/app/)"
+               echo "  6) EU: Ireland (rtmp://euw10.contribute.live-video.net/app/)"
+               echo "  7) EU: Frankfurt (rtmp://euc10.contribute.live-video.net/app/)"
+               echo "  8) EU: Paris (rtmp://euw30.contribute.live-video.net/app/)"
+               echo "  9) Asia: Tokyo (rtmp://apn10.contribute.live-video.net/app/)"
+               echo "  10) Asia: Seoul (rtmp://apn20.contribute.live-video.net/app/)"
+               echo "  11) Asia: Singapore (rtmp://aps10.contribute.live-video.net/app/)"
+               echo "  12) Asia: Sydney (rtmp://aps20.contribute.live-video.net/app/)"
+               echo "  13) South America: Brazil (rtmp://sae10.contribute.live-video.net/app/)"
+               echo "  14) Custom URL"
                echo -e "Option (Current URL: $V_TWITCH_URL): \c"
                read -r t_opt
                case $t_opt in
                    1) V_TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
                    2) V_TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
-                   3) V_TWITCH_URL="rtmp://iad05.contribute.live-video.net/app/" ;;
-                   4) V_TWITCH_URL="rtmp://jfk05.contribute.live-video.net/app/" ;;
-                   5) V_TWITCH_URL="rtmp://sjc05.contribute.live-video.net/app/" ;;
-                   6) V_TWITCH_URL="rtmp://sea01.contribute.live-video.net/app/" ;;
-                   7) V_TWITCH_URL="rtmp://fra02.contribute.live-video.net/app/" ;;
-                   8) V_TWITCH_URL="rtmp://lhr03.contribute.live-video.net/app/" ;;
-                   9) V_TWITCH_URL="rtmp://tyo01.contribute.live-video.net/app/" ;;
-                   10)
+                   3) V_TWITCH_URL="rtmp://use10.contribute.live-video.net/app/" ;;
+                   4) V_TWITCH_URL="rtmp://use20.contribute.live-video.net/app/" ;;
+                   5) V_TWITCH_URL="rtmp://usw20.contribute.live-video.net/app/" ;;
+                   6) V_TWITCH_URL="rtmp://euw10.contribute.live-video.net/app/" ;;
+                   7) V_TWITCH_URL="rtmp://euc10.contribute.live-video.net/app/" ;;
+                   8) V_TWITCH_URL="rtmp://euw30.contribute.live-video.net/app/" ;;
+                   9) V_TWITCH_URL="rtmp://apn10.contribute.live-video.net/app/" ;;
+                   10) V_TWITCH_URL="rtmp://apn20.contribute.live-video.net/app/" ;;
+                   11) V_TWITCH_URL="rtmp://aps10.contribute.live-video.net/app/" ;;
+                   12) V_TWITCH_URL="rtmp://aps20.contribute.live-video.net/app/" ;;
+                   13) V_TWITCH_URL="rtmp://sae10.contribute.live-video.net/app/" ;;
+                   14)
                       echo -e "Enter Custom Twitch Server URL: "
                       read -r t_url
                       if [ ! -z "$t_url" ]; then
@@ -435,13 +471,15 @@ configure_vertical_keys() {
                echo -e "Select Kick Server:"
                echo "  1) Standard (rtmp://live.kick.com/app/)"
                echo "  2) Secure (rtmps://fa723fc1b171.global-contribute.live-video.net:443 -> via Stunnel)"
-               echo "  3) Custom URL"
+               echo "  3) South Africa Relay (rtmp://kick.cisp.co.za/live)"
+               echo "  4) Custom URL"
                echo -e "Option (Current URL: $V_KICK_URL): \c"
                read -r k_opt
                case $k_opt in
                    1) V_KICK_URL="rtmp://live.kick.com/app/" ;;
                    2) V_KICK_URL="rtmp://127.0.0.1:19356/kick/" ;;
-                   3)
+                   3) V_KICK_URL="rtmp://kick.cisp.co.za/live" ;;
+                   4)
                       echo -e "Enter Custom Kick Server URL: "
                       read -r k_url
                       if [ ! -z "$k_url" ]; then
@@ -789,6 +827,71 @@ configure_chat() {
     done
 }
 
+configure_noalbs() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== NOALBS Scene Switcher Configuration ===${NC}"
+        echo -e "Status: $([ "$NOALBS_ENABLED" == "true" ] && echo -e "${GREEN}ENABLED${NC}" || echo -e "${RED}DISABLED${NC}")"
+        echo ""
+        echo "1) Toggle Enabled (Currently: $NOALBS_ENABLED)"
+        echo "2) OBS WebSocket Host (Current: $OBS_WS_HOST)"
+        echo "3) OBS WebSocket Port (Current: $OBS_WS_PORT)"
+        echo "4) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:-(None)})"
+        echo "5) Main/Live Scene Name (Current: $OBS_SCENE_LIVE)"
+        echo "6) BRB Scene Name (Current: $OBS_SCENE_BRB)"
+        echo "7) Low Bitrate Threshold (Current: $LOW_BITRATE kbps)"
+        echo "8) Restore Bitrate Threshold (Current: $RESTORE_BITRATE kbps)"
+        echo "9) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r noalbs_opt
+
+        case $noalbs_opt in
+            1)
+                if [ "$NOALBS_ENABLED" == "true" ]; then NOALBS_ENABLED="false"; else NOALBS_ENABLED="true"; fi
+                save_config
+                ;;
+            2)
+                echo -e "Enter OBS WebSocket Host (e.g. 192.168.1.50 or host.docker.internal):"
+                read -r input
+                if [ ! -z "$input" ]; then OBS_WS_HOST="$input"; save_config; fi
+                ;;
+            3)
+                echo -e "Enter OBS WebSocket Port (Default: 4455):"
+                read -r input
+                if [ ! -z "$input" ]; then OBS_WS_PORT="$input"; save_config; fi
+                ;;
+            4)
+                echo -e "Enter OBS WebSocket Password:"
+                read -r input
+                OBS_WS_PASSWORD="$input"
+                save_config
+                ;;
+            5)
+                echo -e "Enter OBS Main Scene Name (e.g. 'Main' or 'Streaming'):"
+                read -r input
+                if [ ! -z "$input" ]; then OBS_SCENE_LIVE="$input"; save_config; fi
+                ;;
+            6)
+                echo -e "Enter OBS BRB Scene Name (e.g. 'BRB' or 'LowBitrate'):"
+                read -r input
+                if [ ! -z "$input" ]; then OBS_SCENE_BRB="$input"; save_config; fi
+                ;;
+            7)
+                echo -e "Enter Low Bitrate Threshold in kbps (e.g. 1000):"
+                read -r input
+                if [ ! -z "$input" ]; then LOW_BITRATE="$input"; save_config; fi
+                ;;
+            8)
+                echo -e "Enter Restore Bitrate Threshold in kbps (e.g. 1500):"
+                read -r input
+                if [ ! -z "$input" ]; then RESTORE_BITRATE="$input"; save_config; fi
+                ;;
+            9) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
+
 configure_optimizations() {
     clear
     echo -e "${GREEN}=== Optimizations ===${NC}"
@@ -867,10 +970,16 @@ build_and_run() {
     docker rm prism-rtmps 2>/dev/null || true
 
     echo -e "${GREEN}Starting container...${NC}"
+
+    # Port mapping logic: Map 80/443 only if domain is set
+    PORT_MAPS="-p 1935:1935 -p 8081:8081"
+    if [ ! -z "$SERVER_DOMAIN" ]; then
+        PORT_MAPS="$PORT_MAPS -p 80:80 -p 443:443"
+    fi
+
     # Start the container
     docker run -d --name prism-rtmps \
-        -p 1935:1935 \
-        -p 8081:8081 \
+        $PORT_MAPS \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
@@ -916,6 +1025,15 @@ build_and_run() {
         -e TWITCH_CLIENT_ID="$TWITCH_CLIENT_ID" \
         -e TWITCH_OAUTH_TOKEN="$TWITCH_OAUTH_TOKEN" \
         -e TWITCH_BROADCASTER_ID="$TWITCH_BROADCASTER_ID" \
+        -e SERVER_DOMAIN="$SERVER_DOMAIN" \
+        -e NOALBS_ENABLED="$NOALBS_ENABLED" \
+        -e OBS_WS_HOST="$OBS_WS_HOST" \
+        -e OBS_WS_PORT="$OBS_WS_PORT" \
+        -e OBS_WS_PASSWORD="$OBS_WS_PASSWORD" \
+        -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
+        -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
+        -e LOW_BITRATE="$LOW_BITRATE" \
+        -e RESTORE_BITRATE="$RESTORE_BITRATE" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
@@ -1004,10 +1122,11 @@ while true; do
         echo "7) Configure Stream Titles & Twitch API (Optional)"
         echo "8) Configure Domain / Reverse Proxy (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
-        echo "10) Build & Start Server"
-        echo "11) Stop Server"
-        echo "12) View Logs"
-        echo "13) Quit"
+        echo "10) Configure NOALBS Scene Switcher"
+        echo "11) Build & Start Server"
+        echo "12) Stop Server"
+        echo "13) View Logs"
+        echo "14) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1021,10 +1140,11 @@ while true; do
         7) configure_titles ;;
         8) configure_domain ;;
         9) configure_optimizations ;;
-        10) build_and_run ;;
-        11) stop_container ;;
-        12) view_logs ;;
-        13) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        10) configure_noalbs ;;
+        11) build_and_run ;;
+        12) stop_container ;;
+        13) view_logs ;;
+        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done

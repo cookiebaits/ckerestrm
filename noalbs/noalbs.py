@@ -13,18 +13,15 @@ class Noalbs:
         self.enabled = os.getenv("NOALBS_ENABLED", "false").lower() == "true"
         self.low_threshold = int(os.getenv("LOW_BITRATE", 1000))
         self.restore_threshold = int(os.getenv("RESTORE_BITRATE", 1500))
-        self.obs_host = os.getenv("OBS_WS_HOST", "")
+        self.obs_host = os.getenv("OBS_WS_HOST", "127.0.0.1")
         self.obs_port = int(os.getenv("OBS_WS_PORT", 4455))
         self.obs_password = os.getenv("OBS_WS_PASSWORD", "")
         self.scene_main = os.getenv("OBS_SCENE_LIVE", "Main")
         self.scene_brb = os.getenv("OBS_SCENE_BRB", "BRB")
         self.app_name = os.getenv("APP_NAME", "live")
         self.stats_url = "http://127.0.0.1:8081/stat"
-        self.cloud_brb_enabled = os.getenv("CLOUD_BRB", "false").lower() == "true"
-        self.brb_video_path = "/app/data/brb_video.mp4"
         self.is_low = False
         self.is_streaming = False
-        self.cloud_process = None
 
     def get_bitrate(self):
         try:
@@ -50,35 +47,14 @@ class Noalbs:
 
     def switch_scene(self, scene):
         if not self.obs_host:
+            logger.warning("OBS Host not configured, skipping scene switch.")
             return
         try:
             cl = obs.ReqClient(host=self.obs_host, port=self.obs_port, password=self.obs_password, timeout=5)
             cl.set_current_program_scene(scene)
-            logger.info(f"Switched OBS to: {scene}")
+            logger.info(f"Successfully switched OBS scene to: {scene}")
         except Exception as e:
             logger.error(f"OBS WebSocket Error: {e}")
-
-    def manage_cloud_brb(self, start=True):
-        if not self.cloud_brb_enabled or not os.path.exists(self.brb_video_path):
-            return
-
-        if start:
-            if self.cloud_process and self.cloud_process.poll() is None:
-                return
-
-            logger.info("Starting Cloud BRB stream...")
-            # We push to the same ingest application name but with a 'brb' key or similar
-            # In our setup, we can push to rtmp://127.0.0.1:1935/${APP_NAME}/brb_loop
-            # but Nginx will only relay what it knows.
-            # Better approach: We push to the same destinations directly or via a relay app.
-            # Simplified: This NOALBS version will focus on OBS scene switching.
-            # Real 'Cloud BRB' requires Nginx config to fallback to a loop.
-            pass
-        else:
-            if self.cloud_process:
-                logger.info("Stopping Cloud BRB stream...")
-                self.cloud_process.terminate()
-                self.cloud_process = None
 
     def run(self):
         if not self.enabled:
@@ -86,6 +62,7 @@ class Noalbs:
             return
 
         logger.info(f"NOALBS Started. Monitoring {self.app_name} on {self.stats_url}")
+        logger.info(f"Thresholds: Low < {self.low_threshold}kbps, Restore >= {self.restore_threshold}kbps")
 
         low_count = 0
         while True:
@@ -93,7 +70,7 @@ class Noalbs:
 
             if bitrate > 0:
                 if not self.is_streaming:
-                    logger.info("Stream detected.")
+                    logger.info(f"Stream detected at {bitrate}kbps.")
                     self.is_streaming = True
 
                 if bitrate < self.low_threshold:
