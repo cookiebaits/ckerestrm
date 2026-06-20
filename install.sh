@@ -64,6 +64,12 @@ CHAT_YOUTUBE=""
 CHAT_KICK=""
 CHAT_TIKTOK=""
 
+# Host Port Settings
+PORT_RTMP="1935"
+PORT_HTTP="80"
+PORT_HTTPS="443"
+PORT_STATS="8081"
+
 # NOALBS Settings
 NOALBS_ENABLED="false"
 OBS_WS_HOST="127.0.0.1"
@@ -144,6 +150,10 @@ LOW_BITRATE="$LOW_BITRATE"
 RESTORE_BITRATE="$RESTORE_BITRATE"
 CLOUD_BRB="$CLOUD_BRB"
 BRB_VIDEO_URL="$BRB_VIDEO_URL"
+PORT_RTMP="$PORT_RTMP"
+PORT_HTTP="$PORT_HTTP"
+PORT_HTTPS="$PORT_HTTPS"
+PORT_STATS="$PORT_STATS"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -701,8 +711,8 @@ configure_obs() {
     DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
 
     echo -e "To stream to this server from OBS or another encoder:"
-    echo -e "  ${YELLOW}Horizontal URL:${NC} rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
-    echo -e "  ${YELLOW}Vertical URL:${NC}   rtmp://${DISPLAY_HOST}:1935/vertical"
+    echo -e "  ${YELLOW}Horizontal URL:${NC} rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
+    echo -e "  ${YELLOW}Vertical URL:${NC}   rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
     echo ""
     echo -e "--- Combined Chat ---"
     echo -e "You can use the combined chat as a browser source in OBS:"
@@ -978,6 +988,45 @@ configure_noalbs() {
     done
 }
 
+configure_ports() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== Host Port Configuration ===${NC}"
+        echo "1) RTMP Port (Current: $PORT_RTMP)"
+        echo "2) HTTP Port (Current: $PORT_HTTP)"
+        echo "3) HTTPS Port (Current: $PORT_HTTPS)"
+        echo "4) Stats/Chat Port (Current: $PORT_STATS)"
+        echo "5) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r port_opt
+
+        case $port_opt in
+            1)
+                echo -e "Enter Host Port for RTMP (Default 1935):"
+                read -r input
+                if [ ! -z "$input" ]; then PORT_RTMP="$input"; save_config; fi
+                ;;
+            2)
+                echo -e "Enter Host Port for HTTP (Default 80):"
+                read -r input
+                if [ ! -z "$input" ]; then PORT_HTTP="$input"; save_config; fi
+                ;;
+            3)
+                echo -e "Enter Host Port for HTTPS (Default 443):"
+                read -r input
+                if [ ! -z "$input" ]; then PORT_HTTPS="$input"; save_config; fi
+                ;;
+            4)
+                echo -e "Enter Host Port for Stats/Chat (Default 8081):"
+                read -r input
+                if [ ! -z "$input" ]; then PORT_STATS="$input"; save_config; fi
+                ;;
+            5) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
+
 configure_optimizations() {
     clear
     echo -e "${GREEN}=== Optimizations ===${NC}"
@@ -1029,7 +1078,7 @@ build_and_run() {
 
     echo -e "${YELLOW}Checking for port conflicts...${NC}"
     CONFLICTS=0
-    for port in 1935 8081; do
+    for port in "$PORT_RTMP" "$PORT_STATS"; do
         if check_port "$port"; then
             echo -e "${RED}Error: Port $port is already in use on the host!${NC}"
             CONFLICTS=1
@@ -1037,7 +1086,7 @@ build_and_run() {
     done
 
     if [ ! -z "$SERVER_DOMAIN" ]; then
-        for port in 80 443; do
+        for port in "$PORT_HTTP" "$PORT_HTTPS"; do
             if check_port "$port"; then
                 echo -e "${RED}Error: Port $port is already in use on the host!${NC}"
                 CONFLICTS=1
@@ -1046,7 +1095,8 @@ build_and_run() {
     fi
 
     if [ $CONFLICTS -eq 1 ]; then
-        echo -e "${YELLOW}Please stop the service using these ports and try again.${NC}"
+        echo -e "${YELLOW}Warning: One or more selected ports are already in use.${NC}"
+        echo -e "You should change them in the 'Configure Host Ports' menu or stop the other services."
         echo -e "Press Enter to return to menu..."
         read -r
         return
@@ -1110,10 +1160,10 @@ build_and_run() {
 
     echo -e "${GREEN}Starting container...${NC}"
 
-    # Port mapping logic: Map 80/443 only if domain is set
-    PORT_MAPS="-p 1935:1935 -p 8081:8081"
+    # Port mapping logic: Map HTTP/HTTPS only if domain is set
+    PORT_MAPS="-p ${PORT_RTMP}:1935 -p ${PORT_STATS}:8081"
     if [ ! -z "$SERVER_DOMAIN" ]; then
-        PORT_MAPS="$PORT_MAPS -p 80:80 -p 443:443"
+        PORT_MAPS="$PORT_MAPS -p ${PORT_HTTP}:80 -p ${PORT_HTTPS}:443"
     fi
 
     # Start the container
@@ -1181,9 +1231,9 @@ build_and_run() {
         SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
         DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
         echo -e "${GREEN}Container 'prism-rtmps' is running!${NC}"
-        echo -e "You can stream to: rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
-        echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:1935/vertical"
-        echo -e "Stats available at: http://${DISPLAY_HOST}:8081/stat"
+        echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
+        echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
+        echo -e "Stats available at: http://${DISPLAY_HOST}:${PORT_STATS}/stat"
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
@@ -1249,10 +1299,10 @@ while true; do
     echo -e "${GREEN}     PrismRTMPS Quick Installer      ${NC}"
     echo -e "${GREEN}=====================================${NC}"
     echo -e "${YELLOW}Quick Reference:${NC}"
-    echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:1935/${APP_NAME}"
-    echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:1935/vertical"
-    echo -e "  Stats URL:       http://${DISPLAY_HOST}:8081/stat"
-    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:8081/chat.html?twitch=USER&youtube=ID"
+    echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
+    echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
+    echo -e "  Stats URL:       http://${DISPLAY_HOST}:${PORT_STATS}/stat"
+    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:${PORT_STATS}/chat.html?twitch=USER&youtube=ID"
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"
@@ -1263,11 +1313,12 @@ while true; do
         echo "7) Configure Stream Titles & Twitch API (Optional)"
         echo "8) Configure Domain / Reverse Proxy (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
-        echo "10) Configure NOALBS Scene Switcher"
-        echo "11) Build & Start Server"
-        echo "12) Stop Server"
-        echo "13) View Logs"
-        echo "14) Quit"
+        echo "10) Configure Host Ports (Port Forwarding)"
+        echo "11) Configure NOALBS Scene Switcher"
+        echo "12) Build & Start Server"
+        echo "13) Stop Server"
+        echo "14) View Logs"
+        echo "15) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1281,11 +1332,12 @@ while true; do
         7) configure_titles ;;
         8) configure_domain ;;
         9) configure_optimizations ;;
-        10) configure_noalbs ;;
-        11) build_and_run ;;
-        12) stop_container ;;
-        13) view_logs ;;
-        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        10) configure_ports ;;
+        11) configure_noalbs ;;
+        12) build_and_run ;;
+        13) stop_container ;;
+        14) view_logs ;;
+        15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done

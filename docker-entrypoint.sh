@@ -166,7 +166,7 @@ fi
 # --- Start NOALBS ---
 if [ "${NOALBS_ENABLED}" = "true" ]; then
     echo "Starting NOALBS background process..."
-    python3 /app/noalbs/noalbs.py &
+    python3 /app/noalbs/noalbs.py > /tmp/noalbs.log 2>&1 &
 fi
 
 echo "Starting Nginx..."
