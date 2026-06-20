@@ -17,12 +17,14 @@ echo "Starting stream key validation server..."
 # -b 127.0.0.1:8080: Bind to the same internal host and port
 # --log-level info: Set the log level
 # stream_validator:app: Point to the 'app' object in your python file
+export PYTHONPATH=$PYTHONPATH:/app
 gunicorn \
     --workers 1 \
     --bind 127.0.0.1:8080 \
     --log-level info \
     --access-logfile "$VALIDATOR_LOG" \
     --error-logfile "$VALIDATOR_LOG" \
+    --chdir /app \
     stream_validator:app &
 VALIDATOR_PID=$!
 echo "Validator PID: $VALIDATOR_PID"
@@ -111,6 +113,16 @@ add_push "RTMP1"      "RTMP1_KEY"      "RTMP1_URL"      "rtmp1"
 add_push "RTMP2"      "RTMP2_KEY"      "RTMP2_URL"      "rtmp2"
 add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
 
+# Vertical Pushes
+add_push "V-Youtube"   "V_YOUTUBE_KEY"   "V_YOUTUBE_URL"   "v_youtube"
+add_push "V-Facebook"  "V_FACEBOOK_KEY"  "V_FACEBOOK_URL"  "v_facebook"
+add_push "V-Instagram" "V_INSTAGRAM_KEY" "V_INSTAGRAM_URL" "v_instagram"
+add_push "V-TikTok"    "V_TIKTOK_KEY"    "V_TIKTOK_URL"    "v_tiktok"
+add_push "V-Twitch"    "V_TWITCH_KEY"    "V_TWITCH_URL"    "v_twitch"
+add_push "V-Kick"      "V_KICK_KEY"      "V_KICK_URL"      "v_kick"
+add_push "V-X (Twitter)" "V_X_KEY"        "V_X_URL"         "v_x"
+add_push "V-RTMP1"      "V_RTMP1_KEY"    "V_RTMP1_URL"     "v_rtmp1"
+
 
 if [ $ENV_OK -eq 1 ]; then
     echo "Generating final Nginx configuration..."
@@ -138,6 +150,24 @@ fi
 echo "Starting Stunnel..."
 # Start stunnel in the background
 stunnel4 /etc/stunnel/stunnel.conf
+
+# --- Certbot Renewal Loop ---
+if [ -n "$SERVER_DOMAIN" ]; then
+    echo "Starting Certbot renewal background loop..."
+    (
+        while true; do
+            echo "Checking for certificate renewal..."
+            certbot renew --webroot -w /var/www/certbot --quiet --post-hook "nginx -s reload"
+            sleep 12h
+        done
+    ) &
+fi
+
+# --- Start NOALBS ---
+if [ "${NOALBS_ENABLED}" = "true" ]; then
+    echo "Starting NOALBS background process..."
+    python3 /app/noalbs/noalbs.py &
+fi
 
 echo "Starting Nginx..."
 exec "$@" # Execute the CMD from Dockerfile (nginx -g 'daemon off;')
