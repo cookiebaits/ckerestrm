@@ -716,7 +716,7 @@ configure_obs() {
     echo ""
     echo -e "--- Combined Chat ---"
     echo -e "You can use the combined chat as a browser source in OBS:"
-    echo -e "  ${YELLOW}URL:${NC} http://${DISPLAY_HOST}:8081/chat.html?twitch=YOUR_CHANNEL&youtube=YOUR_VIDEO_ID"
+    echo -e "  ${YELLOW}URL:${NC} http://${DISPLAY_HOST}:${PORT_STATS}/chat.html?twitch=YOUR_CHANNEL&youtube=YOUR_VIDEO_ID"
     echo -e "  (Replace YOUR_CHANNEL and YOUR_VIDEO_ID as needed)"
     echo ""
     echo -e "--- Security Key ---"
@@ -889,7 +889,7 @@ configure_chat() {
             5)
                 SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
                 DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-                CHAT_URL="http://${DISPLAY_HOST}:8081/chat.html?"
+                CHAT_URL="http://${DISPLAY_HOST}:${PORT_STATS}/chat.html?"
                 if [ ! -z "$CHAT_TWITCH" ]; then CHAT_URL="${CHAT_URL}twitch=${CHAT_TWITCH}&"; fi
                 if [ ! -z "$CHAT_YOUTUBE" ]; then CHAT_URL="${CHAT_URL}youtube=${CHAT_YOUTUBE}&"; fi
                 if [ ! -z "$CHAT_KICK" ]; then CHAT_URL="${CHAT_URL}kick=${CHAT_KICK}&"; fi
@@ -1077,30 +1077,35 @@ build_and_run() {
     fi
 
     echo -e "${YELLOW}Checking for port conflicts...${NC}"
-    CONFLICTS=0
-    for port in "$PORT_RTMP" "$PORT_STATS"; do
-        if check_port "$port"; then
-            echo -e "${RED}Error: Port $port is already in use on the host!${NC}"
-            CONFLICTS=1
+    while true; do
+        CONFLICTS=0
+        declare -a PORTS_TO_CHECK=("$PORT_RTMP" "$PORT_STATS")
+        if [ ! -z "$SERVER_DOMAIN" ]; then
+            PORTS_TO_CHECK+=("$PORT_HTTP" "$PORT_HTTPS")
         fi
-    done
 
-    if [ ! -z "$SERVER_DOMAIN" ]; then
-        for port in "$PORT_HTTP" "$PORT_HTTPS"; do
+        for port in "${PORTS_TO_CHECK[@]}"; do
             if check_port "$port"; then
                 echo -e "${RED}Error: Port $port is already in use on the host!${NC}"
                 CONFLICTS=1
             fi
         done
-    fi
 
-    if [ $CONFLICTS -eq 1 ]; then
-        echo -e "${YELLOW}Warning: One or more selected ports are already in use.${NC}"
-        echo -e "You should change them in the 'Configure Host Ports' menu or stop the other services."
-        echo -e "Press Enter to return to menu..."
-        read -r
-        return
-    fi
+        if [ $CONFLICTS -eq 1 ]; then
+            echo -e "${YELLOW}Port conflicts detected. You must change the host ports or stop the conflicting services.${NC}"
+            echo "1) Configure Host Ports now"
+            echo "2) Abort and return to Main Menu"
+            echo -e "Selection: \c"
+            read -r conflict_choice
+            case $conflict_choice in
+                1) configure_ports ;;
+                *) return ;;
+            esac
+        else
+            echo -e "${GREEN}No port conflicts detected.${NC}"
+            break
+        fi
+    done
 
     # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok, Kick)
     # Automatically chooses an alternative ingest server to avoid conflicts
