@@ -29,67 +29,57 @@ class Noalbs:
 
         self.is_low = False
         self.is_streaming = False
+        self.obs_client = None
+
+    def get_obs_client(self):
+        if self.obs_client:
+            return self.obs_client
+        try:
+            self.obs_client = obs.ReqClient(host=self.obs_host, port=self.obs_port, password=self.obs_password, timeout=3)
+            return self.obs_client
+        except Exception as e:
+            logger.error(f"Failed to connect to OBS: {e}")
+            self.obs_client = None
+            return None
 
     def get_bitrate(self):
         try:
             r = requests.get(self.stats_url, timeout=5)
             if r.status_code != 200:
-                logger.error(f"Nginx Stats HTTP {r.status_code}")
                 return 0
 
             root = ET.fromstring(r.text)
+            total_bitrate = 0
+            # Monitor both the configured APP_NAME (horizontal) and 'vertical'
             for app in root.findall('.//application'):
-                if app.find('name').text == self.app_name:
+                app_name_text = app.find('name').text
+                if app_name_text == self.app_name or app_name_text == "vertical":
                     live = app.find('live')
                     if live is not None:
                         for stream in live.findall('stream'):
                             if stream.find('publishing') is not None:
-                                return int(int(stream.find('bw_in').text) * 8 / 1024)
-            return 0
-        except Exception as e:
+                                total_bitrate += int(int(stream.find('bw_in').text) * 8 / 1024)
+            return total_bitrate
+        except Exception:
             return 0
 
     def switch_scene(self, scene):
-        if not self.obs_host or self.obs_host == "127.0.0.1":
+        client = self.get_obs_client()
+        if not client:
             return
         try:
-            cl = obs.ReqClient(host=self.obs_host, port=self.obs_port, password=self.obs_password, timeout=5)
-            cl.set_current_program_scene(scene)
+            client.set_current_program_scene(scene)
             logger.info(f"Successfully switched OBS scene to: {scene}")
         except Exception as e:
-            logger.error(f"OBS WebSocket Error: {e}")
-
-    def manage_cloud_brb(self, start=True):
-        if not self.cloud_brb_enabled or not os.path.exists(self.brb_video_path):
-            return
-
-        if start:
-            if self.cloud_process and self.cloud_process.poll() is None:
-                return
-
-            logger.info("Starting Cloud BRB stream...")
-            # Pushing to local Nginx relay application which will then push to all destinations
-            # We assume the validator will accept 'brb_loop' or similar if we modify it, 
-            # or we just push to the local ingest port with the correct key.
-            # Simplified: Use FFmpeg to push to the local RTMP ingest.
-            # We need one of the valid keys to bypass validation.
-            
-            # This is complex because we don't want to trigger loops.
-            # For now, NOALBS focus is OBS scene switching as per user's primary request.
-            # If Cloud BRB is strictly required, we'd need FFmpeg to push to each destination.
-            pass
-        else:
-            if self.cloud_process:
-                logger.info("Stopping Cloud BRB stream...")
-                self.cloud_process.terminate()
-                self.cloud_process = None
+            logger.error(f"OBS WebSocket Switch Error: {e}")
+            self.obs_client = None # Reset client for reconnection
 
     def run(self):
         if not self.enabled:
             logger.info("NOALBS is disabled.")
             return
 
-        logger.info(f"NOALBS Started. Monitoring {self.app_name} on {self.stats_url}")
+        logger.info(f"NOALBS Started. Monitoring {self.app_name} & vertical on {self.stats_url}")
         
         low_count = 0
         while True:
@@ -99,7 +89,6 @@ class Noalbs:
                 if not self.is_streaming:
                     logger.info(f"Stream detected at {bitrate}kbps.")
                     self.is_streaming = True
-                    self.manage_cloud_brb(start=False)
 
                 if bitrate < self.low_threshold:
                     low_count += 1
@@ -117,7 +106,6 @@ class Noalbs:
                 if self.is_streaming:
                     logger.warning("Stream disconnected. Switching to BRB.")
                     self.switch_scene(self.scene_brb)
-                    self.manage_cloud_brb(start=True)
                     self.is_streaming = False
                     self.is_low = True
                     low_count = 0
