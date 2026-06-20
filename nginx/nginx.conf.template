@@ -156,5 +156,21 @@ rtmp {
             #x
             #twitch
         }
+
+        # Vertical application for dedicated vertical streaming
+        application vertical {
+            live on;
+            record off;
+            on_publish http://127.0.0.1:8080/validate?key=$name;
+
+            #v_youtube
+            #v_facebook
+            #v_instagram
+            #v_tiktok
+            #v_kick
+            #v_x
+            #v_twitch
+            #v_rtmp1
+        }
     }
 }
