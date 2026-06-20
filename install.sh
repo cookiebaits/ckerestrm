@@ -73,6 +73,8 @@ OBS_SCENE_LIVE="Main"
 OBS_SCENE_BRB="BRB"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
+CLOUD_BRB="false"
+BRB_VIDEO_URL=""
 
 CONFIG_FILE="rtmp_config.env"
 
@@ -140,6 +142,8 @@ OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
 OBS_SCENE_BRB="$OBS_SCENE_BRB"
 LOW_BITRATE="$LOW_BITRATE"
 RESTORE_BITRATE="$RESTORE_BITRATE"
+CLOUD_BRB="$CLOUD_BRB"
+BRB_VIDEO_URL="$BRB_VIDEO_URL"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 }
@@ -905,7 +909,9 @@ configure_noalbs() {
         echo "6) BRB Scene Name (Current: $OBS_SCENE_BRB)"
         echo "7) Low Bitrate Threshold (Current: $LOW_BITRATE kbps)"
         echo "8) Restore Bitrate Threshold (Current: $RESTORE_BITRATE kbps)"
-        echo "9) Back to Main Menu"
+        echo "9) Toggle Cloud BRB (Currently: $CLOUD_BRB)"
+        echo "10) Configure BRB Video URL (Current: ${BRB_VIDEO_URL:-(None)})"
+        echo "11) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r noalbs_opt
 
@@ -950,7 +956,23 @@ configure_noalbs() {
                 read -r input
                 if [ ! -z "$input" ]; then RESTORE_BITRATE="$input"; save_config; fi
                 ;;
-            9) break ;;
+            9)
+                if [ "$CLOUD_BRB" == "true" ]; then CLOUD_BRB="false"; else CLOUD_BRB="true"; fi
+                save_config
+                ;;
+            10)
+                echo -e "Enter BRB Video URL (Direct MP4 link):"
+                read -r input
+                if [ ! -z "$input" ]; then
+                    BRB_VIDEO_URL="$input"
+                    save_config
+                    mkdir -p ./data
+                    echo -e "${YELLOW}Downloading BRB video...${NC}"
+                    curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded.${NC}" || echo -e "${RED}Download failed.${NC}"
+                    sleep 2
+                fi
+                ;;
+            11) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -1151,6 +1173,8 @@ build_and_run() {
         -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
         -e LOW_BITRATE="$LOW_BITRATE" \
         -e RESTORE_BITRATE="$RESTORE_BITRATE" \
+        -e CLOUD_BRB="$CLOUD_BRB" \
+        -v "$(pwd)/data:/app/data" \
         prism-rtmps
 
     if [ $? -eq 0 ]; then
