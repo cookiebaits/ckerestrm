@@ -716,7 +716,7 @@ configure_obs() {
     echo ""
     echo -e "--- Combined Chat ---"
     echo -e "You can use the combined chat as a browser source in OBS:"
-    echo -e "  ${YELLOW}URL:${NC} http://${DISPLAY_HOST}:${PORT_STATS}/chat.html?twitch=YOUR_CHANNEL&youtube=YOUR_VIDEO_ID"
+    echo -e "  ${YELLOW}URL:${NC} http://${DISPLAY_HOST}/chat.html?twitch=YOUR_CHANNEL&youtube=YOUR_VIDEO_ID"
     echo -e "  (Replace YOUR_CHANNEL and YOUR_VIDEO_ID as needed)"
     echo ""
     echo -e "--- Security Key ---"
@@ -889,7 +889,7 @@ configure_chat() {
             5)
                 SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
                 DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-                CHAT_URL="http://${DISPLAY_HOST}:${PORT_STATS}/chat.html?"
+                CHAT_URL="http://${DISPLAY_HOST}/chat.html?"
                 if [ ! -z "$CHAT_TWITCH" ]; then CHAT_URL="${CHAT_URL}twitch=${CHAT_TWITCH}&"; fi
                 if [ ! -z "$CHAT_YOUTUBE" ]; then CHAT_URL="${CHAT_URL}youtube=${CHAT_YOUTUBE}&"; fi
                 if [ ! -z "$CHAT_KICK" ]; then CHAT_URL="${CHAT_URL}kick=${CHAT_KICK}&"; fi
@@ -995,8 +995,7 @@ configure_ports() {
         echo "1) RTMP Port (Current: $PORT_RTMP)"
         echo "2) HTTP Port (Current: $PORT_HTTP)"
         echo "3) HTTPS Port (Current: $PORT_HTTPS)"
-        echo "4) Stats/Chat Port (Current: $PORT_STATS)"
-        echo "5) Back to Main Menu"
+        echo "4) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r port_opt
 
@@ -1016,12 +1015,7 @@ configure_ports() {
                 read -r input
                 if [ ! -z "$input" ]; then PORT_HTTPS="$input"; save_config; fi
                 ;;
-            4)
-                echo -e "Enter Host Port for Stats/Chat (Default 8081):"
-                read -r input
-                if [ ! -z "$input" ]; then PORT_STATS="$input"; save_config; fi
-                ;;
-            5) break ;;
+            4) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -1076,36 +1070,40 @@ build_and_run() {
         return
     fi
 
+    echo -e "${YELLOW}Stopping any existing container to free ports...${NC}"
+    docker stop prism-rtmps 2>/dev/null || true
+    docker rm prism-rtmps 2>/dev/null || true
+
     echo -e "${YELLOW}Checking for port conflicts...${NC}"
-    while true; do
-        CONFLICTS=0
-        declare -a PORTS_TO_CHECK=("$PORT_RTMP" "$PORT_STATS")
-        if [ ! -z "$SERVER_DOMAIN" ]; then
-            PORTS_TO_CHECK+=("$PORT_HTTP" "$PORT_HTTPS")
-        fi
+    CONFLICTS=0
+    declare -a PORTS_TO_CHECK=("$PORT_RTMP")
+    if [ ! -z "$SERVER_DOMAIN" ]; then
+        PORTS_TO_CHECK+=("$PORT_HTTP" "$PORT_HTTPS")
+    fi
 
-        for port in "${PORTS_TO_CHECK[@]}"; do
-            if check_port "$port"; then
-                echo -e "${RED}Error: Port $port is already in use on the host!${NC}"
-                CONFLICTS=1
-            fi
-        done
-
-        if [ $CONFLICTS -eq 1 ]; then
-            echo -e "${YELLOW}Port conflicts detected. You must change the host ports or stop the conflicting services.${NC}"
-            echo "1) Configure Host Ports now"
-            echo "2) Abort and return to Main Menu"
-            echo -e "Selection: \c"
-            read -r conflict_choice
-            case $conflict_choice in
-                1) configure_ports ;;
-                *) return ;;
-            esac
-        else
-            echo -e "${GREEN}No port conflicts detected.${NC}"
-            break
+    for port in "${PORTS_TO_CHECK[@]}"; do
+        if check_port "$port"; then
+            echo -e "${RED}Warning: Port $port appears to be in use on the host!${NC}"
+            echo -e "${YELLOW}If this is another service, PrismRTMPS may fail to start.${NC}"
+            CONFLICTS=1
         fi
     done
+
+    if [ $CONFLICTS -eq 1 ]; then
+        echo -e "${YELLOW}Port conflicts detected. Do you want to continue anyway?${NC}"
+        echo "1) Yes, continue (PrismRTMPS will attempt to bind)"
+        echo "2) No, configure Host Ports"
+        echo "3) Abort and return to Main Menu"
+        echo -e "Selection: \c"
+        read -r conflict_choice
+        case $conflict_choice in
+            1) echo -e "${GREEN}Continuing...${NC}" ;;
+            2) configure_ports; build_and_run; return ;;
+            *) return ;;
+        esac
+    else
+        echo -e "${GREEN}No port conflicts detected.${NC}"
+    fi
 
     # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok, Kick)
     # Automatically chooses an alternative ingest server to avoid conflicts
@@ -1166,7 +1164,7 @@ build_and_run() {
     echo -e "${GREEN}Starting container...${NC}"
 
     # Port mapping logic: Map HTTP/HTTPS only if domain is set
-    PORT_MAPS="-p ${PORT_RTMP}:1935 -p ${PORT_STATS}:8081"
+    PORT_MAPS="-p ${PORT_RTMP}:1935"
     if [ ! -z "$SERVER_DOMAIN" ]; then
         PORT_MAPS="$PORT_MAPS -p ${PORT_HTTP}:80 -p ${PORT_HTTPS}:443"
     fi
@@ -1238,7 +1236,7 @@ build_and_run() {
         echo -e "${GREEN}Container 'prism-rtmps' is running!${NC}"
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
-        echo -e "Stats available at: http://${DISPLAY_HOST}:${PORT_STATS}/stat"
+        echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
@@ -1306,8 +1304,8 @@ while true; do
     echo -e "${YELLOW}Quick Reference:${NC}"
     echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
     echo -e "  Vertical Ingest: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
-    echo -e "  Stats URL:       http://${DISPLAY_HOST}:${PORT_STATS}/stat"
-    echo -e "  Combined Chat:   http://${DISPLAY_HOST}:${PORT_STATS}/chat.html?twitch=USER&youtube=ID"
+    echo -e "  Stats URL:       http://${DISPLAY_HOST}/stat"
+    echo -e "  Combined Chat:   http://${DISPLAY_HOST}/chat.html?twitch=USER&youtube=ID"
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"

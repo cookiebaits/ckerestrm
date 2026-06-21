@@ -36,6 +36,9 @@ RUN cd /tmp/build/nginx/${NGINX_VERSION} && \
         --http-client-body-temp-path=/tmp/nginx-client-body \
         --with-http_ssl_module \
         --with-http_realip_module \
+        --with-stream \
+        --with-stream_ssl_module \
+        --with-stream_ssl_preread_module \
         --with-threads \
         --add-module=/tmp/build/cookie-nginx-rtmp && \
     make -j $(getconf _NPROCESSORS_ONLN) CFLAGS="-Wno-error" && \
