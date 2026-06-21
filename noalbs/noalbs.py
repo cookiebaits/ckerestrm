@@ -63,6 +63,34 @@ class Noalbs:
         except Exception:
             return 0
 
+    def start_cloud_brb(self):
+        if not self.cloud_brb_enabled or self.cloud_process:
+            return
+
+        if not os.path.exists(self.brb_video_path):
+            logger.error(f"Cloud BRB video not found at {self.brb_video_path}")
+            return
+
+        logger.info("Starting Cloud BRB stream...")
+        # FFmpeg command to loop the video and push to the local ingest
+        # We push to 'live' and 'vertical' so all destinations get the loop
+        cmd = [
+            "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
+            "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+            "-b:v", "1000k", "-maxrate", "1000k", "-bufsize", "2000k",
+            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/brb_loop"
+        ]
+        try:
+            self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            logger.error(f"Failed to start Cloud BRB process: {e}")
+
+    def stop_cloud_brb(self):
+        if self.cloud_process:
+            logger.info("Stopping Cloud BRB stream.")
+            self.cloud_process.terminate()
+            self.cloud_process = None
+
     def switch_scene(self, scene):
         client = self.get_obs_client()
         if not client:
@@ -86,6 +114,7 @@ class Noalbs:
             bitrate = self.get_bitrate()
 
             if bitrate > 0:
+                self.stop_cloud_brb()
                 if not self.is_streaming:
                     logger.info(f"Stream detected at {bitrate}kbps.")
                     self.is_streaming = True
@@ -109,6 +138,9 @@ class Noalbs:
                     self.is_streaming = False
                     self.is_low = True
                     low_count = 0
+
+                if self.cloud_brb_enabled:
+                    self.start_cloud_brb()
 
             time.sleep(2)
 
