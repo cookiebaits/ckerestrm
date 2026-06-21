@@ -264,12 +264,6 @@ configure_keys() {
                       fi
                       ;;
                esac
-               if [ "$V_YOUTUBE_URL" == "$YOUTUBE_URL" ]; then
-                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
-                   V_YOUTUBE_URL=$(get_alternative_url "youtube" "$V_YOUTUBE_URL")
-                   echo -e "New Vertical URL: $V_YOUTUBE_URL"
-                   sleep 2
-               fi
                save_config
                ;;
             2)
@@ -313,12 +307,6 @@ configure_keys() {
                       fi
                       ;;
                esac
-               if [ "$V_TWITCH_URL" == "$TWITCH_URL" ]; then
-                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
-                   V_TWITCH_URL=$(get_alternative_url "twitch" "$V_TWITCH_URL")
-                   echo -e "New Vertical URL: $V_TWITCH_URL"
-                   sleep 2
-               fi
                save_config
                ;;
             3)
@@ -342,12 +330,6 @@ configure_keys() {
                       fi
                       ;;
                esac
-               if [ "$V_KICK_URL" == "$KICK_URL" ]; then
-                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
-                   V_KICK_URL=$(get_alternative_url "kick" "$V_KICK_URL")
-                   echo -e "New Vertical URL: $V_KICK_URL"
-                   sleep 2
-               fi
                save_config
                ;;
             4)
@@ -499,6 +481,12 @@ configure_vertical_keys() {
                       fi
                       ;;
                esac
+               if [ "$V_YOUTUBE_URL" == "$YOUTUBE_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_YOUTUBE_URL=$(get_alternative_url "youtube" "$V_YOUTUBE_URL")
+                   echo -e "New Vertical URL: $V_YOUTUBE_URL"
+                   sleep 2
+               fi
                save_config
                ;;
             2)
@@ -542,10 +530,16 @@ configure_vertical_keys() {
                       fi
                       ;;
                esac
+               if [ "$V_TWITCH_URL" == "$TWITCH_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_TWITCH_URL=$(get_alternative_url "twitch" "$V_TWITCH_URL")
+                   echo -e "New Vertical URL: $V_TWITCH_URL"
+                   sleep 2
+               fi
                save_config
                ;;
             3)
-               prompt_for_key "Kick Vertical" "V_KICK_KEY"
+               prompt_for_key "Kick Vertical Key" "V_KICK_KEY"
                echo -e "Select Kick Server:"
                echo "  1) Standard (rtmp://live.kick.com/app/)"
                echo "  2) Secure (rtmps://fa723fc1b171.global-contribute.live-video.net:443 -> via Stunnel)"
@@ -565,6 +559,12 @@ configure_vertical_keys() {
                       fi
                       ;;
                esac
+               if [ "$V_KICK_URL" == "$KICK_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_KICK_URL=$(get_alternative_url "kick" "$V_KICK_URL")
+                   echo -e "New Vertical URL: $V_KICK_URL"
+                   sleep 2
+               fi
                save_config
                ;;
             4)
@@ -587,7 +587,7 @@ configure_vertical_keys() {
                save_config
                ;;
             5)
-               prompt_for_key "Facebook Vertical" "V_FACEBOOK_KEY"
+               prompt_for_key "Facebook Vertical Key" "V_FACEBOOK_KEY"
                echo -e "Select Facebook Server:"
                echo "  1) Secure (rtmps://live-api-s.facebook.com:443 -> via Stunnel)"
                echo "  2) Custom URL"
@@ -606,7 +606,7 @@ configure_vertical_keys() {
                save_config
                ;;
             6)
-               prompt_for_key "Instagram Vertical" "V_INSTAGRAM_KEY"
+               prompt_for_key "Instagram Vertical Key" "V_INSTAGRAM_KEY"
                echo -e "Select Instagram Server:"
                echo "  1) Secure (rtmps://live-upload.instagram.com:443 -> via Stunnel)"
                echo "  2) Custom URL"
@@ -625,7 +625,7 @@ configure_vertical_keys() {
                save_config
                ;;
             7)
-               prompt_for_key "X Vertical" "V_X_KEY"
+               prompt_for_key "X Vertical Key" "V_X_KEY"
                echo -e "Select X Server:"
                echo "  1) Secure (rtmps://va.pscp.tv:443 -> via Stunnel)"
                echo "  2) Custom URL"
@@ -644,7 +644,7 @@ configure_vertical_keys() {
                save_config
                ;;
             8)
-               prompt_for_key "Trovo Vertical" "V_TROVO_KEY"
+               prompt_for_key "Trovo Vertical Key" "V_TROVO_KEY"
                echo -e "Select Trovo Server:"
                echo "  1) Primary (rtmp://livepush.trovo.live/live/)"
                echo "  2) Custom URL"
