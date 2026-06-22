@@ -66,8 +66,8 @@ CHAT_TIKTOK=""
 
 # Host Port Settings
 PORT_RTMP="1935"
-PORT_HTTP="80"
-PORT_HTTPS="443"
+PORT_HTTP="8443"
+PORT_HTTPS="8008"
 PORT_STATS="8081"
 
 # NOALBS Settings
@@ -988,39 +988,6 @@ configure_noalbs() {
     done
 }
 
-configure_ports() {
-    while true; do
-        clear
-        echo -e "${GREEN}=== Host Port Configuration ===${NC}"
-        echo "1) RTMP Port (Current: $PORT_RTMP)"
-        echo "2) HTTP Port (Current: $PORT_HTTP)"
-        echo "3) HTTPS Port (Current: $PORT_HTTPS)"
-        echo "4) Back to Main Menu"
-        echo -e "Select an option: \c"
-        read -r port_opt
-
-        case $port_opt in
-            1)
-                echo -e "Enter Host Port for RTMP (Default 1935):"
-                read -r input
-                if [ ! -z "$input" ]; then PORT_RTMP="$input"; save_config; fi
-                ;;
-            2)
-                echo -e "Enter Host Port for HTTP (Default 80):"
-                read -r input
-                if [ ! -z "$input" ]; then PORT_HTTP="$input"; save_config; fi
-                ;;
-            3)
-                echo -e "Enter Host Port for HTTPS (Default 443):"
-                read -r input
-                if [ ! -z "$input" ]; then PORT_HTTPS="$input"; save_config; fi
-                ;;
-            4) break ;;
-            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-        esac
-    done
-}
-
 configure_optimizations() {
     clear
     echo -e "${GREEN}=== Optimizations ===${NC}"
@@ -1092,13 +1059,11 @@ build_and_run() {
     if [ $CONFLICTS -eq 1 ]; then
         echo -e "${YELLOW}Port conflicts detected. Do you want to continue anyway?${NC}"
         echo "1) Yes, continue (PrismRTMPS will attempt to bind)"
-        echo "2) No, configure Host Ports"
-        echo "3) Abort and return to Main Menu"
+        echo "2) Abort and return to Main Menu"
         echo -e "Selection: \c"
         read -r conflict_choice
         case $conflict_choice in
             1) echo -e "${GREEN}Continuing...${NC}" ;;
-            2) configure_ports; build_and_run; return ;;
             *) return ;;
         esac
     else
@@ -1316,12 +1281,11 @@ while true; do
         echo "7) Configure Stream Titles & Twitch API (Optional)"
         echo "8) Configure Domain / Reverse Proxy (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
-        echo "10) Configure Host Ports (Port Forwarding)"
-        echo "11) Configure NOALBS Scene Switcher"
-        echo "12) Build & Start Server"
-        echo "13) Stop Server"
-        echo "14) View Logs"
-        echo "15) Quit"
+        echo "10) Configure NOALBS Scene Switcher"
+        echo "11) Build & Start Server"
+        echo "12) Stop Server"
+        echo "13) View Logs"
+        echo "14) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1335,12 +1299,11 @@ while true; do
         7) configure_titles ;;
         8) configure_domain ;;
         9) configure_optimizations ;;
-        10) configure_ports ;;
-        11) configure_noalbs ;;
-        12) build_and_run ;;
-        13) stop_container ;;
-        14) view_logs ;;
-        15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        10) configure_noalbs ;;
+        11) build_and_run ;;
+        12) stop_container ;;
+        13) view_logs ;;
+        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
