@@ -151,13 +151,53 @@ echo "Starting Stunnel..."
 # Start stunnel in the background
 stunnel4 /etc/stunnel/stunnel.conf
 
+# --- SSL Initialization (Dummy Certificates) ---
+if [ -n "$SERVER_DOMAIN" ]; then
+    CERT_DIR="/etc/letsencrypt/live/${SERVER_DOMAIN}"
+    if [ ! -f "${CERT_DIR}/fullchain.pem" ]; then
+        echo "SSL certificate not found for ${SERVER_DOMAIN}. Generating dummy certificate..."
+        mkdir -p "${CERT_DIR}"
+        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+            -keyout "${CERT_DIR}/privkey.pem" \
+            -out "${CERT_DIR}/fullchain.pem" \
+            -subj "/CN=${SERVER_DOMAIN}"
+        # Set permissions to prevent Nginx startup issues or security warnings
+        chmod 600 "${CERT_DIR}/privkey.pem" "${CERT_DIR}/fullchain.pem"
+    fi
+fi
+
 # --- Certbot Renewal Loop ---
 if [ -n "$SERVER_DOMAIN" ]; then
+    mkdir -p /var/www/certbot
     echo "Starting Certbot renewal background loop..."
     (
         while true; do
-            echo "Checking for certificate renewal..."
-            certbot renew --webroot -w /var/www/certbot --quiet --post-hook "nginx -s reload"
+            FULLCHAIN="/etc/letsencrypt/live/${SERVER_DOMAIN}/fullchain.pem"
+            # Check if it's a dummy certificate (self-signed)
+            # A real Let's Encrypt cert will have an issuer like "C = US, O = Let's Encrypt, CN = R3"
+            # Our dummy has "CN = ${SERVER_DOMAIN}"
+            IS_DUMMY=0
+            if [ -f "$FULLCHAIN" ]; then
+                ISSUER=$(openssl x509 -noout -issuer -in "$FULLCHAIN")
+                if [[ "$ISSUER" == *"/CN=${SERVER_DOMAIN}"* ]] || [[ "$ISSUER" == *"CN = ${SERVER_DOMAIN}"* ]]; then
+                    IS_DUMMY=1
+                fi
+            fi
+
+            if [ $IS_DUMMY -eq 1 ]; then
+                echo "Dummy certificate detected. Attempting to obtain real certificate..."
+                if certbot certonly --webroot -w /var/www/certbot -d "${SERVER_DOMAIN}" --non-interactive --agree-tos --register-unsafely-without-email; then
+                    echo "Real certificate obtained successfully. Reloading Nginx."
+                    nginx -s reload
+                else
+                    echo "Failed to obtain real certificate. Will retry in 1 hour."
+                    sleep 1h
+                    continue
+                fi
+            else
+                echo "Checking for certificate renewal..."
+                certbot renew --webroot -w /var/www/certbot --quiet --post-hook "nginx -s reload"
+            fi
             sleep 12h
         done
     ) &
