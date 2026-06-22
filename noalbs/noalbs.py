@@ -23,7 +23,7 @@ class Noalbs:
         self.app_name = os.getenv("APP_NAME", "live")
         # NOALBS uses internal port 8081 for stats
         self.stats_url = "http://127.0.0.1:8081/stat"
-        
+
         self.cloud_brb_enabled = os.getenv("CLOUD_BRB", "false").lower() == "true"
         self.brb_video_path = "/app/data/brb_video.mp4"
         self.cloud_process = None
@@ -74,7 +74,7 @@ class Noalbs:
     def start_cloud_brb(self):
         if not self.cloud_brb_enabled or self.cloud_process:
             return
-        
+
         if not os.path.exists(self.brb_video_path):
             logger.error(f"Cloud BRB video not found at {self.brb_video_path}")
             return
@@ -120,7 +120,7 @@ class Noalbs:
             return
 
         logger.info(f"NOALBS Started. Monitoring {self.app_name} & vertical on {self.stats_url}")
-        
+
         consecutive_low = 0
         while True:
             bitrate = self.get_bitrate()
@@ -150,7 +150,7 @@ class Noalbs:
                     self.switch_scene(self.scene_brb)
                     self.is_streaming = False
                     self.is_low = True
-                
+
                 if self.cloud_brb_enabled:
                     self.start_cloud_brb()
 

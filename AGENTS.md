@@ -1,7 +1,7 @@
 ## Developer Memory
 
 ### Nginx & RTMP Module
-- **Version**: Nginx 1.30.2 (stable) with local `cookie-nginx-rtmp` module.
+- **Version**: Nginx 1.30.3 (stable) with local `cookie-nginx-rtmp` module.
 - **Hardening**: AMF recursion limit (128), no VLAs, `ngx_random()` handshakes, and fixed memory leaks in `ngx_rtmp_eval.c`.
 - **Codecs**: Support for HEVC (H.265), AV1, and VP9 via Enhanced RTMP FourCC identification.
 
