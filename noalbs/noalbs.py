@@ -21,6 +21,7 @@ class Noalbs:
         self.scene_main = os.getenv("OBS_SCENE_LIVE", "Main")
         self.scene_brb = os.getenv("OBS_SCENE_BRB", "BRB")
         self.app_name = os.getenv("APP_NAME", "live")
+        # NOALBS uses internal port 8081 for stats
         self.stats_url = "http://127.0.0.1:8081/stat"
         
         self.cloud_brb_enabled = os.getenv("CLOUD_BRB", "false").lower() == "true"
@@ -35,6 +36,7 @@ class Noalbs:
         if self.obs_client:
             return self.obs_client
         try:
+            # Using ReqClient for scene switching
             self.obs_client = obs.ReqClient(host=self.obs_host, port=self.obs_port, password=self.obs_password, timeout=3)
             return self.obs_client
         except Exception as e:
@@ -50,17 +52,23 @@ class Noalbs:
 
             root = ET.fromstring(r.text)
             total_bitrate = 0
-            # Monitor both the configured APP_NAME (horizontal) and 'vertical'
+            # Monitor both horizontal (app_name) and vertical applications
             for app in root.findall('.//application'):
-                app_name_text = app.find('name').text
-                if app_name_text == self.app_name or app_name_text == "vertical":
-                    live = app.find('live')
-                    if live is not None:
-                        for stream in live.findall('stream'):
-                            if stream.find('publishing') is not None:
-                                total_bitrate += int(int(stream.find('bw_in').text) * 8 / 1024)
+                app_name_node = app.find('name')
+                if app_name_node is not None:
+                    app_name_text = app_name_node.text
+                    if app_name_text == self.app_name or app_name_text == "vertical":
+                        live = app.find('live')
+                        if live is not None:
+                            for stream in live.findall('stream'):
+                                if stream.find('publishing') is not None:
+                                    bw_in = stream.find('bw_in')
+                                    if bw_in is not None:
+                                        # Convert bytes/s to kbps
+                                        total_bitrate += int(int(bw_in.text) * 8 / 1024)
             return total_bitrate
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Bitrate fetch error: {e}")
             return 0
 
     def start_cloud_brb(self):
@@ -73,12 +81,12 @@ class Noalbs:
 
         logger.info("Starting Cloud BRB stream...")
         # FFmpeg command to loop the video and push to the local ingest
-        # We push to 'live' and 'vertical' so all destinations get the loop
+        # This keeps the stream alive at the ingest points if the source drops
         cmd = [
             "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
             "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-            "-b:v", "1000k", "-maxrate", "1000k", "-bufsize", "2000k",
-            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/brb_loop"
+            "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
+            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
         ]
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -89,6 +97,10 @@ class Noalbs:
         if self.cloud_process:
             logger.info("Stopping Cloud BRB stream.")
             self.cloud_process.terminate()
+            try:
+                self.cloud_process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.cloud_process.kill()
             self.cloud_process = None
 
     def switch_scene(self, scene):
@@ -100,7 +112,7 @@ class Noalbs:
             logger.info(f"Successfully switched OBS scene to: {scene}")
         except Exception as e:
             logger.error(f"OBS WebSocket Switch Error: {e}")
-            self.obs_client = None # Reset client for reconnection
+            self.obs_client = None # Force reconnect next time
 
     def run(self):
         if not self.enabled:
@@ -109,7 +121,7 @@ class Noalbs:
 
         logger.info(f"NOALBS Started. Monitoring {self.app_name} & vertical on {self.stats_url}")
         
-        low_count = 0
+        consecutive_low = 0
         while True:
             bitrate = self.get_bitrate()
 
@@ -120,24 +132,24 @@ class Noalbs:
                     self.is_streaming = True
 
                 if bitrate < self.low_threshold:
-                    low_count += 1
-                    if low_count >= 3 and not self.is_low:
-                        logger.warning(f"Low bitrate: {bitrate}kbps. Switching to {self.scene_brb}")
+                    consecutive_low += 1
+                    if consecutive_low >= 3 and not self.is_low:
+                        logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
-                    low_count = 0
+                    consecutive_low = 0
                     if bitrate >= self.restore_threshold and self.is_low:
-                        logger.info(f"Bitrate restored: {bitrate}kbps. Switching to {self.scene_main}")
+                        logger.info(f"Bitrate restored ({bitrate}kbps). Switching to {self.scene_main}")
                         self.switch_scene(self.scene_main)
                         self.is_low = False
             else:
+                consecutive_low = 0
                 if self.is_streaming:
-                    logger.warning("Stream disconnected. Switching to BRB.")
+                    logger.warning("Source stream disconnected. Switching to BRB scene.")
                     self.switch_scene(self.scene_brb)
                     self.is_streaming = False
                     self.is_low = True
-                    low_count = 0
                 
                 if self.cloud_brb_enabled:
                     self.start_cloud_brb()
