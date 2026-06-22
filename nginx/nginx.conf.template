@@ -1,31 +1,7 @@
 worker_processes auto;
 rtmp_auto_push on;
 rtmp_auto_push_reconnect 1s;
-
 events {}
-
-# Stream block for Port Fusion (SNI-based routing)
-stream {
-    map $ssl_preread_server_name $backend_name {
-        ${SERVER_DOMAIN}  http_backend;
-        default           rtmp_backend;
-    }
-
-    upstream http_backend {
-        server 127.0.0.1:8443;
-    }
-
-    upstream rtmp_backend {
-        server 127.0.0.1:1935;
-    }
-
-    server {
-        listen 443;
-        proxy_pass $backend_name;
-        ssl_preread on;
-    }
-}
-
 http {
     include       mime.types;
     default_type  application/octet-stream;
@@ -48,44 +24,8 @@ http {
     set_real_ip_from 198.41.128.0/17;
     real_ip_header CF-Connecting-IP;
 
-    # HTTP Server (Port 80)
     server {
-        listen 80;
-        server_name ${SERVER_DOMAIN};
-
-        # ACME Challenge for Certbot
-        location /.well-known/acme-challenge/ {
-            root /var/www/certbot;
-        }
-
-        # Redirect all HTTP traffic to HTTPS if domain is set
-        location / {
-            if ($host = ${SERVER_DOMAIN}) {
-                return 301 https://$host$request_uri;
-            }
-            root /usr/local/nginx/html;
-            index index.html;
-        }
-
-        # Internal Stats for localhost
-        location /stat {
-            rtmp_stat all;
-            rtmp_stat_stylesheet stat.xsl;
-        }
-    }
-
-    # HTTPS Server (Internal Port 8443, Fused from 443)
-    server {
-        listen 8443 ssl;
-        server_name ${SERVER_DOMAIN};
-
-        ssl_certificate /etc/letsencrypt/live/${SERVER_DOMAIN}/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/${SERVER_DOMAIN}/privkey.pem;
-
-        # Hardened SSL Settings
-        ssl_protocols TLSv1.3;
-        ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;
-        ssl_prefer_server_ciphers off;
+        listen 8081;
 
         location /stat {
             rtmp_stat all;
@@ -101,20 +41,7 @@ http {
             index index.html;
         }
     }
-
-    # Stats for NOALBS (Internal Port 8081)
-    server {
-        listen 8081;
-        allow 127.0.0.1;
-        deny all;
-
-        location /stat {
-            rtmp_stat all;
-            rtmp_stat_stylesheet stat.xsl;
-        }
-    }
 }
-
 rtmp {
     server {
         listen 1935;
@@ -124,7 +51,7 @@ rtmp {
         ping 30s;
         ping_timeout 10s;
         drop_idle_publisher 10s;
-        deny play all;
+        deny play all; # Prevent unauthorized viewing
 
         # Facebook Application
         application facebook {
@@ -166,7 +93,7 @@ rtmp {
             push ${X_URL}${X_KEY};
         }
 
-        # Generic live application
+        # Generic live application for multi-streaming
         application ${APP_NAME} {
             live on;
             record off;
@@ -179,22 +106,6 @@ rtmp {
             #kick
             #x
             #twitch
-        }
-
-        # Vertical application
-        application vertical {
-            live on;
-            record off;
-            on_publish http://127.0.0.1:8080/validate?key=$name;
-
-            #v_youtube
-            #v_facebook
-            #v_instagram
-            #v_tiktok
-            #v_kick
-            #v_x
-            #v_twitch
-            #v_rtmp1
         }
     }
 }
