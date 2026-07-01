@@ -101,7 +101,7 @@ ENV CHUNK_SIZE=8192
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-EXPOSE 1935 80 443 8081
+EXPOSE 1935 80 8081
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
