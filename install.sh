@@ -67,7 +67,6 @@ CHAT_TIKTOK=""
 # Host Port Settings
 PORT_RTMP="1935"
 PORT_HTTP="8443"
-PORT_HTTPS="443"
 PORT_STATS="8081"
 
 # NOALBS Settings
@@ -152,7 +151,6 @@ CLOUD_BRB="$CLOUD_BRB"
 BRB_VIDEO_URL="$BRB_VIDEO_URL"
 PORT_RTMP="$PORT_RTMP"
 PORT_HTTP="$PORT_HTTP"
-PORT_HTTPS="$PORT_HTTPS"
 PORT_STATS="$PORT_STATS"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
@@ -1045,7 +1043,7 @@ build_and_run() {
     CONFLICTS=0
     declare -a PORTS_TO_CHECK=("$PORT_RTMP")
     if [ ! -z "$SERVER_DOMAIN" ]; then
-        PORTS_TO_CHECK+=("$PORT_HTTP" "$PORT_HTTPS")
+        PORTS_TO_CHECK+=("$PORT_HTTP")
     fi
 
     for port in "${PORTS_TO_CHECK[@]}"; do
@@ -1131,7 +1129,7 @@ build_and_run() {
     # Port mapping logic: Map HTTP/HTTPS only if domain is set
     PORT_MAPS="-p ${PORT_RTMP}:1935"
     if [ ! -z "$SERVER_DOMAIN" ]; then
-        PORT_MAPS="$PORT_MAPS -p ${PORT_HTTP}:80 -p ${PORT_HTTPS}:443"
+        PORT_MAPS="$PORT_MAPS -p ${PORT_HTTP}:80"
     fi
 
     # Start the container
