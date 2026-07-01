@@ -146,13 +146,26 @@ class Noalbs:
             else:
                 consecutive_low = 0
                 if self.is_streaming:
-                    logger.warning("Source stream disconnected. Switching to BRB scene.")
-                    self.switch_scene(self.scene_brb)
-                    self.is_streaming = False
-                    self.is_low = True
+                    client = self.get_obs_client()
+                    is_obs_streaming = False
+                    if client:
+                        try:
+                            status = client.get_stream_status()
+                            is_obs_streaming = status.output_active
+                        except Exception as e:
+                            logger.error(f"Failed to get OBS stream status: {e}")
 
-                if self.cloud_brb_enabled:
-                    self.start_cloud_brb()
+                    if is_obs_streaming:
+                        logger.warning("Source stream disconnected but OBS is still streaming. Switching to BRB scene.")
+                        self.switch_scene(self.scene_brb)
+                        self.is_low = True
+                        if self.cloud_brb_enabled:
+                            self.start_cloud_brb()
+                    else:
+                        logger.info("Source stream ended cleanly.")
+                        self.is_low = False
+
+                    self.is_streaming = False
 
             time.sleep(2)
 
