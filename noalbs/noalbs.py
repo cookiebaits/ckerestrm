@@ -61,6 +61,9 @@ class Noalbs:
                         live = app.find('live')
                         if live is not None:
                             for stream in live.findall('stream'):
+                                name = stream.find('name')
+                                if name is not None and name.text == 'cloud_brb_loop':
+                                    continue
                                 if stream.find('publishing') is not None:
                                     bw_in = stream.find('bw_in')
                                     if bw_in is not None:
@@ -130,6 +133,11 @@ class Noalbs:
                 if not self.is_streaming:
                     logger.info(f"Stream detected at {bitrate}kbps.")
                     self.is_streaming = True
+                    # If it was an intentional stop previously, we still need to switch to main
+                    # if the bitrate is good. So we mark it as low if we are not on main.
+                    # This ensures the restore logic triggers if we start streaming again.
+                    if not self.is_low:
+                        self.is_low = True
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
@@ -139,20 +147,42 @@ class Noalbs:
                         self.is_low = True
                 else:
                     consecutive_low = 0
-                    if bitrate >= self.restore_threshold and self.is_low:
-                        logger.info(f"Bitrate restored ({bitrate}kbps). Switching to {self.scene_main}")
-                        self.switch_scene(self.scene_main)
-                        self.is_low = False
+                    # When restoring, also restore if we just started streaming (in case we were on BRB from a previous session)
+                    if bitrate >= self.restore_threshold:
+                        if self.is_low or not hasattr(self, '_initial_scene_set'):
+                            logger.info(f"Bitrate restored/good ({bitrate}kbps). Switching to {self.scene_main}")
+                            self.switch_scene(self.scene_main)
+                            self.is_low = False
+                            self._initial_scene_set = True
             else:
                 consecutive_low = 0
                 if self.is_streaming:
-                    logger.warning("Source stream disconnected. Switching to BRB scene.")
-                    self.switch_scene(self.scene_brb)
-                    self.is_streaming = False
-                    self.is_low = True
+                    client = self.get_obs_client()
+                    # Default to True if we can't connect, assuming a severe network drop
+                    is_obs_streaming = True
+                    if client:
+                        try:
+                            status = client.get_stream_status()
+                            is_obs_streaming = getattr(status, 'output_active', True)
+                        except Exception as e:
+                            logger.error(f"Failed to get OBS stream status: {e}")
+                            # If connection fails, assume it's a disconnect (network drop)
+                            is_obs_streaming = True
+                    else:
+                        logger.warning("Could not connect to OBS. Assuming network drop.")
+                        is_obs_streaming = True
 
-                if self.cloud_brb_enabled:
-                    self.start_cloud_brb()
+                    if is_obs_streaming:
+                        logger.warning("Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
+                        self.switch_scene(self.scene_brb)
+                        self.is_low = True
+                        if self.cloud_brb_enabled:
+                            self.start_cloud_brb()
+                    else:
+                        logger.info("Source stream ended cleanly.")
+                        self.is_low = False
+
+                    self.is_streaming = False
 
             time.sleep(2)
 
