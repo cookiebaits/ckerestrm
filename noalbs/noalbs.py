@@ -147,16 +147,22 @@ class Noalbs:
                 consecutive_low = 0
                 if self.is_streaming:
                     client = self.get_obs_client()
-                    is_obs_streaming = False
+                    # Default to True if we can't connect, assuming a severe network drop
+                    is_obs_streaming = True
                     if client:
                         try:
                             status = client.get_stream_status()
-                            is_obs_streaming = status.output_active
+                            is_obs_streaming = getattr(status, 'output_active', True)
                         except Exception as e:
                             logger.error(f"Failed to get OBS stream status: {e}")
+                            # If connection fails, assume it's a disconnect (network drop)
+                            is_obs_streaming = True
+                    else:
+                        logger.warning("Could not connect to OBS. Assuming network drop.")
+                        is_obs_streaming = True
 
                     if is_obs_streaming:
-                        logger.warning("Source stream disconnected but OBS is still streaming. Switching to BRB scene.")
+                        logger.warning("Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                         if self.cloud_brb_enabled:
