@@ -31,6 +31,8 @@ class Noalbs:
         self.is_low = False
         self.is_streaming = False
         self.obs_client = None
+        self.cloud_brb_start_time = None
+        self.cloud_brb_timeout = False
 
     def get_obs_client(self):
         if self.obs_client:
@@ -93,6 +95,7 @@ class Noalbs:
         ]
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.cloud_brb_start_time = time.time()
         except Exception as e:
             logger.error(f"Failed to start Cloud BRB process: {e}")
 
@@ -105,6 +108,7 @@ class Noalbs:
             except subprocess.TimeoutExpired:
                 self.cloud_process.kill()
             self.cloud_process = None
+            self.cloud_brb_start_time = None
 
     def switch_scene(self, scene):
         client = self.get_obs_client()
@@ -127,12 +131,20 @@ class Noalbs:
         consecutive_low = 0
         while True:
             bitrate = self.get_bitrate()
+            
+            # Check for Cloud BRB timeout (5 minutes)
+            if self.cloud_process and self.cloud_brb_start_time:
+                if time.time() - self.cloud_brb_start_time > 300:
+                    logger.info("Cloud BRB has been running for 5 minutes. Stopping it to fully drop the stream.")
+                    self.stop_cloud_brb()
+                    self.cloud_brb_timeout = True
 
             if bitrate > 0:
                 self.stop_cloud_brb()
                 if not self.is_streaming:
                     logger.info(f"Stream detected at {bitrate}kbps.")
                     self.is_streaming = True
+                    self.cloud_brb_timeout = False # Reset timeout flag when user connects
                     # If it was an intentional stop previously, we still need to switch to main
                     # if the bitrate is good. So we mark it as low if we are not on main.
                     # This ensures the restore logic triggers if we start streaming again.
@@ -148,7 +160,7 @@ class Noalbs:
                 else:
                     consecutive_low = 0
                     # When restoring, also restore if we just started streaming (in case we were on BRB from a previous session)
-                    if bitrate >= self.restore_threshold:
+                    if bitrate >= self.low_threshold: # Restore at low_threshold per user request "over 1000kbps"
                         if self.is_low or not hasattr(self, '_initial_scene_set'):
                             logger.info(f"Bitrate restored/good ({bitrate}kbps). Switching to {self.scene_main}")
                             self.switch_scene(self.scene_main)
@@ -171,17 +183,17 @@ class Noalbs:
                     else:
                         logger.warning("Could not connect to OBS. Assuming network drop.")
                         is_obs_streaming = True
-
+                    
                     if is_obs_streaming:
                         logger.warning("Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
-                        if self.cloud_brb_enabled:
+                        if self.cloud_brb_enabled and not self.cloud_brb_timeout:
                             self.start_cloud_brb()
                     else:
                         logger.info("Source stream ended cleanly.")
                         self.is_low = False
-
+                    
                     self.is_streaming = False
 
             time.sleep(2)
