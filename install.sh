@@ -88,6 +88,42 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
 
+
+check_dependencies() {
+    local missing_deps=0
+
+    echo -e "${YELLOW}Checking host dependencies...${NC}"
+
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}Error: 'docker' is not installed or not in PATH.${NC}"
+        missing_deps=1
+    else
+        echo -e "${GREEN}  - docker: OK${NC}"
+    fi
+
+    if ! command -v curl &> /dev/null; then
+        echo -e "${RED}Error: 'curl' is not installed or not in PATH.${NC}"
+        missing_deps=1
+    else
+        echo -e "${GREEN}  - curl: OK${NC}"
+    fi
+
+    if ! command -v ss &> /dev/null && ! command -v netstat &> /dev/null; then
+        echo -e "${RED}Error: Neither 'ss' nor 'netstat' is installed. Required for port checking.${NC}"
+        missing_deps=1
+    else
+        echo -e "${GREEN}  - ss/netstat: OK${NC}"
+    fi
+
+    if [ $missing_deps -ne 0 ]; then
+        echo -e "${RED}Missing required dependencies. Please install them and try again.${NC}"
+        sleep 3
+        return 1
+    fi
+
+    return 0
+}
+
 save_config() {
     cat <<ENV_EOF > "$CONFIG_FILE"
 YOUTUBE_URL="$YOUTUBE_URL"
@@ -1029,9 +1065,7 @@ check_port() {
 }
 
 build_and_run() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
-        sleep 2
+    if ! check_dependencies; then
         return
     fi
 
@@ -1200,6 +1234,25 @@ build_and_run() {
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
+
+        echo -e "${YELLOW}Waiting 5 seconds for services to start...${NC}"
+        sleep 5
+
+        echo -n "Verifying nginx inside container... "
+        if docker exec prism-rtmps pgrep -x "nginx" > /dev/null; then
+            echo -e "[${GREEN}PASSED${NC}]"
+        else
+            echo -e "[${RED}FAILED${NC}]"
+            echo -e "${RED}Error: Nginx failed to start inside the container. Check logs for details.${NC}"
+        fi
+
+        echo -n "Verifying stunnel inside container... "
+        if docker exec prism-rtmps pgrep -x "stunnel4" > /dev/null; then
+            echo -e "[${GREEN}PASSED${NC}]"
+        else
+            echo -e "[${RED}FAILED${NC}]"
+            echo -e "${RED}Error: Stunnel failed to start inside the container. Check logs for details.${NC}"
+        fi
 
         # Run Integration Tests
         if [ -f "./integration_test.sh" ]; then
