@@ -89,37 +89,64 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 
-check_dependencies() {
-    local missing_deps=0
 
+check_dependencies() {
     echo -e "${YELLOW}Checking host dependencies...${NC}"
 
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Error: 'docker' is not installed or not in PATH.${NC}"
-        missing_deps=1
-    else
-        echo -e "${GREEN}  - docker: OK${NC}"
+    local package_manager=""
+    if command -v apt-get &> /dev/null; then
+        package_manager="apt-get install -y"
+    elif command -v yum &> /dev/null; then
+        package_manager="yum install -y"
+    elif command -v dnf &> /dev/null; then
+        package_manager="dnf install -y"
+    elif command -v pacman &> /dev/null; then
+        package_manager="pacman -S --noconfirm"
+    elif command -v zypper &> /dev/null; then
+        package_manager="zypper install -y"
     fi
 
+    # Install curl if missing
     if ! command -v curl &> /dev/null; then
-        echo -e "${RED}Error: 'curl' is not installed or not in PATH.${NC}"
-        missing_deps=1
+        echo -e "${YELLOW}'curl' is missing. Attempting to install...${NC}"
+        if [ -n "$package_manager" ]; then
+            sudo $package_manager curl || { echo -e "${RED}Failed to install curl. Please install it manually.${NC}"; return 1; }
+        else
+            echo -e "${RED}Unsupported package manager. Please install 'curl' manually.${NC}"
+            return 1
+        fi
     else
         echo -e "${GREEN}  - curl: OK${NC}"
     fi
 
+    # Install iproute2 (for ss) or net-tools (for netstat) if missing
     if ! command -v ss &> /dev/null && ! command -v netstat &> /dev/null; then
-        echo -e "${RED}Error: Neither 'ss' nor 'netstat' is installed. Required for port checking.${NC}"
-        missing_deps=1
+        echo -e "${YELLOW}Port checking tools ('ss' or 'netstat') missing. Attempting to install iproute2...${NC}"
+        if [ -n "$package_manager" ]; then
+            sudo $package_manager iproute2 || sudo $package_manager net-tools || { echo -e "${RED}Failed to install port checking tools. Please install manually.${NC}"; return 1; }
+        else
+            echo -e "${RED}Unsupported package manager. Please install 'iproute2' or 'net-tools' manually.${NC}"
+            return 1
+        fi
     else
         echo -e "${GREEN}  - ss/netstat: OK${NC}"
     fi
 
-    if [ $missing_deps -ne 0 ]; then
-        echo -e "${RED}Missing required dependencies. Please install them and try again.${NC}"
-        sleep 3
-        return 1
+    # Install Docker if missing
+    if ! command -v docker &> /dev/null; then
+        echo -e "${YELLOW}'docker' is missing. Initiating Docker installation...${NC}"
+        install_docker
+        if ! command -v docker &> /dev/null; then
+            echo -e "${RED}Docker installation failed. Please install manually.${NC}"
+            return 1
+        fi
+    else
+        echo -e "${GREEN}  - docker: OK${NC}"
     fi
+
+    # Ensure Docker service is restarted to make sure it works
+    echo -e "${YELLOW}Restarting Docker service to ensure it is running properly...${NC}"
+    sudo systemctl restart docker || echo -e "${YELLOW}Warning: Could not restart docker via systemctl. It may already be running or managed differently.${NC}"
 
     return 0
 }
