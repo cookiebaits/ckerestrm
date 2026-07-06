@@ -88,6 +88,69 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
 
+
+
+check_dependencies() {
+    echo -e "${YELLOW}Checking host dependencies...${NC}"
+
+    local package_manager=""
+    if command -v apt-get &> /dev/null; then
+        package_manager="apt-get install -y"
+    elif command -v yum &> /dev/null; then
+        package_manager="yum install -y"
+    elif command -v dnf &> /dev/null; then
+        package_manager="dnf install -y"
+    elif command -v pacman &> /dev/null; then
+        package_manager="pacman -S --noconfirm"
+    elif command -v zypper &> /dev/null; then
+        package_manager="zypper install -y"
+    fi
+
+    # Install curl if missing
+    if ! command -v curl &> /dev/null; then
+        echo -e "${YELLOW}'curl' is missing. Attempting to install...${NC}"
+        if [ -n "$package_manager" ]; then
+            sudo $package_manager curl || { echo -e "${RED}Failed to install curl. Please install it manually.${NC}"; return 1; }
+        else
+            echo -e "${RED}Unsupported package manager. Please install 'curl' manually.${NC}"
+            return 1
+        fi
+    else
+        echo -e "${GREEN}  - curl: OK${NC}"
+    fi
+
+    # Install iproute2 (for ss) or net-tools (for netstat) if missing
+    if ! command -v ss &> /dev/null && ! command -v netstat &> /dev/null; then
+        echo -e "${YELLOW}Port checking tools ('ss' or 'netstat') missing. Attempting to install iproute2...${NC}"
+        if [ -n "$package_manager" ]; then
+            sudo $package_manager iproute2 || sudo $package_manager net-tools || { echo -e "${RED}Failed to install port checking tools. Please install manually.${NC}"; return 1; }
+        else
+            echo -e "${RED}Unsupported package manager. Please install 'iproute2' or 'net-tools' manually.${NC}"
+            return 1
+        fi
+    else
+        echo -e "${GREEN}  - ss/netstat: OK${NC}"
+    fi
+
+    # Install Docker if missing
+    if ! command -v docker &> /dev/null; then
+        echo -e "${YELLOW}'docker' is missing. Initiating Docker installation...${NC}"
+        install_docker
+        if ! command -v docker &> /dev/null; then
+            echo -e "${RED}Docker installation failed. Please install manually.${NC}"
+            return 1
+        fi
+    else
+        echo -e "${GREEN}  - docker: OK${NC}"
+    fi
+
+    # Ensure Docker service is restarted to make sure it works
+    echo -e "${YELLOW}Restarting Docker service to ensure it is running properly...${NC}"
+    sudo systemctl restart docker || echo -e "${YELLOW}Warning: Could not restart docker via systemctl. It may already be running or managed differently.${NC}"
+
+    return 0
+}
+
 save_config() {
     cat <<ENV_EOF > "$CONFIG_FILE"
 YOUTUBE_URL="$YOUTUBE_URL"
@@ -1029,9 +1092,7 @@ check_port() {
 }
 
 build_and_run() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
-        sleep 2
+    if ! check_dependencies; then
         return
     fi
 
@@ -1200,6 +1261,25 @@ build_and_run() {
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
+
+        echo -e "${YELLOW}Waiting 5 seconds for services to start...${NC}"
+        sleep 5
+
+        echo -n "Verifying nginx inside container... "
+        if docker exec prism-rtmps pgrep -x "nginx" > /dev/null; then
+            echo -e "[${GREEN}PASSED${NC}]"
+        else
+            echo -e "[${RED}FAILED${NC}]"
+            echo -e "${RED}Error: Nginx failed to start inside the container. Check logs for details.${NC}"
+        fi
+
+        echo -n "Verifying stunnel inside container... "
+        if docker exec prism-rtmps pgrep -x "stunnel4" > /dev/null; then
+            echo -e "[${GREEN}PASSED${NC}]"
+        else
+            echo -e "[${RED}FAILED${NC}]"
+            echo -e "${RED}Error: Stunnel failed to start inside the container. Check logs for details.${NC}"
+        fi
 
         # Run Integration Tests
         if [ -f "./integration_test.sh" ]; then
