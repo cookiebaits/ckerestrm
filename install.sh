@@ -144,10 +144,6 @@ check_dependencies() {
         echo -e "${GREEN}  - docker: OK${NC}"
     fi
 
-    # Ensure Docker service is restarted to make sure it works
-    echo -e "${YELLOW}Restarting Docker service to ensure it is running properly...${NC}"
-    sudo systemctl restart docker || echo -e "${YELLOW}Warning: Could not restart docker via systemctl. It may already be running or managed differently.${NC}"
-
     return 0
 }
 
@@ -1261,6 +1257,11 @@ build_and_run() {
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
+
+
+    # Restart the container service to ensure it is running properly before tests
+    echo -e "${YELLOW}Restarting the prism-rtmps service to ensure it is running properly...${NC}"
+    docker restart prism-rtmps
 
         echo -e "${YELLOW}Waiting 5 seconds for services to start...${NC}"
         sleep 5
