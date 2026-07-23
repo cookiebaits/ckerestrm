@@ -59,7 +59,7 @@ class Noalbs:
                 app_name_node = app.find('name')
                 if app_name_node is not None:
                     app_name_text = app_name_node.text
-                    if app_name_text == self.app_name or app_name_text == "vertical":
+                    if app_name_text in (self.app_name, "vertical", "youtube"):
                         live = app.find('live')
                         if live is not None:
                             for stream in live.findall('stream'):
@@ -132,10 +132,10 @@ class Noalbs:
         while True:
             bitrate = self.get_bitrate()
             
-            # Check for Cloud BRB timeout (5 minutes)
+            # Check for Cloud BRB timeout (90 seconds)
             if self.cloud_process and self.cloud_brb_start_time:
-                if time.time() - self.cloud_brb_start_time > 300:
-                    logger.info("Cloud BRB has been running for 5 minutes. Stopping it to fully drop the stream.")
+                if time.time() - self.cloud_brb_start_time > 90:
+                    logger.info("Cloud BRB has been running for 90 seconds. Stopping it to fully drop the stream.")
                     self.stop_cloud_brb()
                     self.cloud_brb_timeout = True
 
@@ -153,8 +153,8 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
-                    if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                    if consecutive_low >= 2 and not self.is_low:
+                        logger.warning(f"Low bitrate ({bitrate}kbps) for 2s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
@@ -196,7 +196,7 @@ class Noalbs:
                     
                     self.is_streaming = False
 
-            time.sleep(2)
+            time.sleep(1)
 
 if __name__ == "__main__":
     Noalbs().run()
