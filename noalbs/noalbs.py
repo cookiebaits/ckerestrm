@@ -59,7 +59,7 @@ class Noalbs:
                 app_name_node = app.find('name')
                 if app_name_node is not None:
                     app_name_text = app_name_node.text
-                    if app_name_text == self.app_name or app_name_text == "vertical":
+                    if app_name_text in [self.app_name, "vertical", "youtube"]:
                         live = app.find('live')
                         if live is not None:
                             for stream in live.findall('stream'):
@@ -91,7 +91,7 @@ class Noalbs:
             "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
             "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
             "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
-            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
+            "-f", "tee", f"[f=flv]rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop|[f=flv]rtmp://127.0.0.1:1935/vertical/cloud_brb_loop|[f=flv]rtmp://127.0.0.1:1935/youtube/cloud_brb_loop"
         ]
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -134,8 +134,8 @@ class Noalbs:
             
             # Check for Cloud BRB timeout (5 minutes)
             if self.cloud_process and self.cloud_brb_start_time:
-                if time.time() - self.cloud_brb_start_time > 300:
-                    logger.info("Cloud BRB has been running for 5 minutes. Stopping it to fully drop the stream.")
+                if time.time() - self.cloud_brb_start_time > 270:
+                    logger.info("Cloud BRB has been running for 270 seconds. Stopping it to fully drop the stream.")
                     self.stop_cloud_brb()
                     self.cloud_brb_timeout = True
 
@@ -153,7 +153,7 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
-                    if consecutive_low >= 3 and not self.is_low:
+                    if consecutive_low >= 12 and not self.is_low:
                         logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
@@ -196,7 +196,7 @@ class Noalbs:
                     
                     self.is_streaming = False
 
-            time.sleep(2)
+            time.sleep(0.5)
 
 if __name__ == "__main__":
     Noalbs().run()
