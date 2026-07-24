@@ -105,11 +105,7 @@ class Noalbs:
     def stop_cloud_brb(self):
         if self.cloud_process:
             logger.info("Stopping Cloud BRB stream.")
-            self.cloud_process.terminate()
-            try:
-                self.cloud_process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self.cloud_process.kill()
+            self.cloud_process.kill()
             self.cloud_process = None
             self.cloud_brb_start_time = None
 
