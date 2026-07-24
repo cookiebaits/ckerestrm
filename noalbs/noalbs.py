@@ -88,10 +88,8 @@ class Noalbs:
         # FFmpeg command to loop the video and push to the local ingest
         # This keeps the stream alive at the ingest points if the source drops
         cmd = [
-            "ffmpeg", "-nostdin", "-re", "-stream_loop", "-1",
+            "ffmpeg", "-nostdin", "-re", "-stream_loop", "-1", "-fflags", "+genpts",
             "-thread_queue_size", "512", "-i", self.brb_video_path,
-            "-f", "lavfi", "-thread_queue_size", "512", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-            "-map", "0:v:0", "-map", "1:a:0",
             "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
             "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
             "-r", "30", "-g", "60", "-keyint_min", "60", "-pix_fmt", "yuv420p",
