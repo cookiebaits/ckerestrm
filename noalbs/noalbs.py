@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import obsws_python as obs
 import subprocess
 import signal
+import threading
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("NOALBS")
@@ -59,7 +60,7 @@ class Noalbs:
                 app_name_node = app.find('name')
                 if app_name_node is not None:
                     app_name_text = app_name_node.text
-                    if app_name_text == self.app_name or app_name_text == "vertical":
+                    if app_name_text in [self.app_name, "vertical", "youtube"]:
                         live = app.find('live')
                         if live is not None:
                             for stream in live.findall('stream'):
@@ -88,10 +89,13 @@ class Noalbs:
         # FFmpeg command to loop the video and push to the local ingest
         # This keeps the stream alive at the ingest points if the source drops
         cmd = [
-            "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
+            "ffmpeg", "-nostdin", "-re", "-stream_loop", "-1", "-fflags", "+genpts",
+            "-thread_queue_size", "512", "-i", self.brb_video_path,
             "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
             "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
-            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
+            "-r", "30", "-g", "60", "-keyint_min", "60", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
+            "-f", "tee", f"[f=flv]rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop|[f=flv]rtmp://127.0.0.1:1935/vertical/cloud_brb_loop|[f=flv]rtmp://127.0.0.1:1935/youtube/cloud_brb_loop"
         ]
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -101,12 +105,14 @@ class Noalbs:
 
     def stop_cloud_brb(self):
         if self.cloud_process:
-            logger.info("Stopping Cloud BRB stream.")
-            self.cloud_process.terminate()
-            try:
-                self.cloud_process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self.cloud_process.kill()
+            logger.info("Scheduling Cloud BRB stream stop in 3 seconds to overlap transition.")
+
+            def delayed_kill(proc):
+                time.sleep(3)
+                proc.kill()
+
+            threading.Thread(target=delayed_kill, args=(self.cloud_process,), daemon=True).start()
+
             self.cloud_process = None
             self.cloud_brb_start_time = None
 
@@ -134,8 +140,8 @@ class Noalbs:
             
             # Check for Cloud BRB timeout (5 minutes)
             if self.cloud_process and self.cloud_brb_start_time:
-                if time.time() - self.cloud_brb_start_time > 300:
-                    logger.info("Cloud BRB has been running for 5 minutes. Stopping it to fully drop the stream.")
+                if time.time() - self.cloud_brb_start_time > 270:
+                    logger.info("Cloud BRB has been running for 270 seconds. Stopping it to fully drop the stream.")
                     self.stop_cloud_brb()
                     self.cloud_brb_timeout = True
 
@@ -153,7 +159,7 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
-                    if consecutive_low >= 3 and not self.is_low:
+                    if consecutive_low >= 12 and not self.is_low:
                         logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
@@ -196,7 +202,7 @@ class Noalbs:
                     
                     self.is_streaming = False
 
-            time.sleep(2)
+            time.sleep(0.5)
 
 if __name__ == "__main__":
     Noalbs().run()
