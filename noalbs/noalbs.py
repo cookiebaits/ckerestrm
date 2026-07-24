@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import obsws_python as obs
 import subprocess
 import signal
+import threading
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("NOALBS")
@@ -104,8 +105,14 @@ class Noalbs:
 
     def stop_cloud_brb(self):
         if self.cloud_process:
-            logger.info("Stopping Cloud BRB stream.")
-            self.cloud_process.kill()
+            logger.info("Scheduling Cloud BRB stream stop in 3 seconds to overlap transition.")
+
+            def delayed_kill(proc):
+                time.sleep(3)
+                proc.kill()
+
+            threading.Thread(target=delayed_kill, args=(self.cloud_process,), daemon=True).start()
+
             self.cloud_process = None
             self.cloud_brb_start_time = None
 
