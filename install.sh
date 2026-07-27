@@ -70,7 +70,7 @@ PORT_HTTP="8443"
 PORT_STATS="8081"
 
 # NOALBS Settings
-NOALBS_ENABLED="true"
+NOALBS_ENABLED="false"
 OBS_WS_HOST="127.0.0.1"
 OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
@@ -78,8 +78,8 @@ OBS_SCENE_LIVE="Main"
 OBS_SCENE_BRB="BRB"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
-CLOUD_BRB="true"
-BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/2026brb.mp4"
+CLOUD_BRB="false"
+BRB_VIDEO_URL=""
 
 CONFIG_FILE="rtmp_config.env"
 
@@ -1035,7 +1035,6 @@ configure_noalbs() {
                     save_config
                     mkdir -p ./data
                     echo -e "${YELLOW}Downloading BRB video...${NC}"
-                    rm -f ./data/brb_video.mp4
                     curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded.${NC}" || echo -e "${RED}Download failed.${NC}"
                     sleep 2
                 fi
@@ -1173,12 +1172,6 @@ build_and_run() {
         echo -e "Press Enter to return to menu..."
         read -r
         return
-    fi
-
-    if [ "$CLOUD_BRB" == "true" ] && [ ! -f "./data/brb_video.mp4" ] && [ ! -z "$BRB_VIDEO_URL" ]; then
-        echo -e "${YELLOW}Downloading default BRB video...${NC}"
-        mkdir -p ./data
-        curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4
     fi
 
     echo -e "${GREEN}Building Docker Image...${NC}"

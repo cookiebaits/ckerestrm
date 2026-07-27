@@ -20,7 +20,6 @@ echo "Starting stream key validation server..."
 export PYTHONPATH=$PYTHONPATH:/app
 gunicorn \
     --workers 1 \
-    --threads 2 \
     --bind 127.0.0.1:8080 \
     --log-level info \
     --access-logfile "$VALIDATOR_LOG" \
