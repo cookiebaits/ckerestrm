@@ -111,6 +111,10 @@ class Noalbs:
             def delayed_kill(proc):
                 time.sleep(3)
                 proc.kill()
+                try:
+                    proc.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    pass
 
             threading.Thread(target=delayed_kill, args=(self.cloud_process,), daemon=True).start()
 
@@ -160,7 +164,7 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
-                    if consecutive_low >= 12 and not self.is_low:
+                    if consecutive_low >= 3 and not self.is_low:
                         logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
@@ -183,7 +187,7 @@ class Noalbs:
                         self.start_cloud_brb()
                     self.is_streaming = False
 
-            time.sleep(0.5)
+            time.sleep(2.0)
 
 if __name__ == "__main__":
     Noalbs().run()
