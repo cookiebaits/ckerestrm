@@ -92,10 +92,10 @@ class Noalbs:
         cmd = [
             "ffmpeg", "-nostdin", "-re", "-stream_loop", "-1", "-fflags", "+genpts",
             "-thread_queue_size", "512", "-i", self.brb_video_path,
-            "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
-            "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
-            "-r", "30", "-g", "60", "-keyint_min", "60", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
+            "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+            "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
+            "-r", "30", "-g", "60", "-keyint_min", "60", "-sc_threshold", "0", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "48000",
             "-f", "tee", f"[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/vertical/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/youtube/cloud_brb_loop"
         ]
         try:
@@ -145,8 +145,8 @@ class Noalbs:
             
             # Check for Cloud BRB timeout (5 minutes)
             if self.cloud_process and self.cloud_brb_start_time:
-                if time.time() - self.cloud_brb_start_time > 270:
-                    logger.info("Cloud BRB has been running for 270 seconds. Stopping it to fully drop the stream.")
+                if time.time() - self.cloud_brb_start_time > 300:
+                    logger.info("Cloud BRB has been running for 300 seconds. Stopping it to fully drop the stream.")
                     self.stop_cloud_brb()
                     self.cloud_brb_timeout = True
 
@@ -165,7 +165,7 @@ class Noalbs:
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
                     if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                        logger.warning(f"Low bitrate ({bitrate}kbps) for 3s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
@@ -187,7 +187,7 @@ class Noalbs:
                         self.start_cloud_brb()
                     self.is_streaming = False
 
-            time.sleep(2.0)
+            time.sleep(1.0)
 
 if __name__ == "__main__":
     Noalbs().run()
