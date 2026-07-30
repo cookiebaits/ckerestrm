@@ -91,11 +91,12 @@ class Noalbs:
         # This keeps the stream alive at the ingest points if the source drops
         cmd = [
             "ffmpeg", "-nostdin", "-re", "-stream_loop", "-1", "-fflags", "+genpts",
-            "-thread_queue_size", "512", "-i", self.brb_video_path,
+            "-thread_queue_size", "1024", "-i", self.brb_video_path,
             "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
             "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
             "-r", "30", "-g", "60", "-keyint_min", "60", "-sc_threshold", "0", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "48000",
+            "-max_muxing_queue_size", "1024",
             "-f", "tee", f"[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/vertical/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/youtube/cloud_brb_loop"
         ]
         try:
