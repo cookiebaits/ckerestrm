@@ -776,7 +776,7 @@ configure_noalbs() {
                     sleep 2
                 fi
                 ;;
-            5) break ;;
+            11) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
