@@ -73,7 +73,7 @@ class Noalbs:
 
     def get_bitrate(self):
         try:
-            r = self.session.get(self.stats_url, timeout=1)
+            r = self.session.get(self.stats_url, timeout=3)
             if r.status_code != 200:
                 return 0
 
@@ -212,7 +212,7 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
-                    if consecutive_low >= 3 and not self.is_low:
+                    if consecutive_low >= 2 and not self.is_low:
                         logger.warning(f"Low bitrate ({bitrate}kbps) for 3s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
@@ -235,7 +235,7 @@ class Noalbs:
                         self.start_cloud_brb()
                     self.is_streaming = False
 
-            time.sleep(1.0)
+            time.sleep(1.5)
 
 if __name__ == "__main__":
     Noalbs().run()

@@ -120,7 +120,6 @@ rtmp {
         listen 19352;
         chunk_size ${CHUNK_SIZE};
         max_message 10M;
-        buflen 2s;
 
         # Stability and Security Enhancements
         ping 30s;
