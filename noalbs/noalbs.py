@@ -26,7 +26,7 @@ class Noalbs:
         self.stats_url = "http://127.0.0.1:8081/stat"
 
         self.cloud_brb_enabled = os.getenv("CLOUD_BRB", "false").lower() == "true"
-        self.brb_video_path = "/app/data/brb_video.mp4"
+        self.brb_video_path = "/app/data/brb.mp4"
         self.cloud_process = None
 
         self.is_low = False

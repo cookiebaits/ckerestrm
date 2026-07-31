@@ -771,8 +771,8 @@ configure_noalbs() {
                     save_config
                     mkdir -p ./data
                     echo -e "${YELLOW}Downloading BRB video...${NC}"
-                    rm -f ./data/brb_video.mp4
-                    curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded.${NC}" || echo -e "${RED}Download failed.${NC}"
+                    rm -f ./data/brb.mp4
+                    curl -L "$BRB_VIDEO_URL" -o ./data/brb.mp4 && echo -e "${GREEN}Downloaded.${NC}" || echo -e "${RED}Download failed.${NC}"
                     sleep 2
                 fi
                 ;;
@@ -903,10 +903,10 @@ build_and_run() {
         return
     fi
 
-    if [ "$CLOUD_BRB" == "true" ] && [ ! -f "./data/brb_video.mp4" ] && [ ! -z "$BRB_VIDEO_URL" ]; then
+    if [ "$CLOUD_BRB" == "true" ] && [ ! -f "./data/brb.mp4" ] && [ ! -z "$BRB_VIDEO_URL" ]; then
         echo -e "${YELLOW}Downloading default BRB video...${NC}"
         mkdir -p ./data
-        curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4
+        curl -L "$BRB_VIDEO_URL" -o ./data/brb.mp4
     fi
 
     echo -e "${GREEN}Building Docker Image...${NC}"
