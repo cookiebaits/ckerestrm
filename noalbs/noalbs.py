@@ -48,13 +48,28 @@ class Noalbs:
             self.obs_client = None
             return None
 
-    def check_nvenc_support(self):
+    def get_hardware_encoder(self):
         try:
-            result = subprocess.run(["ffmpeg", "-encoders"], capture_output=True, text=True)
-            return "h264_nvenc" in result.stdout
+            # Test NVENC
+            nvenc_test = subprocess.run(
+                ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "nullsrc=s=128x128:d=1", "-c:v", "h264_nvenc", "-f", "null", "-"],
+                capture_output=True
+            )
+            if nvenc_test.returncode == 0:
+                return "nvenc"
+
+            # Test AMF
+            amf_test = subprocess.run(
+                ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "nullsrc=s=128x128:d=1", "-c:v", "h264_amf", "-f", "null", "-"],
+                capture_output=True
+            )
+            if amf_test.returncode == 0:
+                return "amf"
+
+            return None
         except Exception as e:
-            logger.error(f"Error checking NVENC support: {e}")
-            return False
+            logger.error(f"Error checking hardware encoder support: {e}")
+            return None
 
     def get_bitrate(self):
         try:
@@ -102,14 +117,22 @@ class Noalbs:
             "-thread_queue_size", "1024", "-i", self.brb_video_path
         ]
 
-        if self.check_nvenc_support():
-            logger.info("NVENC supported, using hardware acceleration for Cloud BRB.")
+        hw_encoder = self.get_hardware_encoder()
+
+        if hw_encoder == "nvenc":
+            logger.info("NVENC supported, using NVIDIA hardware acceleration for Cloud BRB.")
             cmd_video = [
-                "-c:v", "h264_nvenc", "-preset", "p3", "-tune", "ll",
+                "-c:v", "h264_nvenc", "-preset", "p3", "-tune", "ll", "-rc", "cbr",
+                "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"
+            ]
+        elif hw_encoder == "amf":
+            logger.info("AMF supported, using AMD hardware acceleration for Cloud BRB.")
+            cmd_video = [
+                "-c:v", "h264_amf", "-quality", "speed", "-rc", "cbr",
                 "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"
             ]
         else:
-            logger.info("NVENC not supported, falling back to libx264 for Cloud BRB.")
+            logger.info("Hardware acceleration not supported, falling back to libx264 for Cloud BRB.")
             cmd_video = [
                 "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
                 "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"
