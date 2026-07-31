@@ -59,7 +59,7 @@ OBS_SCENE_BRB="BRB"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
 CLOUD_BRB="true"
-BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/2026brb.mp4"
+BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
 
 CONFIG_FILE="rtmp_config.env"
 
