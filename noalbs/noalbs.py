@@ -48,6 +48,14 @@ class Noalbs:
             self.obs_client = None
             return None
 
+    def check_nvenc_support(self):
+        try:
+            result = subprocess.run(["ffmpeg", "-encoders"], capture_output=True, text=True)
+            return "h264_nvenc" in result.stdout
+        except Exception as e:
+            logger.error(f"Error checking NVENC support: {e}")
+            return False
+
     def get_bitrate(self):
         try:
             r = self.session.get(self.stats_url, timeout=1)
@@ -89,16 +97,32 @@ class Noalbs:
         logger.info("Starting Cloud BRB stream...")
         # FFmpeg command to loop the video and push to the local ingest
         # This keeps the stream alive at the ingest points if the source drops
-        cmd = [
+        cmd_base = [
             "ffmpeg", "-nostdin", "-re", "-stream_loop", "-1", "-fflags", "+genpts",
-            "-thread_queue_size", "1024", "-i", self.brb_video_path,
-            "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-            "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
+            "-thread_queue_size", "1024", "-i", self.brb_video_path
+        ]
+
+        if self.check_nvenc_support():
+            logger.info("NVENC supported, using hardware acceleration for Cloud BRB.")
+            cmd_video = [
+                "-c:v", "h264_nvenc", "-preset", "p3", "-tune", "ll",
+                "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"
+            ]
+        else:
+            logger.info("NVENC not supported, falling back to libx264 for Cloud BRB.")
+            cmd_video = [
+                "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+                "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"
+            ]
+
+        cmd_rest = [
             "-r", "30", "-g", "60", "-keyint_min", "60", "-sc_threshold", "0", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "48000",
             "-max_muxing_queue_size", "1024",
             "-f", "tee", f"[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/vertical/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/youtube/cloud_brb_loop"
         ]
+
+        cmd = cmd_base + cmd_video + cmd_rest
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.cloud_brb_start_time = time.time()
