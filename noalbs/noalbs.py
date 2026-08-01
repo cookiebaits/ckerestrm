@@ -153,8 +153,8 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
-                    if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                    if consecutive_low >= 2 and not self.is_low:
+                        logger.warning(f"Low bitrate ({bitrate}kbps) detected quickly. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
@@ -196,7 +196,7 @@ class Noalbs:
                     
                     self.is_streaming = False
 
-            time.sleep(2)
+            time.sleep(0.5)
 
 if __name__ == "__main__":
     Noalbs().run()
