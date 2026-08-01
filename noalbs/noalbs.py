@@ -91,6 +91,7 @@ class Noalbs:
             "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
             "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
             "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
+            "-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "160k",
             "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
         ]
         try:
