@@ -112,6 +112,12 @@ class Noalbs:
         logger.info("Starting Cloud BRB stream...")
         # FFmpeg command to loop the video and push to the local ingest
         # This keeps the stream alive at the ingest points if the source drops
+        cmd = [
+            "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
+            "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+            "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
+            "-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "160k",
+            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
         cmd_base = [
             "ffmpeg", "-nostdin", "-re", "-stream_loop", "-1", "-fflags", "+genpts",
             "-thread_queue_size", "1024", "-i", self.brb_video_path
@@ -212,6 +218,8 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
+                    if consecutive_low >= 2 and not self.is_low:
+                        logger.warning(f"Low bitrate ({bitrate}kbps) detected quickly. Switching to {self.scene_brb}")
                     if consecutive_low >= 3 and not self.is_low:
                         logger.warning(f"Low bitrate ({bitrate}kbps) for 3s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
@@ -235,6 +243,7 @@ class Noalbs:
                         self.start_cloud_brb()
                     self.is_streaming = False
 
+            time.sleep(0.5)
             time.sleep(1.0)
 
 if __name__ == "__main__":

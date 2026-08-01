@@ -68,6 +68,8 @@ if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
 
+
+
 check_dependencies() {
     echo -e "${YELLOW}Checking host dependencies...${NC}"
 
@@ -972,6 +974,7 @@ build_and_run() {
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
+
 
     # Restart the container service to ensure it is running properly before tests
     echo -e "${YELLOW}Restarting the prism-rtmps service to ensure it is running properly...${NC}"
