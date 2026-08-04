@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import obsws_python as obs
 import subprocess
 import signal
+import threading
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("NOALBS")
@@ -33,6 +34,7 @@ class Noalbs:
         self.obs_client = None
         self.cloud_brb_start_time = None
         self.cloud_brb_timeout = False
+        self.session = requests.Session()
 
     def get_obs_client(self):
         if self.obs_client:
@@ -46,9 +48,32 @@ class Noalbs:
             self.obs_client = None
             return None
 
+    def get_hardware_encoder(self):
+        try:
+            # Test NVENC
+            nvenc_test = subprocess.run(
+                ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "nullsrc=s=128x128:d=1", "-c:v", "h264_nvenc", "-f", "null", "-"],
+                capture_output=True
+            )
+            if nvenc_test.returncode == 0:
+                return "nvenc"
+
+            # Test AMF
+            amf_test = subprocess.run(
+                ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "nullsrc=s=128x128:d=1", "-c:v", "h264_amf", "-f", "null", "-"],
+                capture_output=True
+            )
+            if amf_test.returncode == 0:
+                return "amf"
+
+            return None
+        except Exception as e:
+            logger.error(f"Error checking hardware encoder support: {e}")
+            return None
+
     def get_bitrate(self):
         try:
-            r = requests.get(self.stats_url, timeout=5)
+            r = self.session.get(self.stats_url, timeout=1)
             if r.status_code != 200:
                 return 0
 
@@ -59,7 +84,7 @@ class Noalbs:
                 app_name_node = app.find('name')
                 if app_name_node is not None:
                     app_name_text = app_name_node.text
-                    if app_name_text == self.app_name or app_name_text == "vertical":
+                    if app_name_text in [self.app_name, "vertical", "youtube"]:
                         live = app.find('live')
                         if live is not None:
                             for stream in live.findall('stream'):
@@ -91,8 +116,42 @@ class Noalbs:
             "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
             "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
             "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
+            "-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "160k",
             "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
+        cmd_base = [
+            "ffmpeg", "-nostdin", "-re", "-stream_loop", "-1", "-fflags", "+genpts",
+            "-thread_queue_size", "1024", "-i", self.brb_video_path
         ]
+
+        hw_encoder = self.get_hardware_encoder()
+
+        if hw_encoder == "nvenc":
+            logger.info("NVENC supported, using NVIDIA hardware acceleration for Cloud BRB.")
+            cmd_video = [
+                "-c:v", "h264_nvenc", "-preset", "p3", "-tune", "ll", "-rc", "cbr",
+                "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"
+            ]
+        elif hw_encoder == "amf":
+            logger.info("AMF supported, using AMD hardware acceleration for Cloud BRB.")
+            cmd_video = [
+                "-c:v", "h264_amf", "-quality", "speed", "-rc", "cbr",
+                "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"
+            ]
+        else:
+            logger.info("Hardware acceleration not supported, falling back to libx264 for Cloud BRB.")
+            cmd_video = [
+                "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+                "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k"
+            ]
+
+        cmd_rest = [
+            "-r", "30", "-g", "60", "-keyint_min", "60", "-sc_threshold", "0", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "48000",
+            "-max_muxing_queue_size", "1024",
+            "-f", "tee", f"[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/vertical/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/youtube/cloud_brb_loop"
+        ]
+
+        cmd = cmd_base + cmd_video + cmd_rest
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.cloud_brb_start_time = time.time()
@@ -101,12 +160,18 @@ class Noalbs:
 
     def stop_cloud_brb(self):
         if self.cloud_process:
-            logger.info("Stopping Cloud BRB stream.")
-            self.cloud_process.terminate()
-            try:
-                self.cloud_process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self.cloud_process.kill()
+            logger.info("Scheduling Cloud BRB stream stop in 3 seconds to overlap transition.")
+
+            def delayed_kill(proc):
+                time.sleep(3)
+                proc.kill()
+                try:
+                    proc.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    pass
+
+            threading.Thread(target=delayed_kill, args=(self.cloud_process,), daemon=True).start()
+
             self.cloud_process = None
             self.cloud_brb_start_time = None
 
@@ -131,6 +196,13 @@ class Noalbs:
         consecutive_low = 0
         while True:
             bitrate = self.get_bitrate()
+            
+            # Check for Cloud BRB timeout (5 minutes)
+            if self.cloud_process and self.cloud_brb_start_time:
+                if time.time() - self.cloud_brb_start_time > 300:
+                    logger.info("Cloud BRB has been running for 300 seconds. Stopping it to fully drop the stream.")
+                    self.stop_cloud_brb()
+                    self.cloud_brb_timeout = True
 
             # Check for Cloud BRB timeout (5 minutes)
             if self.cloud_process and self.cloud_brb_start_time:
@@ -153,8 +225,10 @@ class Noalbs:
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
+                    if consecutive_low >= 2 and not self.is_low:
+                        logger.warning(f"Low bitrate ({bitrate}kbps) detected quickly. Switching to {self.scene_brb}")
                     if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                        logger.warning(f"Low bitrate ({bitrate}kbps) for 3s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
@@ -197,6 +271,15 @@ class Noalbs:
                     self.is_streaming = False
 
             time.sleep(2)
+                    logger.warning("Source stream completely disconnected. Switching to BRB scene and starting Cloud BRB.")
+                    self.switch_scene(self.scene_brb)
+                    self.is_low = True
+                    if self.cloud_brb_enabled and not self.cloud_brb_timeout:
+                        self.start_cloud_brb()
+                    self.is_streaming = False
+
+            time.sleep(0.5)
+            time.sleep(1.0)
 
 if __name__ == "__main__":
     Noalbs().run()

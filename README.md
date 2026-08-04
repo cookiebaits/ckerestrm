@@ -32,6 +32,8 @@ This fork also includes performance tuning (optimized `chunk_size`), updated cor
 *   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
 *   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
 *   **Nginx 1.30.1 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
+*   **Robust Pre-Deployment Checks:** The installation script now automatically verifies that all essential host dependencies (like Docker, curl, and networking tools) are present before building, and explicitly verifies that Nginx and Stunnel processes start successfully within the container to catch configuration errors early.
+*   **Resilient Nginx Configuration:** The proxy routing is designed to gracefully handle environments without domains configured, preventing crashes during initialization by intelligently defaulting internal domains.
 
 ## Prequisites
 
