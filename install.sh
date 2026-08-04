@@ -11,12 +11,20 @@ NC='\033[0m' # No Color
 # Default values
 YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/"
 YOUTUBE_KEY=""
+FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/"
+FACEBOOK_KEY=""
+INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/"
+INSTAGRAM_KEY=""
 TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/"
 TIKTOK_KEY=""
 TWITCH_URL="rtmp://127.0.0.1:19353/app/"
 TWITCH_KEY=""
 KICK_URL="rtmp://127.0.0.1:19356/kick/"
 KICK_KEY=""
+X_URL="rtmp://127.0.0.1:19354/x/"
+X_KEY=""
+TROVO_URL="rtmp://livepush.trovo.live/live/"
+TROVO_KEY=""
 RTMP1_URL=""
 RTMP1_KEY=""
 
@@ -25,7 +33,19 @@ V_YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/"
 V_YOUTUBE_KEY=""
 V_TWITCH_URL="rtmp://127.0.0.1:19353/app/"
 V_TWITCH_KEY=""
-V_V_V_V_V_V_V_V_V_RTMP1_URL=""
+V_KICK_URL="rtmp://127.0.0.1:19356/kick/"
+V_KICK_KEY=""
+V_TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/"
+V_TIKTOK_KEY=""
+V_FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/"
+V_FACEBOOK_KEY=""
+V_INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/"
+V_INSTAGRAM_KEY=""
+V_X_URL="rtmp://127.0.0.1:19354/x/"
+V_X_KEY=""
+V_TROVO_URL="rtmp://livepush.trovo.live/live/"
+V_TROVO_KEY=""
+V_RTMP1_URL=""
 V_RTMP1_KEY=""
 
 OBS_KEY=""
@@ -133,18 +153,38 @@ save_config() {
     cat <<ENV_EOF > "$CONFIG_FILE"
 YOUTUBE_URL="$YOUTUBE_URL"
 YOUTUBE_KEY="$YOUTUBE_KEY"
+FACEBOOK_URL="$FACEBOOK_URL"
+FACEBOOK_KEY="$FACEBOOK_KEY"
+INSTAGRAM_URL="$INSTAGRAM_URL"
+INSTAGRAM_KEY="$INSTAGRAM_KEY"
 TIKTOK_URL="$TIKTOK_URL"
 TIKTOK_KEY="$TIKTOK_KEY"
 TWITCH_URL="$TWITCH_URL"
 TWITCH_KEY="$TWITCH_KEY"
 KICK_URL="$KICK_URL"
 KICK_KEY="$KICK_KEY"
+X_URL="$X_URL"
+X_KEY="$X_KEY"
+TROVO_URL="$TROVO_URL"
+TROVO_KEY="$TROVO_KEY"
 RTMP1_URL="$RTMP1_URL"
 RTMP1_KEY="$RTMP1_KEY"
 V_YOUTUBE_URL="$V_YOUTUBE_URL"
 V_YOUTUBE_KEY="$V_YOUTUBE_KEY"
 V_TWITCH_URL="$V_TWITCH_URL"
 V_TWITCH_KEY="$V_TWITCH_KEY"
+V_KICK_URL="$V_KICK_URL"
+V_KICK_KEY="$V_KICK_KEY"
+V_TIKTOK_URL="$V_TIKTOK_URL"
+V_TIKTOK_KEY="$V_TIKTOK_KEY"
+V_FACEBOOK_URL="$V_FACEBOOK_URL"
+V_FACEBOOK_KEY="$V_FACEBOOK_KEY"
+V_INSTAGRAM_URL="$V_INSTAGRAM_URL"
+V_INSTAGRAM_KEY="$V_INSTAGRAM_KEY"
+V_X_URL="$V_X_URL"
+V_X_KEY="$V_X_KEY"
+V_TROVO_URL="$V_TROVO_URL"
+V_TROVO_KEY="$V_TROVO_KEY"
 V_RTMP1_URL="$V_RTMP1_URL"
 V_RTMP1_KEY="$V_RTMP1_KEY"
 OBS_KEY="$OBS_KEY"
@@ -250,8 +290,12 @@ configure_keys() {
         echo "2) Twitch (Current: ${TWITCH_KEY:-None})"
         echo "3) Kick (Current: ${KICK_KEY:-None})"
         echo "4) TikTok (Current: ${TIKTOK_KEY:-None})"
-        echo "5) Custom RTMP (Current URL: ${RTMP1_URL:-None})"
-        echo "6) Back to Main Menu"
+        echo "5) Facebook (Current: ${FACEBOOK_KEY:-None})"
+        echo "6) Instagram (Current: ${INSTAGRAM_KEY:-None})"
+        echo "7) X (Twitter) (Current: ${X_KEY:-None})"
+        echo "8) Trovo (Current: ${TROVO_KEY:-None})"
+        echo "9) Custom RTMP (Current URL: ${RTMP1_URL:-None})"
+        echo "10) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
 
@@ -367,6 +411,82 @@ configure_keys() {
                save_config
                ;;
             5)
+               prompt_for_key "Facebook" "FACEBOOK_KEY"
+               echo -e "Select Facebook Server:"
+               echo "  1) Secure (rtmps://live-api-s.facebook.com:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $FACEBOOK_URL): \c"
+               read -r f_opt
+               case $f_opt in
+                   1) FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/" ;;
+                   2)
+                      echo -e "Enter Custom Facebook Server URL: "
+                      read -r f_url
+                      if [ ! -z "$f_url" ]; then
+                          FACEBOOK_URL="$f_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            6)
+               prompt_for_key "Instagram" "INSTAGRAM_KEY"
+               echo -e "Select Instagram Server:"
+               echo "  1) Secure (rtmps://live-upload.instagram.com:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $INSTAGRAM_URL): \c"
+               read -r i_opt
+               case $i_opt in
+                   1) INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/" ;;
+                   2)
+                      echo -e "Enter Custom Instagram Server URL: "
+                      read -r i_url
+                      if [ ! -z "$i_url" ]; then
+                          INSTAGRAM_URL="$i_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            7)
+               prompt_for_key "X (Twitter)" "X_KEY"
+               echo -e "Select X Server:"
+               echo "  1) Secure (rtmps://va.pscp.tv:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $X_URL): \c"
+               read -r x_opt
+               case $x_opt in
+                   1) X_URL="rtmp://127.0.0.1:19354/x/" ;;
+                   2)
+                      echo -e "Enter Custom X Server URL: "
+                      read -r x_url
+                      if [ ! -z "$x_url" ]; then
+                          X_URL="$x_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            8)
+               prompt_for_key "Trovo" "TROVO_KEY"
+               echo -e "Select Trovo Server:"
+               echo "  1) Primary (rtmp://livepush.trovo.live/live/)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $TROVO_URL): \c"
+               read -r tr_opt
+               case $tr_opt in
+                   1) TROVO_URL="rtmp://livepush.trovo.live/live/" ;;
+                   2)
+                      echo -e "Enter Custom Trovo Server URL: "
+                      read -r tr_url
+                      if [ ! -z "$tr_url" ]; then
+                          TROVO_URL="$tr_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            9)
                echo -e "Enter Custom RTMP Server URL (Current: $RTMP1_URL): "
                read -r c_url
                if [ ! -z "$c_url" ]; then
@@ -375,7 +495,7 @@ configure_keys() {
                fi
                prompt_for_key "Custom RTMP Key" "RTMP1_KEY"
                ;;
-            6) break ;;
+            10) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -385,12 +505,18 @@ configure_vertical_keys() {
     while true; do
         clear
         echo -e "${GREEN}=== Configure Vertical Stream Keys ===${NC}"
-        echo -e "${YELLOW}Note: Vertical is officially supported on: YouTube and Twitch.${NC}"
+        echo -e "${YELLOW}Note: Vertical is officially supported on: YouTube, Twitch and TikTok.${NC}"
         echo "1) YouTube (Current: ${V_YOUTUBE_KEY:-None})"
         echo "2) Twitch (Current: ${V_TWITCH_KEY:-None})"
-        echo "3) Custom RTMP (Current URL: ${V_RTMP1_URL:-None})"
-        echo "4) Mirror Horizontal Keys (Auto-fill from Horizontal)"
-        echo "5) Back to Main Menu"
+        echo "3) Kick (Current: ${V_KICK_KEY:-None})"
+        echo "4) TikTok (Current: ${V_TIKTOK_KEY:-None})"
+        echo "5) Facebook (Current: ${V_FACEBOOK_KEY:-None})"
+        echo "6) Instagram (Current: ${V_INSTAGRAM_KEY:-None})"
+        echo "7) X (Twitter) (Current: ${V_X_KEY:-None})"
+        echo "8) Trovo (Current: ${V_TROVO_KEY:-None})"
+        echo "9) Custom RTMP (Current URL: ${V_RTMP1_URL:-None})"
+        echo "10) Mirror Horizontal Keys (Auto-fill from Horizontal)"
+        echo "11) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r choice
 
@@ -472,6 +598,130 @@ configure_vertical_keys() {
                save_config
                ;;
             3)
+               prompt_for_key "Kick Vertical Key" "V_KICK_KEY"
+               echo -e "Select Kick Server:"
+               echo "  1) Standard (rtmp://live.kick.com/app/)"
+               echo "  2) Secure (rtmps://fa723fc1b171.global-contribute.live-video.net:443 -> via Stunnel)"
+               echo "  3) South Africa Relay (rtmp://kick.cisp.co.za/live)"
+               echo "  4) Custom URL"
+               echo -e "Option (Current URL: $V_KICK_URL): \c"
+               read -r k_opt
+               case $k_opt in
+                   1) V_KICK_URL="rtmp://live.kick.com/app/" ;;
+                   2) V_KICK_URL="rtmp://127.0.0.1:19356/kick/" ;;
+                   3) V_KICK_URL="rtmp://kick.cisp.co.za/live" ;;
+                   4)
+                      echo -e "Enter Custom Kick Server URL: "
+                      read -r k_url
+                      if [ ! -z "$k_url" ]; then
+                          V_KICK_URL="$k_url"
+                      fi
+                      ;;
+               esac
+               if [ "$V_KICK_URL" == "$KICK_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_KICK_URL=$(get_alternative_url "kick" "$V_KICK_URL")
+                   echo -e "New Vertical URL: $V_KICK_URL"
+                   sleep 2
+               fi
+               save_config
+               ;;
+            4)
+               prompt_for_key "TikTok Vertical Key" "V_TIKTOK_KEY"
+               echo -e "Select TikTok Server:"
+               echo "  1) Secure (rtmps://push-rtmp-f5-ap-southeast-1.tiktokcdn.com:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_TIKTOK_URL): \c"
+               read -r tt_opt
+               case $tt_opt in
+                   1) V_TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/" ;;
+                   2)
+                      echo -e "Enter Custom TikTok Server URL: "
+                      read -r tt_url
+                      if [ ! -z "$tt_url" ]; then
+                          V_TIKTOK_URL="$tt_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            5)
+               prompt_for_key "Facebook Vertical Key" "V_FACEBOOK_KEY"
+               echo -e "Select Facebook Server:"
+               echo "  1) Secure (rtmps://live-api-s.facebook.com:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_FACEBOOK_URL): \c"
+               read -r f_opt
+               case $f_opt in
+                   1) V_FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/" ;;
+                   2)
+                      echo -e "Enter Custom Facebook Server URL: "
+                      read -r f_url
+                      if [ ! -z "$f_url" ]; then
+                          V_FACEBOOK_URL="$f_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            6)
+               prompt_for_key "Instagram Vertical Key" "V_INSTAGRAM_KEY"
+               echo -e "Select Instagram Server:"
+               echo "  1) Secure (rtmps://live-upload.instagram.com:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_INSTAGRAM_URL): \c"
+               read -r i_opt
+               case $i_opt in
+                   1) V_INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/" ;;
+                   2)
+                      echo -e "Enter Custom Instagram Server URL: "
+                      read -r i_url
+                      if [ ! -z "$i_url" ]; then
+                          V_INSTAGRAM_URL="$i_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            7)
+               prompt_for_key "X Vertical Key" "V_X_KEY"
+               echo -e "Select X Server:"
+               echo "  1) Secure (rtmps://va.pscp.tv:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_X_URL): \c"
+               read -r x_opt
+               case $x_opt in
+                   1) V_X_URL="rtmp://127.0.0.1:19354/x/" ;;
+                   2)
+                      echo -e "Enter Custom X Server URL: "
+                      read -r x_url
+                      if [ ! -z "$x_url" ]; then
+                          V_X_URL="$x_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            8)
+               prompt_for_key "Trovo Vertical Key" "V_TROVO_KEY"
+               echo -e "Select Trovo Server:"
+               echo "  1) Primary (rtmp://livepush.trovo.live/live/)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_TROVO_URL): \c"
+               read -r tr_opt
+               case $tr_opt in
+                   1) V_TROVO_URL="rtmp://livepush.trovo.live/live/" ;;
+                   2)
+                      echo -e "Enter Custom Trovo Server URL: "
+                      read -r tr_url
+                      if [ ! -z "$tr_url" ]; then
+                          V_TROVO_URL="$tr_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            9)
                echo -e "Enter Custom RTMP Vertical Server URL (Current: $V_RTMP1_URL): "
                read -r c_url
                if [ ! -z "$c_url" ]; then
@@ -480,19 +730,31 @@ configure_vertical_keys() {
                fi
                prompt_for_key "Custom RTMP Vertical Key" "V_RTMP1_KEY"
                ;;
-            4)
+            10)
                echo -e "${YELLOW}Mirroring Horizontal keys with alternative ingest servers...${NC}"
                V_YOUTUBE_KEY="$YOUTUBE_KEY"
                V_YOUTUBE_URL=$(get_alternative_url "youtube" "$YOUTUBE_URL")
                V_TWITCH_KEY="$TWITCH_KEY"
                V_TWITCH_URL=$(get_alternative_url "twitch" "$TWITCH_URL")
-                                                                           V_               V_               V_               V_               V_               V_               V_               V_               V_RTMP1_KEY="$RTMP1_KEY"
+               V_TIKTOK_KEY="$TIKTOK_KEY"
+               V_TIKTOK_URL="$TIKTOK_URL"
+               V_KICK_KEY="$KICK_KEY"
+               V_KICK_URL=$(get_alternative_url "kick" "$KICK_URL")
+               V_FACEBOOK_KEY="$FACEBOOK_KEY"
+               V_FACEBOOK_URL="$FACEBOOK_URL"
+               V_INSTAGRAM_KEY="$INSTAGRAM_KEY"
+               V_INSTAGRAM_URL="$INSTAGRAM_URL"
+               V_X_KEY="$X_KEY"
+               V_X_URL="$X_URL"
+               V_TROVO_KEY="$TROVO_KEY"
+               V_TROVO_URL="$TROVO_URL"
+               V_RTMP1_KEY="$RTMP1_KEY"
                V_RTMP1_URL="$RTMP1_URL"
                save_config
                echo -e "${GREEN}Mirrored with diversified ingest servers.${NC}"
                sleep 1
                ;;
-            5) break ;;
+            11) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -775,7 +1037,6 @@ configure_noalbs() {
                     save_config
                     mkdir -p ./data
                     echo -e "${YELLOW}Downloading BRB video...${NC}"
-                    rm -f ./data/brb_video.mp4
                     curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded.${NC}" || echo -e "${RED}Download failed.${NC}"
                     sleep 2
                 fi
@@ -866,7 +1127,7 @@ build_and_run() {
         echo -e "${GREEN}No port conflicts detected.${NC}"
     fi
 
-    # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch)
+    # Auto-fill vertical from horizontal if horizontal is set but vertical is not (YouTube, Twitch, TikTok, Kick)
     # Automatically chooses an alternative ingest server to avoid conflicts
     if [ ! -z "$YOUTUBE_KEY" ] && [ -z "$V_YOUTUBE_KEY" ]; then
         V_YOUTUBE_KEY="$YOUTUBE_KEY"
@@ -876,23 +1137,31 @@ build_and_run() {
         V_TWITCH_KEY="$TWITCH_KEY"
         V_TWITCH_URL=$(get_alternative_url "twitch" "$TWITCH_URL")
     fi
+    if [ ! -z "$KICK_KEY" ] && [ -z "$V_KICK_KEY" ]; then
+        V_KICK_KEY="$KICK_KEY"
+        V_KICK_URL=$(get_alternative_url "kick" "$KICK_URL")
+    fi
 
-
-    # Hard Enforcement: Always ensure horizontal and vertical ingest URLs are different for YT, Twitch
+    # Hard Enforcement: Always ensure horizontal and vertical ingest URLs are different for YT, Twitch, Kick
     if [ ! -z "$YOUTUBE_KEY" ] && [ "$YOUTUBE_URL" == "$V_YOUTUBE_URL" ]; then
         V_YOUTUBE_URL=$(get_alternative_url "youtube" "$V_YOUTUBE_URL")
     fi
     if [ ! -z "$TWITCH_KEY" ] && [ "$TWITCH_URL" == "$V_TWITCH_URL" ]; then
         V_TWITCH_URL=$(get_alternative_url "twitch" "$V_TWITCH_URL")
     fi
+    if [ ! -z "$KICK_KEY" ] && [ "$KICK_URL" == "$V_KICK_URL" ]; then
+        V_KICK_URL=$(get_alternative_url "kick" "$V_KICK_URL")
+    fi
 
-
-
+    if [ ! -z "$TIKTOK_KEY" ] && [ -z "$V_TIKTOK_KEY" ]; then
+        V_TIKTOK_KEY="$TIKTOK_KEY"
+        V_TIKTOK_URL="$TIKTOK_URL"
+    fi
 
     # Check if any keys are set
     ANY_KEY_SET=0
-    for key in "$YOUTUBE_KEY" "$TIKTOK_KEY" "$TWITCH_KEY" "$KICK_KEY" "$RTMP1_KEY" \
-               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_RTMP1_KEY"; do
+    for key in "$YOUTUBE_KEY" "$FACEBOOK_KEY" "$INSTAGRAM_KEY" "$TIKTOK_KEY" "$TWITCH_KEY" "$KICK_KEY" "$X_KEY" "$TROVO_KEY" "$RTMP1_KEY" \
+               "$V_YOUTUBE_KEY" "$V_TWITCH_KEY" "$V_KICK_KEY" "$V_TIKTOK_KEY" "$V_FACEBOOK_KEY" "$V_INSTAGRAM_KEY" "$V_X_KEY" "$V_TROVO_KEY" "$V_RTMP1_KEY"; do
         if [ ! -z "$key" ]; then
             ANY_KEY_SET=1
             break
@@ -905,12 +1174,6 @@ build_and_run() {
         echo -e "Press Enter to return to menu..."
         read -r
         return
-    fi
-
-    if [ "$CLOUD_BRB" == "true" ] && [ ! -f "./data/brb_video.mp4" ] && [ ! -z "$BRB_VIDEO_URL" ]; then
-        echo -e "${YELLOW}Downloading default BRB video...${NC}"
-        mkdir -p ./data
-        curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4
     fi
 
     echo -e "${GREEN}Building Docker Image...${NC}"
@@ -934,18 +1197,38 @@ build_and_run() {
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
+        -e FACEBOOK_URL="$FACEBOOK_URL" \
+        -e FACEBOOK_KEY="$FACEBOOK_KEY" \
+        -e INSTAGRAM_URL="$INSTAGRAM_URL" \
+        -e INSTAGRAM_KEY="$INSTAGRAM_KEY" \
         -e TIKTOK_URL="$TIKTOK_URL" \
         -e TIKTOK_KEY="$TIKTOK_KEY" \
         -e TWITCH_URL="$TWITCH_URL" \
         -e TWITCH_KEY="$TWITCH_KEY" \
         -e KICK_URL="$KICK_URL" \
         -e KICK_KEY="$KICK_KEY" \
+        -e X_URL="$X_URL" \
+        -e X_KEY="$X_KEY" \
+        -e TROVO_URL="$TROVO_URL" \
+        -e TROVO_KEY="$TROVO_KEY" \
         -e RTMP1_URL="$RTMP1_URL" \
         -e RTMP1_KEY="$RTMP1_KEY" \
         -e V_YOUTUBE_URL="$V_YOUTUBE_URL" \
         -e V_YOUTUBE_KEY="$V_YOUTUBE_KEY" \
         -e V_TWITCH_URL="$V_TWITCH_URL" \
         -e V_TWITCH_KEY="$V_TWITCH_KEY" \
+        -e V_KICK_URL="$V_KICK_URL" \
+        -e V_KICK_KEY="$V_KICK_KEY" \
+        -e V_TIKTOK_URL="$V_TIKTOK_URL" \
+        -e V_TIKTOK_KEY="$V_TIKTOK_KEY" \
+        -e V_FACEBOOK_URL="$V_FACEBOOK_URL" \
+        -e V_FACEBOOK_KEY="$V_FACEBOOK_KEY" \
+        -e V_INSTAGRAM_URL="$V_INSTAGRAM_URL" \
+        -e V_INSTAGRAM_KEY="$V_INSTAGRAM_KEY" \
+        -e V_X_URL="$V_X_URL" \
+        -e V_X_KEY="$V_X_KEY" \
+        -e V_TROVO_URL="$V_TROVO_URL" \
+        -e V_TROVO_KEY="$V_TROVO_KEY" \
         -e V_RTMP1_URL="$V_RTMP1_URL" \
         -e V_RTMP1_KEY="$V_RTMP1_KEY" \
         -e OBS_KEY="$OBS_KEY" \
