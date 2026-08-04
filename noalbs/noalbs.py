@@ -204,6 +204,13 @@ class Noalbs:
                     self.stop_cloud_brb()
                     self.cloud_brb_timeout = True
 
+            # Check for Cloud BRB timeout (5 minutes)
+            if self.cloud_process and self.cloud_brb_start_time:
+                if time.time() - self.cloud_brb_start_time > 300:
+                    logger.info("Cloud BRB has been running for 5 minutes. Stopping it to fully drop the stream.")
+                    self.stop_cloud_brb()
+                    self.cloud_brb_timeout = True
+
             if bitrate > 0:
                 self.stop_cloud_brb()
                 if not self.is_streaming:
@@ -236,6 +243,34 @@ class Noalbs:
             else:
                 consecutive_low = 0
                 if self.is_streaming:
+                    client = self.get_obs_client()
+                    # Default to True if we can't connect, assuming a severe network drop
+                    is_obs_streaming = True
+                    if client:
+                        try:
+                            status = client.get_stream_status()
+                            is_obs_streaming = getattr(status, 'output_active', True)
+                        except Exception as e:
+                            logger.error(f"Failed to get OBS stream status: {e}")
+                            # If connection fails, assume it's a disconnect (network drop)
+                            is_obs_streaming = True
+                    else:
+                        logger.warning("Could not connect to OBS. Assuming network drop.")
+                        is_obs_streaming = True
+
+                    if is_obs_streaming:
+                        logger.warning("Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
+                        self.switch_scene(self.scene_brb)
+                        self.is_low = True
+                        if self.cloud_brb_enabled and not self.cloud_brb_timeout:
+                            self.start_cloud_brb()
+                    else:
+                        logger.info("Source stream ended cleanly.")
+                        self.is_low = False
+
+                    self.is_streaming = False
+
+            time.sleep(2)
                     logger.warning("Source stream completely disconnected. Switching to BRB scene and starting Cloud BRB.")
                     self.switch_scene(self.scene_brb)
                     self.is_low = True
