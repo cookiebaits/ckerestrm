@@ -84,7 +84,7 @@ class Noalbs:
             logger.error(f"Cloud BRB video not found at {self.brb_video_path}")
             return
 
-        logger.info("Starting Cloud BRB stream...")
+        logger.info("Process of noalbs taking over: showing the mp4 uploaded (Cloud BRB stream)...")
         # FFmpeg command to loop the video and push to the local ingest
         # This keeps the stream alive at the ingest points if the source drops
         cmd = [
@@ -116,7 +116,10 @@ class Noalbs:
             return
         try:
             client.set_current_program_scene(scene)
-            logger.info(f"Successfully switched OBS scene to: {scene}")
+            if scene == self.scene_brb:
+                logger.info(f"Process of noalbs taking over: scene change to {scene}")
+            else:
+                logger.info(f"Successfully switched OBS scene to: {scene}")
         except Exception as e:
             logger.error(f"OBS WebSocket Switch Error: {e}")
             self.obs_client = None # Force reconnect next time
@@ -154,7 +157,7 @@ class Noalbs:
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
                     if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"[LOW BITRATE] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                        logger.error(f"[ERROR] [POOR CONNECTION / LOW LATENCY / DROP FRAMES] [LOW BITRATE] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Low bitrate ({bitrate}kbps) for 6s. Process of noalbs taking over.")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
@@ -185,7 +188,7 @@ class Noalbs:
                         is_obs_streaming = True
                     
                     if is_obs_streaming:
-                        logger.warning(f"[DISCONNECT] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
+                        logger.error(f"[ERROR] [DISCONNECT] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Source stream disconnected but OBS is still streaming (or unreachable). Process of noalbs taking over.")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                         if self.cloud_brb_enabled and not self.cloud_brb_timeout:
