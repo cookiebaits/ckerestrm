@@ -142,7 +142,7 @@ class Noalbs:
             if bitrate > 0:
                 self.stop_cloud_brb()
                 if not self.is_streaming:
-                    logger.info(f"Stream detected at {bitrate}kbps.")
+                    logger.info(f"\n" + "="*50 + f"\n[STREAM START] Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\nStream detected at {bitrate}kbps.\n" + "="*50)
                     self.is_streaming = True
                     self.cloud_brb_timeout = False # Reset timeout flag when user connects
                     # If it was an intentional stop previously, we still need to switch to main
@@ -154,7 +154,7 @@ class Noalbs:
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
                     if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                        logger.warning(f"[LOW BITRATE] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
@@ -175,7 +175,7 @@ class Noalbs:
                     if client:
                         try:
                             status = client.get_stream_status()
-                            is_obs_streaming = getattr(status, 'output_active', True)
+                            is_obs_streaming = getattr(status, 'outputActive', getattr(status, 'output_active', True))
                         except Exception as e:
                             logger.error(f"Failed to get OBS stream status: {e}")
                             # If connection fails, assume it's a disconnect (network drop)
@@ -185,13 +185,13 @@ class Noalbs:
                         is_obs_streaming = True
                     
                     if is_obs_streaming:
-                        logger.warning("Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
+                        logger.warning(f"[DISCONNECT] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                         if self.cloud_brb_enabled and not self.cloud_brb_timeout:
                             self.start_cloud_brb()
                     else:
-                        logger.info("Source stream ended cleanly.")
+                        logger.info(f"\n" + "="*50 + f"\n[STREAM END] Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\nSource stream ended cleanly.\n" + "="*50)
                         self.is_low = False
                     
                     self.is_streaming = False
