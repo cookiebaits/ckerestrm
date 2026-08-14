@@ -175,7 +175,7 @@ class Noalbs:
                     if client:
                         try:
                             status = client.get_stream_status()
-                            is_obs_streaming = getattr(status, 'output_active', True)
+                            is_obs_streaming = getattr(status, 'outputActive', getattr(status, 'output_active', True))
                         except Exception as e:
                             logger.error(f"Failed to get OBS stream status: {e}")
                             # If connection fails, assume it's a disconnect (network drop)

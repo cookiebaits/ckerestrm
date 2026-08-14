@@ -1319,7 +1319,7 @@ view_logs() {
             2)
                 echo -e "${YELLOW}Clearing logs...${NC}"
                 # Truncate internal logs
-                docker exec prism-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log' 2>/dev/null || true
+                docker exec prism-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /tmp/noalbs.log /tmp/validator.log' 2>/dev/null || true
                 # Truncate Docker's own log file for the container
                 LOG_PATH=$(docker inspect --format='{{.LogPath}}' prism-rtmps 2>/dev/null)
                 if [ ! -z "$LOG_PATH" ]; then
@@ -1327,10 +1327,42 @@ view_logs() {
                 fi
                 echo -e "${GREEN}Logs cleared.${NC}"
                 sleep 1
+                break
                 ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
+}
+
+
+view_realtime_logs() {
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}Docker is not installed!${NC}"
+        sleep 2
+        return
+    fi
+
+    if ! docker ps | grep -q "prism-rtmps"; then
+        echo -e "${RED}Container is not running!${NC}"
+        sleep 2
+        return
+    fi
+
+    echo -e "${YELLOW}Showing live logs for prism-rtmps... (Press Ctrl+C to exit log view)${NC}"
+    # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
+    (trap 'exit 0' INT; docker logs -f prism-rtmps)
+    echo -e "${YELLOW}Log view exited.${NC}"
+
+    echo -e "${YELLOW}Clearing logs...${NC}"
+    # Truncate internal logs
+    docker exec prism-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /tmp/noalbs.log /tmp/validator.log' 2>/dev/null || true
+    # Truncate Docker's own log file for the container
+    LOG_PATH=$(docker inspect --format='{{.LogPath}}' prism-rtmps 2>/dev/null)
+    if [ ! -z "$LOG_PATH" ]; then
+        sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
+    fi
+    echo -e "${GREEN}Logs cleared.${NC}"
+    sleep 1
 }
 
 stop_container() {
@@ -1373,7 +1405,8 @@ while true; do
         echo "12) Run Integration Tests"
         echo "13) Stop Server"
         echo "14) View Logs"
-        echo "15) Quit"
+        echo "15) View Real-Time Logs"
+        echo "16) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1392,7 +1425,8 @@ while true; do
         12) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;
         13) stop_container ;;
         14) view_logs ;;
-        15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        15) view_realtime_logs ;;
+        16) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
