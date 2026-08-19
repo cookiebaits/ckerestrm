@@ -1,7 +1,5 @@
 # PrismRTMPS: Secure, Self-hosted Multistreaming Solution (Fork)
 
-[![Discord](https://img.shields.io/discord/1303046473985818654?label=Discord&logo=discord&style=for-the-badge)](http://wubu.cookiebaits.com)
-
 **CRITICAL SECURITY ADVISORY & PROJECT CONTEXT (Read First!)**
 
 This project (`cookiebaits/PrismRTMPS`) is a **fork** of the `MorrowShore/Prism` RTMP relay. It was created primarily to address a **critical security vulnerability** in the original version that allows for **stream hijacking**, and to provide ongoing maintenance and improvements.
