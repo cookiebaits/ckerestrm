@@ -836,21 +836,64 @@ configure_domain() {
 }
 
 configure_whitelist() {
-    clear
-    echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
-    echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
-    echo ""
-    echo -e "Enter IP address to whitelist (Leave blank to keep current, type 'disable' to allow all):"
-    read -r ip_input
-    if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
-        ACCEPTED_IP=""
-        echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
-    elif [ ! -z "$ip_input" ]; then
-        ACCEPTED_IP="$ip_input"
-        echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
-    fi
-    save_config
-    sleep 2
+    while true; do
+        clear
+        echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
+        echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
+        echo ""
+        echo "1) Manually enter IP address"
+        echo "2) Auto-detect and include Server's Public IP"
+        echo "3) Disable IP Whitelist (Allow All)"
+        echo "4) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r ip_opt
+
+        case $ip_opt in
+            1)
+                echo -e "Enter IP address to whitelist (e.g. 192.168.1.100, 10.0.0.5):"
+                read -r ip_input
+                if [ ! -z "$ip_input" ]; then
+                    ACCEPTED_IP="$ip_input"
+                    echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
+                    save_config
+                    sleep 2
+                fi
+                ;;
+            2)
+                echo -e "${YELLOW}Detecting Server's Public IP...${NC}"
+                SERVER_IP=$(curl -4 -s ifconfig.me)
+                if [ ! -z "$SERVER_IP" ]; then
+                    # Check if ACCEPTED_IP already has values to append cleanly
+                    if [ -z "$ACCEPTED_IP" ]; then
+                        ACCEPTED_IP="$SERVER_IP"
+                    else
+                        # Prevent duplicate entries if the IP is already in the list
+                        if [[ ",$ACCEPTED_IP," != *",$SERVER_IP,"* ]]; then
+                            ACCEPTED_IP="${ACCEPTED_IP},${SERVER_IP}"
+                        fi
+                    fi
+                    echo -e "${GREEN}Server IP ($SERVER_IP) added to Whitelist.${NC}"
+                    save_config
+                else
+                    echo -e "${RED}Failed to detect Server IP.${NC}"
+                fi
+                sleep 2
+                ;;
+            3)
+                ACCEPTED_IP=""
+                echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
+                save_config
+                sleep 2
+                ;;
+            4)
+                break
+                ;;
+            *)
+                echo -e "${RED}Invalid option${NC}"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 configure_titles() {
