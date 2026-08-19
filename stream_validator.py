@@ -5,6 +5,7 @@ from urllib.parse import parse_qs
 import threading
 import subprocess
 from datetime import datetime
+import ipaddress
 
 app = Flask(__name__)
 logging.basicConfig(
@@ -105,9 +106,37 @@ def validate():
         client_ip = parsed_data.get('addr', [request.remote_addr])[0]
 
     # IP Whitelist Check
-    if ACCEPTED_IP and client_ip != ACCEPTED_IP:
-        app.logger.warning(f"REJECTED IP: {client_ip}")
-        return Response('IP not whitelisted', status=403)
+    if ACCEPTED_IP:
+        allowed = False
+        try:
+            client_obj = ipaddress.ip_address(client_ip)
+            # Allow private RFC1918 IPs (e.g., Wireguard) when whitelisting is active
+            if client_obj.is_private:
+                allowed = True
+
+            for allowed_ip in ACCEPTED_IP.split(','):
+                if allowed:
+                    break
+                allowed_ip = allowed_ip.strip()
+                if not allowed_ip:
+                    continue
+                try:
+                    if '/' in allowed_ip:
+                        if client_obj in ipaddress.ip_network(allowed_ip, strict=False):
+                            allowed = True
+                            break
+                    else:
+                        if client_obj == ipaddress.ip_address(allowed_ip):
+                            allowed = True
+                            break
+                except ValueError:
+                    continue
+        except ValueError:
+            pass
+
+        if not allowed:
+            app.logger.warning(f"REJECTED IP: {client_ip}")
+            return Response('IP not whitelisted', status=403)
 
     # Key Check
     if not VALID_KEYS:
