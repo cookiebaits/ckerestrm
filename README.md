@@ -28,6 +28,9 @@ You stream **one** high-quality feed to your PrismRTMPS server, and it will:
 This fork also includes performance tuning (optimized `chunk_size`), updated core components for better stability and security, and active maintenance.
 
 ### Key New Features (v3.4+)
+*   **NOALBS Scene Switcher & Cloud BRB:** Integrated NGINX OBS Automatic Low Bitrate Switching (NOALBS). Automatically detects stream drops or low bitrates and plays a Cloud BRB fallback video (or optionally switches OBS scenes) to keep your stream alive at the ingest endpoints, ensuring seamless viewing experiences.
+*   **Automated Server IP Whitelisting:** The interactive installer now supports securely auto-detecting and adding your server's public IP (useful for VPNs/VPS) to the broadcast whitelist.
+*   **Cleaned & Modernized Environment:** Removed obsolete dependencies and consolidated scripts, upgrading all underlying Python tools to their latest stable releases for robust execution.
 *   **Vertical Streaming Support:** Optimized for use with the **OBS Aitum Vertical plugin**. Push a second, independent vertical feed to specialized targets (TikTok, YouTube Vertical, Twitch Vertical) alongside your horizontal stream.
 *   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
 *   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
