@@ -155,8 +155,11 @@ class Noalbs:
                     consecutive_low += 1
                     if consecutive_low >= 3 and not self.is_low:
                         logger.warning(f"[LOW BITRATE] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
-                        self.switch_scene(self.scene_brb)
                         self.is_low = True
+                        if self.cloud_brb_enabled and not self.cloud_brb_timeout:
+                            self.start_cloud_brb()
+                        else:
+                            self.switch_scene(self.scene_brb)
                 else:
                     consecutive_low = 0
                     # When restoring, also restore if we just started streaming (in case we were on BRB from a previous session)
@@ -186,10 +189,11 @@ class Noalbs:
                     
                     if is_obs_streaming:
                         logger.warning(f"[DISCONNECT] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
-                        self.switch_scene(self.scene_brb)
                         self.is_low = True
                         if self.cloud_brb_enabled and not self.cloud_brb_timeout:
                             self.start_cloud_brb()
+                        else:
+                            self.switch_scene(self.scene_brb)
                     else:
                         logger.info(f"\n" + "="*50 + f"\n[STREAM END] Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\nSource stream ended cleanly.\n" + "="*50)
                         self.is_low = False

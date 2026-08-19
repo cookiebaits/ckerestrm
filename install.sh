@@ -1029,7 +1029,12 @@ configure_noalbs() {
 
         case $noalbs_opt in
             1)
-                if [ "$NOALBS_ENABLED" == "true" ]; then NOALBS_ENABLED="false"; else NOALBS_ENABLED="true"; fi
+                if [ "$NOALBS_ENABLED" == "true" ]; then
+                    NOALBS_ENABLED="false"
+                    CLOUD_BRB="false"
+                else
+                    NOALBS_ENABLED="true"
+                fi
                 save_config
                 ;;
             2)
@@ -1069,7 +1074,12 @@ configure_noalbs() {
                 if [ ! -z "$input" ]; then RESTORE_BITRATE="$input"; save_config; fi
                 ;;
             9)
-                if [ "$CLOUD_BRB" == "true" ]; then CLOUD_BRB="false"; else CLOUD_BRB="true"; fi
+                if [ "$CLOUD_BRB" == "true" ]; then
+                    CLOUD_BRB="false"
+                else
+                    CLOUD_BRB="true"
+                    NOALBS_ENABLED="true"
+                fi
                 save_config
                 ;;
             10)
