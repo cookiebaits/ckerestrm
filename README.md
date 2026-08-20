@@ -3,6 +3,9 @@
 **Cookie-RTMPS** is a modern, high-performance RTMPS server and tooling solution built by cookiebaits. It provides secure, self-hosted multistreaming capabilities.
 
 ## Overview
+# CookieRTMPS: Secure, Self-hosted Multistreaming Solution 
+
+## Introduction (cookiebaits/PrismRTMPS)
 
 Would you like to stream to Twitch, YouTube, Kick, Trovo, Facebook, Instagram, X (Twitter), Cloudflare, and custom RTMP destinations at once, without the upload strain on your computer or recurring fees of commercial services?
 
