@@ -1018,6 +1018,9 @@ configure_noalbs() {
         echo "3) OBS WebSocket Port (Current: $OBS_WS_PORT)"
         echo "4) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:-(None)})"
         echo "5) Main/Live Scene Name (Current: $OBS_SCENE_LIVE)"
+        if [ "$CLOUD_BRB" == "true" ] && [ ! -z "$BRB_VIDEO_URL" ]; then
+            OBS_SCENE_BRB="Cloud BRB mp4"
+        fi
         echo "6) BRB Scene Name (Current: $OBS_SCENE_BRB)"
         echo "7) Low Bitrate Threshold (Current: $LOW_BITRATE kbps)"
         echo "8) Restore Bitrate Threshold (Current: $RESTORE_BITRATE kbps)"
@@ -1087,6 +1090,7 @@ configure_noalbs() {
                 read -r input
                 if [ ! -z "$input" ]; then
                     BRB_VIDEO_URL="$input"
+                    OBS_SCENE_BRB="Cloud BRB mp4"
                     save_config
                     mkdir -p ./data
                     echo -e "${YELLOW}Downloading BRB video...${NC}"
