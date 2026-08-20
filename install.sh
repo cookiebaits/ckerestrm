@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh - Menu style configuration and installation for PrismRTMPS
+# install.sh - Menu style configuration and installation for CookieRTMPS
 # Ensure script is run with bash
 
 # Colors
@@ -777,7 +777,7 @@ configure_obs() {
     echo -e "  (Replace YOUR_CHANNEL and YOUR_VIDEO_ID as needed)"
     echo ""
     echo -e "--- Security Key ---"
-    echo -e "PrismRTMPS requires a matching stream key to accept your stream."
+    echo -e "CookieRTMPS requires a matching stream key to accept your stream."
     echo -e "Current Custom OBS Key: ${OBS_KEY:-None}"
     echo -e "Enter new Custom OBS Key (Type 'disable' to remove, or press Enter to keep current): "
     read -r obs_input
@@ -1152,8 +1152,8 @@ build_and_run() {
     fi
 
     echo -e "${YELLOW}Stopping any existing container to free ports...${NC}"
-    docker stop prism-rtmps 2>/dev/null || true
-    docker rm prism-rtmps 2>/dev/null || true
+    docker stop cookie-rtmps 2>/dev/null || true
+    docker rm cookie-rtmps 2>/dev/null || true
 
     echo -e "${YELLOW}Checking for port conflicts...${NC}"
     CONFLICTS=0
@@ -1165,14 +1165,14 @@ build_and_run() {
     for port in "${PORTS_TO_CHECK[@]}"; do
         if check_port "$port"; then
             echo -e "${RED}Warning: Port $port appears to be in use on the host!${NC}"
-            echo -e "${YELLOW}If this is another service, PrismRTMPS may fail to start.${NC}"
+            echo -e "${YELLOW}If this is another service, CookieRTMPS may fail to start.${NC}"
             CONFLICTS=1
         fi
     done
 
     if [ $CONFLICTS -eq 1 ]; then
         echo -e "${YELLOW}Port conflicts detected. Do you want to continue anyway?${NC}"
-        echo "1) Yes, continue (PrismRTMPS will attempt to bind)"
+        echo "1) Yes, continue (CookieRTMPS will attempt to bind)"
         echo "2) Abort and return to Main Menu"
         echo -e "Selection: \c"
         read -r conflict_choice
@@ -1234,11 +1234,11 @@ build_and_run() {
     fi
 
     echo -e "${GREEN}Building Docker Image...${NC}"
-    docker build -t prism-rtmps .
+    docker build -t cookie-rtmps .
 
     echo -e "${GREEN}Stopping any existing container...${NC}"
-    docker stop prism-rtmps 2>/dev/null || true
-    docker rm prism-rtmps 2>/dev/null || true
+    docker stop cookie-rtmps 2>/dev/null || true
+    docker rm cookie-rtmps 2>/dev/null || true
 
     echo -e "${GREEN}Starting container...${NC}"
 
@@ -1249,7 +1249,7 @@ build_and_run() {
     fi
 
     # Start the container
-    docker run -d --name prism-rtmps \
+    docker run -d --name cookie-rtmps \
         $PORT_MAPS \
         --restart unless-stopped \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
@@ -1307,26 +1307,26 @@ build_and_run() {
         -e RESTORE_BITRATE="$RESTORE_BITRATE" \
         -e CLOUD_BRB="$CLOUD_BRB" \
         -v "$(pwd)/data:/app/data" \
-        prism-rtmps
+        cookie-rtmps
 
     if [ $? -eq 0 ]; then
         SERVER_IP=$(curl -4 -s ifconfig.me || echo "<your_server_ip>")
         DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
-        echo -e "${GREEN}Container 'prism-rtmps' is running!${NC}"
+        echo -e "${GREEN}Container 'cookie-rtmps' is running!${NC}"
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
 
 
     # Restart the container service to ensure it is running properly before tests
-    echo -e "${YELLOW}Restarting the prism-rtmps service to ensure it is running properly...${NC}"
-    docker restart prism-rtmps
+    echo -e "${YELLOW}Restarting the cookie-rtmps service to ensure it is running properly...${NC}"
+    docker restart cookie-rtmps
 
         echo -e "${YELLOW}Waiting 5 seconds for services to start...${NC}"
         sleep 5
 
         echo -n "Verifying nginx inside container... "
-        if docker exec prism-rtmps pgrep -x "nginx" > /dev/null; then
+        if docker exec cookie-rtmps pgrep -x "nginx" > /dev/null; then
             echo -e "[${GREEN}PASSED${NC}]"
         else
             echo -e "[${RED}FAILED${NC}]"
@@ -1334,7 +1334,7 @@ build_and_run() {
         fi
 
         echo -n "Verifying stunnel inside container... "
-        if docker exec prism-rtmps pgrep -x "stunnel4" > /dev/null; then
+        if docker exec cookie-rtmps pgrep -x "stunnel4" > /dev/null; then
             echo -e "[${GREEN}PASSED${NC}]"
         else
             echo -e "[${RED}FAILED${NC}]"
@@ -1363,7 +1363,7 @@ view_logs() {
     # Check if there are logs older than 5 days
     # docker logs doesn't natively filter "older than", so we check if logs from "until 120h" (5 days ago) exist.
     # If the output is not empty, it means there are logs older than 5 days.
-    OLD_LOGS=$(docker logs --until 120h prism-rtmps 2>/dev/null | head -n 1)
+    OLD_LOGS=$(docker logs --until 120h cookie-rtmps 2>/dev/null | head -n 1)
 
     if [ ! -z "$OLD_LOGS" ]; then
         while true; do
@@ -1379,9 +1379,9 @@ view_logs() {
                 2)
                     echo -e "${YELLOW}Clearing logs...${NC}"
                     # Truncate internal logs
-                    docker exec prism-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /tmp/noalbs.log /tmp/validator.log' 2>/dev/null || true
+                    docker exec cookie-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /tmp/noalbs.log /tmp/validator.log' 2>/dev/null || true
                     # Truncate Docker's own log file for the container
-                    LOG_PATH=$(docker inspect --format='{{.LogPath}}' prism-rtmps 2>/dev/null)
+                    LOG_PATH=$(docker inspect --format='{{.LogPath}}' cookie-rtmps 2>/dev/null)
                     if [ ! -z "$LOG_PATH" ]; then
                         sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
                     fi
@@ -1406,15 +1406,15 @@ view_realtime_logs() {
         return
     fi
 
-    if ! docker ps | grep -q "prism-rtmps"; then
+    if ! docker ps | grep -q "cookie-rtmps"; then
         echo -e "${RED}Container is not running!${NC}"
         sleep 2
         return
     fi
 
-    echo -e "${YELLOW}Showing live logs for prism-rtmps... (Press Ctrl+C to exit log view)${NC}"
+    echo -e "${YELLOW}Showing live logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
     # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
-    (trap 'exit 0' INT; docker logs -f prism-rtmps)
+    (trap 'exit 0' INT; docker logs -f cookie-rtmps)
     echo -e "${YELLOW}Log view exited.${NC}"
     sleep 1
 }
@@ -1426,7 +1426,7 @@ stop_container() {
         return
     fi
     echo -e "${YELLOW}Stopping container...${NC}"
-    docker stop prism-rtmps 2>/dev/null && echo -e "${GREEN}Container stopped.${NC}" || echo -e "${RED}Container not running.${NC}"
+    docker stop cookie-rtmps 2>/dev/null && echo -e "${GREEN}Container stopped.${NC}" || echo -e "${RED}Container not running.${NC}"
     sleep 2
 }
 
@@ -1437,7 +1437,7 @@ while true; do
     clear
     DISPLAY_HOST=${SERVER_DOMAIN:-$SERVER_IP}
     echo -e "${GREEN}=====================================${NC}"
-    echo -e "${GREEN}     PrismRTMPS Quick Installer      ${NC}"
+    echo -e "${GREEN}     CookieRTMPS Quick Installer      ${NC}"
     echo -e "${GREEN}=====================================${NC}"
     echo -e "${YELLOW}Quick Reference:${NC}"
     echo -e "  RTMP Ingest:     rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
