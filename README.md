@@ -1,106 +1,82 @@
-# PrismRTMPS: Secure, Self-hosted Multistreaming Solution (Fork)
+# Cookie-RTMPS: Secure, Self-hosted Multistreaming Solution
 
-**CRITICAL SECURITY ADVISORY & PROJECT CONTEXT (Read First!)**
+**Cookie-RTMPS** is a modern, high-performance RTMPS server and tooling solution built by cookiebaits. It provides secure, self-hosted multistreaming capabilities.
 
-This project (`cookiebaits/PrismRTMPS`) is a **fork** of the `MorrowShore/Prism` RTMP relay. It was created primarily to address a **critical security vulnerability** in the original version that allows for **stream hijacking**, and to provide ongoing maintenance and improvements.
-
-*   **The Vulnerability (Original `MorrowShore/Prism` Pre-May 2025):** The original project historically lacked mandatory stream key validation (`on_publish` check). This meant if a server's IP address and port (usually 1935) were known, **anyone could stream to the server using *any* stream key**, and the original Prism would relay that unauthorized stream to all configured destinations (Twitch, YouTube, etc.).
-*   **Attempted Contribution:** A Pull Request was submitted to `MorrowShore/Prism` with a robust fix for this vulnerability (implementing `on_publish` key validation via `stream_validator.py`). Unfortunately, this PR was closed by the original maintainer with comments focusing on the perceived use of AI in its generation and an unrelated, since-reverted funding file modification, rather than the technical merits of the security fix. Communication on the PR was subsequently limited.
-*   **The "Fix" in Original `MorrowShore/Prism` (Post-May 7, 2025):** Following the closure of the PR, the original maintainer implemented their own changes. These changes include randomizing the RTMP application path (e.g., `rtmp://<ip>/<random_string>`). While this adds a minor layer of *obscurity*, it **does not fundamentally fix the stream hijacking vulnerability**. The random path is often logged and easily discoverable, and if found, hijacking is still possible because the stream key itself is *still not validated*. Their README continues to state "Your Stream Key Does Not Matter," and their commit messages for this "fix" reflect a focus on issues other than robust authentication.
-*   **The Solution in This Fork (`cookiebaits/PrismRTMPS`):** This fork implements **proper stream key validation**. When a stream connects, its key is checked against your configured destination keys. Only streams with a matching key are relayed. This is the industry-standard approach to securing RTMP relays.
-
-**Recommendation:** Due to the persistent lack of true stream key validation in the `MorrowShore/Prism` repository, users concerned about stream security are strongly advised to use this fork (`cookiebaits/PrismRTMPS`) or implement their own robust validation.
-
----
-
-## Introduction (cookiebaits/PrismRTMPS)
+## Overview
 
 Would you like to stream to Twitch, YouTube, Kick, Trovo, Facebook, Instagram, X (Twitter), Cloudflare, and custom RTMP destinations at once, without the upload strain on your computer or recurring fees of commercial services?
 
-You can host **PrismRTMPS** on a server to act as a **secure and efficient** prism for your streamed content!
+You can host **Cookie-RTMPS** on a server to act as a **secure and efficient** tool for your streamed content!
 
-You stream **one** high-quality feed to your PrismRTMPS server, and it will:
+You stream **one** high-quality feed to your Cookie-RTMPS server, and it will:
 1.  **Validate** the incoming stream to ensure it's from you, preventing unauthorized access.
 2.  **Relay** your stream to all the platforms you configure.
 
-This fork also includes performance tuning (optimized `chunk_size`), updated core components for better stability and security, and active maintenance.
-
-### Key New Features (v3.4+)
+### Key Features
 *   **NOALBS Scene Switcher & Cloud BRB:** Integrated NGINX OBS Automatic Low Bitrate Switching (NOALBS). Automatically detects stream drops or low bitrates and plays a Cloud BRB fallback video (or optionally switches OBS scenes) to keep your stream alive at the ingest endpoints, ensuring seamless viewing experiences.
 *   **Automated Server IP Whitelisting:** The interactive installer now supports securely auto-detecting and adding your server's public IP (useful for VPNs/VPS) to the broadcast whitelist.
-*   **Cleaned & Modernized Environment:** Removed obsolete dependencies and consolidated scripts, upgrading all underlying Python tools to their latest stable releases for robust execution.
 *   **Vertical Streaming Support:** Optimized for use with the **OBS Aitum Vertical plugin**. Push a second, independent vertical feed to specialized targets (TikTok, YouTube Vertical, Twitch Vertical) alongside your horizontal stream.
 *   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
 *   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
-*   **Nginx 1.30.1 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
-*   **Robust Pre-Deployment Checks:** The installation script now automatically verifies that all essential host dependencies (like Docker, curl, and networking tools) are present before building, and explicitly verifies that Nginx and Stunnel processes start successfully within the container to catch configuration errors early.
+*   **Nginx 1.30.1 & Custom RTMP:** Uses the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
+*   **Robust Pre-Deployment Checks:** The installation script automatically verifies that all essential host dependencies (like Docker, curl, and networking tools) are present before building, and explicitly verifies that Nginx and Stunnel processes start successfully within the container to catch configuration errors early.
 *   **Resilient Nginx Configuration:** The proxy routing is designed to gracefully handle environments without domains configured, preventing crashes during initialization by intelligently defaulting internal domains.
 
-## Prequisites
+## Prerequisites
 
-You'd need a VPS server. Key considerations:
+You need a VPS server. Key considerations:
 *   **Network Performance:** Good bandwidth, low latency, and stable routing between your VPS and your chosen streaming platforms are crucial, especially for 1080p 60fps.
-*   **Resources:** A 2 vCore, 2GB RAM VPS (like those from Ionos, Linode, Digital Ocean, Vultr, Hetzner Cloud) is often sufficient. This fork has been tested and runs effectively on such configurations. Choose a location strategically.
+*   **Resources:** A 2 vCore, 2GB RAM VPS (like those from Ionos, Linode, Digital Ocean, Vultr, Hetzner Cloud) is often sufficient. Choose a location strategically.
 
-## How To Set up `cookiebaits/PrismRTMPS`
+## Installation & Setup
 
-*   1- **SSH into your VPS server:**
+1.  **SSH into your VPS server:**
     ```bash
     ssh root@<your_server_ip_address>
     ```
 
-*   2- **Clone the repository & Set permissions:**
+2.  **Clone the repository & Run Installer:**
     ```bash
-    git clone https://github.com/cookiebaits/prism-rtmps.git && cd prism-rtmps && chmod +x install.sh && ./install.sh
-    ```
-
-*   3- **Run the Interactive Installer:**
-    ```bash
-  [Automatically integrated in the previous step now] for manual execution ./install.sh
+    git clone https://github.com/cookiebaits/cookie-rtmps.git && cd cookie-rtmps && chmod +x install.sh && ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
-    *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
+    *   Configure your stream keys and set any desired optimizations.
     *   Select "Build & Start Server" to launch your customized RTMP relay.
 
-*   4- **Configure OBS (or other streaming software):**
+3.  **Configure OBS (or other streaming software):**
     *   Service: `Custom...`
     *   **Horizontal Server:** `rtmp://<your_vps_ip_address>:1935/live`
     *   **Vertical Server:** `rtmp://<your_vps_ip_address>:1935/vertical` (For Aitum Vertical)
     *   Stream Key: **Use ONE of the actual stream keys you configured during the setup process** (or the custom Master OBS Key if you set one).
 
-*   5- **Begin streaming from OBS!**
+4.  **Begin streaming from OBS!**
 
 We advise testing with one or two destinations first.
 
-## How To Manage PrismRTMPS
+## Usage Instructions
 
-*   **STOP** the container: `docker stop prism-rtmps`
-*   **START** the container: `docker start prism-rtmps`
-*   **VIEW LOGS:** `docker logs prism-rtmps` (or `docker logs -f prism-rtmps` for live logs)
-*   **EDIT Destinations / Keys:** Stop, remove (`docker rm prism-rtmps`), and re-run the `docker run` command.
-*   **UNINSTALL:** Stop, remove container, then `docker rmi prism-rtmps`.
+*   **STOP** the container: `docker stop cookie-rtmps`
+*   **START** the container: `docker start cookie-rtmps`
+*   **VIEW LOGS:** `docker logs cookie-rtmps` (or `docker logs -f cookie-rtmps` for live logs)
+*   **EDIT Destinations / Keys:** Stop, remove (`docker rm cookie-rtmps`), and re-run the setup script or `docker run` command.
+*   **UNINSTALL:** Stop, remove container, then `docker rmi cookie-rtmps`.
 
 ## Troubleshooting Common Issues
 
-*   **Lag / Falling Behind Stream:** Often a network bottleneck. This fork uses `chunk_size: 8192` for improved performance.
-    *   **Diagnosis:** Test one destination at a time. Use `mtr <destination_hostname>` from VPS.
-    *   **Solutions:** Different ingest servers, different VPS location, or lower stream bitrate.
+*   **Lag / Falling Behind Stream:** Often a network bottleneck. Try different ingest servers, a different VPS location, or lower stream bitrate.
 *   **Stream Rejects / "Invalid Key":**
-    *   OBS key *must exactly match* one key from `docker run`.
-    *   Ensure at least one destination key is active in `docker run`.
-    *   Check validator logs: `docker exec prism-rtmps tail /tmp/validator.log` or `docker logs prism-rtmps`.
-*   **One Destination Not Working:** Check URL/Key in `docker run`. Check Nginx/Stunnel logs. Ensure stream is active on the platform.
+    *   OBS key *must exactly match* one key configured.
+    *   Ensure at least one destination key is active in the container configuration.
+    *   Check validator logs: `docker exec cookie-rtmps tail /tmp/validator.log` or `docker logs cookie-rtmps`.
+*   **One Destination Not Working:** Check URL/Key configuration. Check Nginx/Stunnel logs. Ensure stream is active on the platform.
 
-## Support & Contributing to This Fork
+## Configuration
 
-Need help or have suggestions for **this fork**? Your contributions and feedback are welcome!
+Environment variables and configuration settings use the `cookie-rtmps` naming convention. For example:
+- `COOKIE_RTMPS_OBS_KEY` (if master key is enabled)
 
-*   Raise an Issue: [https://github.com/cookiebaits/PrismRTMPS/issues](https://github.com/cookiebaits/PrismRTMPS/issues)
-*   Join our Discord: [http://wubu.cookiebaits.com](http://wubu.cookiebaits.com) (Shield above also links here)
+Check the installer script `install.sh` to explore all available configurations.
 
----
-**Regarding the Original `MorrowShore/Prism` Repository:**
+## License & Author
 
-As noted in the advisory at the top, attempts to contribute essential security fixes to the original `MorrowShore/Prism` repository were met with dismissal and a subsequent "fix" that does not adequately address the core stream hijacking vulnerability. The maintainer's focus appeared to be on the perceived method of contribution rather than the critical security implications for users.
-
-Given this, `cookiebaits/PrismRTMPS` will serve as an actively maintained, secure, and performance-tuned alternative for the community. We encourage users to prioritize their security.
+Built and maintained by **cookiebaits**.
