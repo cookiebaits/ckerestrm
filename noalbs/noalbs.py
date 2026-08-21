@@ -20,6 +20,8 @@ class Noalbs:
         self.obs_password = os.getenv("OBS_WS_PASSWORD", "")
         self.scene_main = os.getenv("OBS_SCENE_LIVE", "Main")
         self.scene_brb = os.getenv("OBS_SCENE_BRB", "BRB")
+        self.v_scene_main = os.getenv("V_OBS_SCENE_LIVE", "Vertical Main")
+        self.v_scene_brb = os.getenv("V_OBS_SCENE_BRB", "Vertical BRB")
         self.app_name = os.getenv("APP_NAME", "live")
         # NOALBS uses internal port 8081 for stats
         self.stats_url = "http://127.0.0.1:8081/stat"
@@ -110,16 +112,27 @@ class Noalbs:
             self.cloud_process = None
             self.cloud_brb_start_time = None
 
-    def switch_scene(self, scene):
+    def switch_scenes(self, h_scene, v_scene):
         client = self.get_obs_client()
         if not client:
             return
+
+        # Switch Horizontal Scene
         try:
-            client.set_current_program_scene(scene)
-            logger.info(f"Successfully switched OBS scene to: {scene}")
+            client.set_current_program_scene(h_scene)
+            logger.info(f"Successfully switched horizontal OBS scene to: {h_scene}")
         except Exception as e:
-            logger.error(f"OBS WebSocket Switch Error: {e}")
+            logger.error(f"OBS WebSocket Horizontal Switch Error: {e}")
             self.obs_client = None # Force reconnect next time
+
+        # Switch Vertical Scene
+        if self.obs_client: # Only attempt if connection still OK
+            try:
+                client.call_vendor_request("aitum-vertical-canvas", "switch_scene", {"scene": v_scene})
+                logger.info(f"Successfully switched vertical OBS scene to: {v_scene}")
+            except Exception as e:
+                logger.error(f"OBS WebSocket Vertical Switch Error: {e}")
+                self.obs_client = None
 
     def run(self):
         if not self.enabled:
@@ -154,19 +167,19 @@ class Noalbs:
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
                     if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"[LOW BITRATE] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                        logger.warning(f"[LOW BITRATE] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Low bitrate ({bitrate}kbps) for 6s. Switching to BRB scenes ({self.scene_brb} / {self.v_scene_brb})")
                         self.is_low = True
                         if self.cloud_brb_enabled and not self.cloud_brb_timeout:
                             self.start_cloud_brb()
                         else:
-                            self.switch_scene(self.scene_brb)
+                            self.switch_scenes(self.scene_brb, self.v_scene_brb)
                 else:
                     consecutive_low = 0
                     # When restoring, also restore if we just started streaming (in case we were on BRB from a previous session)
                     if bitrate >= self.low_threshold: # Restore at low_threshold per user request "over 1000kbps"
                         if self.is_low or not hasattr(self, '_initial_scene_set'):
-                            logger.info(f"Bitrate restored/good ({bitrate}kbps). Switching to {self.scene_main}")
-                            self.switch_scene(self.scene_main)
+                            logger.info(f"Bitrate restored/good ({bitrate}kbps). Switching to Main scenes ({self.scene_main} / {self.v_scene_main})")
+                            self.switch_scenes(self.scene_main, self.v_scene_main)
                             self.is_low = False
                             self._initial_scene_set = True
             else:
@@ -188,12 +201,12 @@ class Noalbs:
                         is_obs_streaming = True
                     
                     if is_obs_streaming:
-                        logger.warning(f"[DISCONNECT] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
+                        logger.warning(f"[DISCONNECT] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scenes ({self.scene_brb} / {self.v_scene_brb}).")
                         self.is_low = True
                         if self.cloud_brb_enabled and not self.cloud_brb_timeout:
                             self.start_cloud_brb()
                         else:
-                            self.switch_scene(self.scene_brb)
+                            self.switch_scenes(self.scene_brb, self.v_scene_brb)
                     else:
                         logger.info(f"\n" + "="*50 + f"\n[STREAM END] Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\nSource stream ended cleanly.\n" + "="*50)
                         self.is_low = False

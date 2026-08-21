@@ -76,6 +76,8 @@ OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
 OBS_SCENE_LIVE="Main"
 OBS_SCENE_BRB="BRB"
+V_OBS_SCENE_LIVE="Vertical Main"
+V_OBS_SCENE_BRB="Vertical BRB"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
 CLOUD_BRB="true"
@@ -204,6 +206,8 @@ OBS_WS_PORT="$OBS_WS_PORT"
 OBS_WS_PASSWORD="$OBS_WS_PASSWORD"
 OBS_SCENE_LIVE="$OBS_SCENE_LIVE"
 OBS_SCENE_BRB="$OBS_SCENE_BRB"
+V_OBS_SCENE_LIVE="$V_OBS_SCENE_LIVE"
+V_OBS_SCENE_BRB="$V_OBS_SCENE_BRB"
 LOW_BITRATE="$LOW_BITRATE"
 RESTORE_BITRATE="$RESTORE_BITRATE"
 CLOUD_BRB="$CLOUD_BRB"
@@ -1020,13 +1024,16 @@ configure_noalbs() {
         echo "5) Main/Live Scene Name (Current: $OBS_SCENE_LIVE)"
         if [ "$CLOUD_BRB" == "true" ] && [ ! -z "$BRB_VIDEO_URL" ]; then
             OBS_SCENE_BRB="Cloud BRB mp4"
+            V_OBS_SCENE_BRB="Cloud BRB mp4"
         fi
         echo "6) BRB Scene Name (Current: $OBS_SCENE_BRB)"
-        echo "7) Low Bitrate Threshold (Current: $LOW_BITRATE kbps)"
-        echo "8) Restore Bitrate Threshold (Current: $RESTORE_BITRATE kbps)"
-        echo "9) Toggle Cloud BRB (Current: $CLOUD_BRB)"
-        echo "10) Configure BRB Video URL (Current: ${BRB_VIDEO_URL:-(None)})"
-        echo "11) Back to Main Menu"
+        echo "7) Vertical Main/Live Scene Name (Current: $V_OBS_SCENE_LIVE)"
+        echo "8) Vertical BRB Scene Name (Current: $V_OBS_SCENE_BRB)"
+        echo "9) Low Bitrate Threshold (Current: $LOW_BITRATE kbps)"
+        echo "10) Restore Bitrate Threshold (Current: $RESTORE_BITRATE kbps)"
+        echo "11) Toggle Cloud BRB (Current: $CLOUD_BRB)"
+        echo "12) Configure BRB Video URL (Current: ${BRB_VIDEO_URL:-(None)})"
+        echo "13) Back to Main Menu"
         echo -e "Select an option: \c"
         read -r noalbs_opt
 
@@ -1067,16 +1074,26 @@ configure_noalbs() {
                 if [ ! -z "$input" ]; then OBS_SCENE_BRB="$input"; save_config; fi
                 ;;
             7)
+                echo -e "Enter OBS Vertical Main Scene Name (e.g. 'Vertical Main' or 'Vertical Streaming'):"
+                read -r input
+                if [ ! -z "$input" ]; then V_OBS_SCENE_LIVE="$input"; save_config; fi
+                ;;
+            8)
+                echo -e "Enter OBS Vertical BRB Scene Name (e.g. 'Vertical BRB' or 'Vertical LowBitrate'):"
+                read -r input
+                if [ ! -z "$input" ]; then V_OBS_SCENE_BRB="$input"; save_config; fi
+                ;;
+            9)
                 echo -e "Enter Low Bitrate Threshold in kbps (e.g. 1000):"
                 read -r input
                 if [ ! -z "$input" ]; then LOW_BITRATE="$input"; save_config; fi
                 ;;
-            8)
+            10)
                 echo -e "Enter Restore Bitrate Threshold in kbps (e.g. 1500):"
                 read -r input
                 if [ ! -z "$input" ]; then RESTORE_BITRATE="$input"; save_config; fi
                 ;;
-            9)
+            11)
                 if [ "$CLOUD_BRB" == "true" ]; then
                     CLOUD_BRB="false"
                 else
@@ -1085,12 +1102,13 @@ configure_noalbs() {
                 fi
                 save_config
                 ;;
-            10)
+            12)
                 echo -e "Enter BRB Video URL (Direct MP4 link):"
                 read -r input
                 if [ ! -z "$input" ]; then
                     BRB_VIDEO_URL="$input"
                     OBS_SCENE_BRB="Cloud BRB mp4"
+                    V_OBS_SCENE_BRB="Cloud BRB mp4"
                     save_config
                     mkdir -p ./data
                     echo -e "${YELLOW}Downloading BRB video...${NC}"
@@ -1098,7 +1116,7 @@ configure_noalbs() {
                     sleep 2
                 fi
                 ;;
-            11) break ;;
+            13) break ;;
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
@@ -1303,6 +1321,8 @@ build_and_run() {
         -e OBS_WS_PASSWORD="$OBS_WS_PASSWORD" \
         -e OBS_SCENE_LIVE="$OBS_SCENE_LIVE" \
         -e OBS_SCENE_BRB="$OBS_SCENE_BRB" \
+        -e V_OBS_SCENE_LIVE="$V_OBS_SCENE_LIVE" \
+        -e V_OBS_SCENE_BRB="$V_OBS_SCENE_BRB" \
         -e LOW_BITRATE="$LOW_BITRATE" \
         -e RESTORE_BITRATE="$RESTORE_BITRATE" \
         -e CLOUD_BRB="$CLOUD_BRB" \
