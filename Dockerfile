@@ -7,7 +7,10 @@ ENV NGINX_RTMP_MODULE_VERSION=cookie-nginx-rtmp
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
     pip3 install --upgrade --break-system-packages flask flask-session gunicorn requests obsws-python twitchio google-api-python-client eventlet flask-socketio edge-tts && \
-    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext certbot ffmpeg && \
+    apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext certbot ffmpeg obs-studio xvfb jq curl wget cmake libobs-dev qt6-base-dev qt6-base-private-dev gcc g++ git build-essential && \
+    wget -qO /tmp/vertical-canvas.deb $(curl -s https://api.github.com/repos/Aitum/obs-vertical-canvas/releases/latest | grep "browser_download_url" | grep "linux-gnu.deb" | head -n 1 | cut -d '"' -f 4) && \
+    (dpkg -i /tmp/vertical-canvas.deb || apt-get install -f -y) && \
+    rm /tmp/vertical-canvas.deb && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 cache purge

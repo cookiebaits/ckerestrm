@@ -43,6 +43,8 @@ check_process() {
 check_process "nginx"
 check_process "gunicorn"
 check_process "stunnel4"
+check_process "Xvfb"
+check_process "obs"
 
 # 3. Check Flask Health Endpoint
 echo -n "Checking Flask Validator health endpoint... "

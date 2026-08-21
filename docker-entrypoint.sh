@@ -209,5 +209,17 @@ if [ "${NOALBS_ENABLED}" = "true" ]; then
     python3 /app/noalbs/noalbs.py > /tmp/noalbs.log 2>&1 &
 fi
 
+# --- Start OBS Headless ---
+if pgrep -x "Xvfb" > /dev/null; then
+    echo "Xvfb is already running."
+else
+    Xvfb :99 -screen 0 3840x2160x24 &
+    sleep 2
+fi
+
+export DISPLAY=:99
+echo "Starting OBS Studio headlessly on virtual display :99..."
+obs-studio &
+
 echo "Starting Nginx..."
 exec "$@" # Execute the CMD from Dockerfile (nginx -g 'daemon off;')
