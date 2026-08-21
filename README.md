@@ -44,9 +44,18 @@ You need a VPS server. Key considerations:
     ```
     *   Use the menu to easily install Docker (if needed).
     *   Configure your stream keys and set any desired optimizations.
+    *   (Optional) Select "Install OBS Headless & Vertical Canvas" to install OBS Studio, Xvfb, and the Aitum Vertical Canvas plugin for running a headless streaming setup on your VPS. This will generate a `run_headless_obs.sh` script to properly start OBS on a virtual display with sufficient resolution for both horizontal and vertical canvases.
     *   Select "Build & Start Server" to launch your customized RTMP relay.
 
-3.  **Configure OBS (or other streaming software):**
+3.  **Headless OBS with Aitum Vertical Canvas (Optional):**
+    *   If you chose to install the headless OBS setup, you can launch it using:
+        ```bash
+        ./run_headless_obs.sh
+        ```
+    *   This sets up an `Xvfb` display (`:99`) at `3840x2160` ensuring neither the horizontal nor the vertical canvas causes the encoder to crash, and then launches `obs-studio` headlessly.
+    *   Use OBS websockets or a VNC server to manage your OBS scenes.
+
+4.  **Configure OBS (or other streaming software):**
     *   Service: `Custom...`
     *   **Horizontal Server:** `rtmp://<your_vps_ip_address>:1935/live`
     *   **Vertical Server:** `rtmp://<your_vps_ip_address>:1935/vertical` (For Aitum Vertical)
