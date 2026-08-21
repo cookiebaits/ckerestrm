@@ -1118,6 +1118,90 @@ configure_optimizations() {
     fi
 }
 
+install_obs_vertical() {
+    clear
+    echo -e "${GREEN}=== Install OBS Studio & Aitum Vertical Canvas (Headless) ===${NC}"
+
+    local package_manager=""
+    if command -v apt-get &> /dev/null; then
+        package_manager="apt-get"
+    fi
+
+    if [ -z "$package_manager" ]; then
+        echo -e "${RED}Currently only apt-based distributions (Debian/Ubuntu) are fully supported for automated OBS install.${NC}"
+        sleep 2
+        return
+    fi
+
+    echo -e "${YELLOW}Installing OBS Studio and dependencies...${NC}"
+    sudo apt-get update
+    sudo apt-get install -y obs-studio xvfb jq curl wget cmake libobs-dev qt6-base-dev qt6-base-private-dev gcc g++ git build-essential
+
+    # Fetch latest release of Aitum Vertical Canvas
+    echo -e "${YELLOW}Fetching latest Aitum Vertical Canvas release...${NC}"
+    LATEST_URL=$(curl -s https://api.github.com/repos/Aitum/obs-vertical-canvas/releases/latest | grep "browser_download_url" | grep "linux-gnu.deb" | head -n 1 | cut -d '"' -f 4)
+
+    INSTALL_SUCCESS=0
+
+    if [ -n "$LATEST_URL" ]; then
+        echo -e "${GREEN}Downloading Aitum Vertical Canvas: $LATEST_URL${NC}"
+        wget -qO /tmp/vertical-canvas.deb "$LATEST_URL"
+        echo -e "${YELLOW}Installing deb package...${NC}"
+        if sudo dpkg -i /tmp/vertical-canvas.deb && sudo apt-get install -f -y; then
+            INSTALL_SUCCESS=1
+        else
+            echo -e "${RED}Failed to install deb package. Falling back to source build...${NC}"
+        fi
+    fi
+
+    if [ $INSTALL_SUCCESS -eq 0 ]; then
+        echo -e "${YELLOW}Building from source...${NC}"
+        rm -rf /tmp/obs-vertical-canvas
+        git clone https://github.com/Aitum/obs-vertical-canvas.git /tmp/obs-vertical-canvas
+        pushd /tmp/obs-vertical-canvas > /dev/null
+        cmake -S . -B build -DBUILD_OUT_OF_TREE=On
+        cmake --build build -j$(nproc)
+        sudo cmake --install build
+        popd > /dev/null
+    fi
+
+    # Verify installation
+    PLUGIN_SO=""
+    if [ -f "/usr/lib/obs-plugins/vertical-canvas.so" ]; then PLUGIN_SO="/usr/lib/obs-plugins/vertical-canvas.so"; fi
+    if [ -f "/usr/lib/x86_64-linux-gnu/obs-plugins/vertical-canvas.so" ]; then PLUGIN_SO="/usr/lib/x86_64-linux-gnu/obs-plugins/vertical-canvas.so"; fi
+    if [ -f "$HOME/.config/obs-studio/plugins/vertical-canvas/bin/64bit/vertical-canvas.so" ]; then PLUGIN_SO="$HOME/.config/obs-studio/plugins/vertical-canvas/bin/64bit/vertical-canvas.so"; fi
+
+    if [ -n "$PLUGIN_SO" ]; then
+        echo -e "${GREEN}Aitum Vertical Canvas installed successfully! Found at: $PLUGIN_SO${NC}"
+    else
+        echo -e "${RED}Failed to verify Aitum Vertical Canvas installation. Please check logs.${NC}"
+    fi
+
+    # Create headless streaming script
+    cat << 'EOF' > run_headless_obs.sh
+#!/bin/bash
+# run_headless_obs.sh
+# Run Xvfb with a resolution large enough for both 1920x1080 and 1080x1920
+# (e.g., 3840x2160 ensures both canvases have enough room to render without crashing the encoder)
+
+if pgrep -x "Xvfb" > /dev/null; then
+    echo "Xvfb is already running."
+else
+    Xvfb :99 -screen 0 3840x2160x24 &
+    sleep 2
+fi
+
+export DISPLAY=:99
+echo "Starting OBS Studio headlessly on virtual display :99..."
+obs-studio &
+EOF
+    chmod +x run_headless_obs.sh
+    echo -e "${GREEN}Created run_headless_obs.sh to run OBS headlessly.${NC}"
+
+    echo -e "Press Enter to return to menu..."
+    read -r
+}
+
 install_docker() {
     echo -e "${GREEN}Checking for Docker...${NC}"
     if ! command -v docker &> /dev/null; then
@@ -1455,12 +1539,13 @@ while true; do
         echo "8) Configure Domain / Reverse Proxy (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
         echo "10) Configure NOALBS Scene Switcher"
-        echo "11) Build & Start Server"
-        echo "12) Run Integration Tests"
-        echo "13) Stop Server"
-        echo "14) Check and Clear Old Logs"
-        echo "15) View Real-Time Logs"
-        echo "16) Quit"
+        echo "11) Install OBS Headless & Vertical Canvas"
+        echo "12) Build & Start Server"
+        echo "13) Run Integration Tests"
+        echo "14) Stop Server"
+        echo "15) Check and Clear Old Logs"
+        echo "16) View Real-Time Logs"
+        echo "17) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1475,12 +1560,13 @@ while true; do
         8) configure_domain ;;
         9) configure_optimizations ;;
         10) configure_noalbs ;;
-        11) build_and_run ;;
-        12) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;
-        13) stop_container ;;
-        14) view_logs ;;
-        15) view_realtime_logs ;;
-        16) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        11) install_obs_vertical ;;
+        12) build_and_run ;;
+        13) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;
+        14) stop_container ;;
+        15) view_logs ;;
+        16) view_realtime_logs ;;
+        17) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
