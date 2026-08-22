@@ -1,5 +1,5 @@
 #!/bin/bash
-# integration_test.sh - Integration testing for PrismRTMPS
+# integration_test.sh - Integration testing for CookieRTMPS
 
 # Colors
 RED='\033[0;31m'
@@ -8,10 +8,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-CONTAINER_NAME="prism-rtmps"
+CONTAINER_NAME="cookie-rtmps"
 
 echo -e "${BLUE}=====================================${NC}"
-echo -e "${BLUE}     PrismRTMPS Integration Test     ${NC}"
+echo -e "${BLUE}     CookieRTMPS Integration Test     ${NC}"
 echo -e "${BLUE}=====================================${NC}"
 
 # 1. Check if Docker container is running
