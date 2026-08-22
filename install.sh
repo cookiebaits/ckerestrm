@@ -1477,23 +1477,6 @@ view_logs() {
             echo -e "Select an option: \c"
             read -r log_opt
 
-        case $log_opt in
-            1) break ;;
-            2)
-                echo -e "${YELLOW}Clearing logs...${NC}"
-                # Truncate internal logs
-                docker exec cookie-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log' 2>/dev/null || true
-                # Truncate Docker's own log file for the container
-                LOG_PATH=$(docker inspect --format='{{.LogPath}}' cookie-rtmps 2>/dev/null)
-                if [ ! -z "$LOG_PATH" ]; then
-                    sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
-                fi
-                echo -e "${GREEN}Logs cleared.${NC}"
-                sleep 1
-                ;;
-            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-        esac
-    done
             case $log_opt in
                 1) break ;;
                 2)
