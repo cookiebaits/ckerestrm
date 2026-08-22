@@ -14,6 +14,9 @@ echo -e "${BLUE}=====================================${NC}"
 echo -e "${BLUE}     CookieRTMPS Integration Test     ${NC}"
 echo -e "${BLUE}=====================================${NC}"
 
+echo -e "${YELLOW}Waiting 5 seconds for services to start...${NC}"
+sleep 5
+
 # 1. Check if Docker container is running
 echo -n "Checking Docker container '$CONTAINER_NAME'... "
 if [ "$(docker inspect -f '{{.State.Running}}' $CONTAINER_NAME 2>/dev/null)" == "true" ]; then

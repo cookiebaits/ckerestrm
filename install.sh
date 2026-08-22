@@ -67,11 +67,10 @@ CHAT_TIKTOK=""
 # Host Port Settings
 PORT_RTMP="1935"
 PORT_HTTP="8443"
-PORT_HTTPS="8008"
 PORT_STATS="8081"
 
 # NOALBS Settings
-NOALBS_ENABLED="false"
+NOALBS_ENABLED="true"
 OBS_WS_HOST="127.0.0.1"
 OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
@@ -80,6 +79,7 @@ OBS_SCENE_BRB="BRB"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
 CLOUD_BRB="false"
+CLOUD_BRB="true"
 BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
 
 CONFIG_FILE="rtmp_config.env"
@@ -88,6 +88,65 @@ CONFIG_FILE="rtmp_config.env"
 if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
+
+
+
+check_dependencies() {
+    echo -e "${YELLOW}Checking host dependencies...${NC}"
+
+    local package_manager=""
+    if command -v apt-get &> /dev/null; then
+        package_manager="apt-get install -y"
+    elif command -v yum &> /dev/null; then
+        package_manager="yum install -y"
+    elif command -v dnf &> /dev/null; then
+        package_manager="dnf install -y"
+    elif command -v pacman &> /dev/null; then
+        package_manager="pacman -S --noconfirm"
+    elif command -v zypper &> /dev/null; then
+        package_manager="zypper install -y"
+    fi
+
+    # Install curl if missing
+    if ! command -v curl &> /dev/null; then
+        echo -e "${YELLOW}'curl' is missing. Attempting to install...${NC}"
+        if [ -n "$package_manager" ]; then
+            sudo $package_manager curl || { echo -e "${RED}Failed to install curl. Please install it manually.${NC}"; return 1; }
+        else
+            echo -e "${RED}Unsupported package manager. Please install 'curl' manually.${NC}"
+            return 1
+        fi
+    else
+        echo -e "${GREEN}  - curl: OK${NC}"
+    fi
+
+    # Install iproute2 (for ss) or net-tools (for netstat) if missing
+    if ! command -v ss &> /dev/null && ! command -v netstat &> /dev/null; then
+        echo -e "${YELLOW}Port checking tools ('ss' or 'netstat') missing. Attempting to install iproute2...${NC}"
+        if [ -n "$package_manager" ]; then
+            sudo $package_manager iproute2 || sudo $package_manager net-tools || { echo -e "${RED}Failed to install port checking tools. Please install manually.${NC}"; return 1; }
+        else
+            echo -e "${RED}Unsupported package manager. Please install 'iproute2' or 'net-tools' manually.${NC}"
+            return 1
+        fi
+    else
+        echo -e "${GREEN}  - ss/netstat: OK${NC}"
+    fi
+
+    # Install Docker if missing
+    if ! command -v docker &> /dev/null; then
+        echo -e "${YELLOW}'docker' is missing. Initiating Docker installation...${NC}"
+        install_docker
+        if ! command -v docker &> /dev/null; then
+            echo -e "${RED}Docker installation failed. Please install manually.${NC}"
+            return 1
+        fi
+    else
+        echo -e "${GREEN}  - docker: OK${NC}"
+    fi
+
+    return 0
+}
 
 save_config() {
     cat <<ENV_EOF > "$CONFIG_FILE"
@@ -152,7 +211,6 @@ CLOUD_BRB="$CLOUD_BRB"
 BRB_VIDEO_URL="$BRB_VIDEO_URL"
 PORT_RTMP="$PORT_RTMP"
 PORT_HTTP="$PORT_HTTP"
-PORT_HTTPS="$PORT_HTTPS"
 PORT_STATS="$PORT_STATS"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
@@ -779,21 +837,64 @@ configure_domain() {
 }
 
 configure_whitelist() {
-    clear
-    echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
-    echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
-    echo ""
-    echo -e "Enter IP address to whitelist (Leave blank to keep current, type 'disable' to allow all):"
-    read -r ip_input
-    if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
-        ACCEPTED_IP=""
-        echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
-    elif [ ! -z "$ip_input" ]; then
-        ACCEPTED_IP="$ip_input"
-        echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
-    fi
-    save_config
-    sleep 2
+    while true; do
+        clear
+        echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
+        echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
+        echo ""
+        echo "1) Manually enter IP address"
+        echo "2) Auto-detect and include Server's Public IP"
+        echo "3) Disable IP Whitelist (Allow All)"
+        echo "4) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r ip_opt
+
+        case $ip_opt in
+            1)
+                echo -e "Enter IP address to whitelist (e.g. 192.168.1.100, 10.0.0.5):"
+                read -r ip_input
+                if [ ! -z "$ip_input" ]; then
+                    ACCEPTED_IP="$ip_input"
+                    echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
+                    save_config
+                    sleep 2
+                fi
+                ;;
+            2)
+                echo -e "${YELLOW}Detecting Server's Public IP...${NC}"
+                SERVER_IP=$(curl -4 -s ifconfig.me)
+                if [ ! -z "$SERVER_IP" ]; then
+                    # Check if ACCEPTED_IP already has values to append cleanly
+                    if [ -z "$ACCEPTED_IP" ]; then
+                        ACCEPTED_IP="$SERVER_IP"
+                    else
+                        # Prevent duplicate entries if the IP is already in the list
+                        if [[ ",$ACCEPTED_IP," != *",$SERVER_IP,"* ]]; then
+                            ACCEPTED_IP="${ACCEPTED_IP},${SERVER_IP}"
+                        fi
+                    fi
+                    echo -e "${GREEN}Server IP ($SERVER_IP) added to Whitelist.${NC}"
+                    save_config
+                else
+                    echo -e "${RED}Failed to detect Server IP.${NC}"
+                fi
+                sleep 2
+                ;;
+            3)
+                ACCEPTED_IP=""
+                echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
+                save_config
+                sleep 2
+                ;;
+            4)
+                break
+                ;;
+            *)
+                echo -e "${RED}Invalid option${NC}"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 configure_titles() {
@@ -908,18 +1009,23 @@ configure_chat() {
 configure_noalbs() {
     while true; do
         clear
-        echo -e "${GREEN}=== NOALBS Scene Switcher Configuration ===${NC}"
+        echo "========================================"
+        echo "         NOALBS Configuration"
+        echo "========================================"
         echo -e "Status: $([ "$NOALBS_ENABLED" == "true" ] && echo -e "${GREEN}ENABLED${NC}" || echo -e "${RED}DISABLED${NC}")"
         echo ""
-        echo "1) Toggle Enabled (Currently: $NOALBS_ENABLED)"
+        echo "1) Toggle Enabled (Current: $NOALBS_ENABLED)"
         echo "2) OBS WebSocket Host (Current: $OBS_WS_HOST)"
         echo "3) OBS WebSocket Port (Current: $OBS_WS_PORT)"
         echo "4) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:-(None)})"
         echo "5) Main/Live Scene Name (Current: $OBS_SCENE_LIVE)"
+        if [ "$CLOUD_BRB" == "true" ] && [ ! -z "$BRB_VIDEO_URL" ]; then
+            OBS_SCENE_BRB="Cloud BRB mp4"
+        fi
         echo "6) BRB Scene Name (Current: $OBS_SCENE_BRB)"
         echo "7) Low Bitrate Threshold (Current: $LOW_BITRATE kbps)"
         echo "8) Restore Bitrate Threshold (Current: $RESTORE_BITRATE kbps)"
-        echo "9) Toggle Cloud BRB (Currently: $CLOUD_BRB)"
+        echo "9) Toggle Cloud BRB (Current: $CLOUD_BRB)"
         echo "10) Configure BRB Video URL (Current: ${BRB_VIDEO_URL:-(None)})"
         echo "11) Back to Main Menu"
         echo -e "Select an option: \c"
@@ -927,7 +1033,12 @@ configure_noalbs() {
 
         case $noalbs_opt in
             1)
-                if [ "$NOALBS_ENABLED" == "true" ]; then NOALBS_ENABLED="false"; else NOALBS_ENABLED="true"; fi
+                if [ "$NOALBS_ENABLED" == "true" ]; then
+                    NOALBS_ENABLED="false"
+                    CLOUD_BRB="false"
+                else
+                    NOALBS_ENABLED="true"
+                fi
                 save_config
                 ;;
             2)
@@ -967,7 +1078,12 @@ configure_noalbs() {
                 if [ ! -z "$input" ]; then RESTORE_BITRATE="$input"; save_config; fi
                 ;;
             9)
-                if [ "$CLOUD_BRB" == "true" ]; then CLOUD_BRB="false"; else CLOUD_BRB="true"; fi
+                if [ "$CLOUD_BRB" == "true" ]; then
+                    CLOUD_BRB="false"
+                else
+                    CLOUD_BRB="true"
+                    NOALBS_ENABLED="true"
+                fi
                 save_config
                 ;;
             10)
@@ -975,6 +1091,7 @@ configure_noalbs() {
                 read -r input
                 if [ ! -z "$input" ]; then
                     BRB_VIDEO_URL="$input"
+                    OBS_SCENE_BRB="Cloud BRB mp4"
                     save_config
                     mkdir -p ./data
                     echo -e "${YELLOW}Downloading BRB video...${NC}"
@@ -1000,6 +1117,90 @@ configure_optimizations() {
         echo -e "${GREEN}Chunk size updated.${NC}"
         sleep 1
     fi
+}
+
+install_obs_vertical() {
+    clear
+    echo -e "${GREEN}=== Install OBS Studio & Aitum Vertical Canvas (Headless) ===${NC}"
+
+    local package_manager=""
+    if command -v apt-get &> /dev/null; then
+        package_manager="apt-get"
+    fi
+
+    if [ -z "$package_manager" ]; then
+        echo -e "${RED}Currently only apt-based distributions (Debian/Ubuntu) are fully supported for automated OBS install.${NC}"
+        sleep 2
+        return
+    fi
+
+    echo -e "${YELLOW}Installing OBS Studio and dependencies...${NC}"
+    sudo apt-get update
+    sudo apt-get install -y obs-studio xvfb jq curl wget cmake libobs-dev qt6-base-dev qt6-base-private-dev gcc g++ git build-essential
+
+    # Fetch latest release of Aitum Vertical Canvas
+    echo -e "${YELLOW}Fetching latest Aitum Vertical Canvas release...${NC}"
+    LATEST_URL=$(curl -s https://api.github.com/repos/Aitum/obs-vertical-canvas/releases/latest | grep "browser_download_url" | grep "linux-gnu.deb" | head -n 1 | cut -d '"' -f 4)
+
+    INSTALL_SUCCESS=0
+
+    if [ -n "$LATEST_URL" ]; then
+        echo -e "${GREEN}Downloading Aitum Vertical Canvas: $LATEST_URL${NC}"
+        wget -qO /tmp/vertical-canvas.deb "$LATEST_URL"
+        echo -e "${YELLOW}Installing deb package...${NC}"
+        if sudo dpkg -i /tmp/vertical-canvas.deb && sudo apt-get install -f -y; then
+            INSTALL_SUCCESS=1
+        else
+            echo -e "${RED}Failed to install deb package. Falling back to source build...${NC}"
+        fi
+    fi
+
+    if [ $INSTALL_SUCCESS -eq 0 ]; then
+        echo -e "${YELLOW}Building from source...${NC}"
+        rm -rf /tmp/obs-vertical-canvas
+        git clone https://github.com/Aitum/obs-vertical-canvas.git /tmp/obs-vertical-canvas
+        pushd /tmp/obs-vertical-canvas > /dev/null
+        cmake -S . -B build -DBUILD_OUT_OF_TREE=On
+        cmake --build build -j$(nproc)
+        sudo cmake --install build
+        popd > /dev/null
+    fi
+
+    # Verify installation
+    PLUGIN_SO=""
+    if [ -f "/usr/lib/obs-plugins/vertical-canvas.so" ]; then PLUGIN_SO="/usr/lib/obs-plugins/vertical-canvas.so"; fi
+    if [ -f "/usr/lib/x86_64-linux-gnu/obs-plugins/vertical-canvas.so" ]; then PLUGIN_SO="/usr/lib/x86_64-linux-gnu/obs-plugins/vertical-canvas.so"; fi
+    if [ -f "$HOME/.config/obs-studio/plugins/vertical-canvas/bin/64bit/vertical-canvas.so" ]; then PLUGIN_SO="$HOME/.config/obs-studio/plugins/vertical-canvas/bin/64bit/vertical-canvas.so"; fi
+
+    if [ -n "$PLUGIN_SO" ]; then
+        echo -e "${GREEN}Aitum Vertical Canvas installed successfully! Found at: $PLUGIN_SO${NC}"
+    else
+        echo -e "${RED}Failed to verify Aitum Vertical Canvas installation. Please check logs.${NC}"
+    fi
+
+    # Create headless streaming script
+    cat << 'EOF' > run_headless_obs.sh
+#!/bin/bash
+# run_headless_obs.sh
+# Run Xvfb with a resolution large enough for both 1920x1080 and 1080x1920
+# (e.g., 3840x2160 ensures both canvases have enough room to render without crashing the encoder)
+
+if pgrep -x "Xvfb" > /dev/null; then
+    echo "Xvfb is already running."
+else
+    Xvfb :99 -screen 0 3840x2160x24 &
+    sleep 2
+fi
+
+export DISPLAY=:99
+echo "Starting OBS Studio headlessly on virtual display :99..."
+obs-studio &
+EOF
+    chmod +x run_headless_obs.sh
+    echo -e "${GREEN}Created run_headless_obs.sh to run OBS headlessly.${NC}"
+
+    echo -e "Press Enter to return to menu..."
+    read -r
 }
 
 install_docker() {
@@ -1031,9 +1232,7 @@ check_port() {
 }
 
 build_and_run() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
-        sleep 2
+    if ! check_dependencies; then
         return
     fi
 
@@ -1045,7 +1244,7 @@ build_and_run() {
     CONFLICTS=0
     declare -a PORTS_TO_CHECK=("$PORT_RTMP")
     if [ ! -z "$SERVER_DOMAIN" ]; then
-        PORTS_TO_CHECK+=("$PORT_HTTP" "$PORT_HTTPS")
+        PORTS_TO_CHECK+=("$PORT_HTTP")
     fi
 
     for port in "${PORTS_TO_CHECK[@]}"; do
@@ -1137,7 +1336,7 @@ build_and_run() {
     # Port mapping logic: Map HTTP/HTTPS only if domain is set
     PORT_MAPS="-p ${PORT_RTMP}:1935"
     if [ ! -z "$SERVER_DOMAIN" ]; then
-        PORT_MAPS="$PORT_MAPS -p ${PORT_HTTP}:80 -p ${PORT_HTTPS}:443"
+        PORT_MAPS="$PORT_MAPS -p ${PORT_HTTP}:80"
     fi
 
     # Start the container
@@ -1210,6 +1409,36 @@ build_and_run() {
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
+
+
+    # Restart the container service to ensure it is running properly before tests
+    echo -e "${YELLOW}Restarting the cookie-rtmps service to ensure it is running properly...${NC}"
+    docker restart cookie-rtmps
+
+        echo -e "${YELLOW}Waiting 5 seconds for services to start...${NC}"
+        sleep 5
+
+        echo -n "Verifying nginx inside container... "
+        if docker exec cookie-rtmps pgrep -x "nginx" > /dev/null; then
+            echo -e "[${GREEN}PASSED${NC}]"
+        else
+            echo -e "[${RED}FAILED${NC}]"
+            echo -e "${RED}Error: Nginx failed to start inside the container. Check logs for details.${NC}"
+        fi
+
+        echo -n "Verifying stunnel inside container... "
+        if docker exec cookie-rtmps pgrep -x "stunnel4" > /dev/null; then
+            echo -e "[${GREEN}PASSED${NC}]"
+        else
+            echo -e "[${RED}FAILED${NC}]"
+            echo -e "${RED}Error: Stunnel failed to start inside the container. Check logs for details.${NC}"
+        fi
+
+        # Run Integration Tests
+        if [ -f "./integration_test.sh" ]; then
+            chmod +x ./integration_test.sh
+            ./integration_test.sh
+        fi
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
@@ -1234,13 +1463,19 @@ view_logs() {
     echo -e "${YELLOW}Showing real-time logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
     # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
     (trap 'exit 0' INT; docker logs --since 48h -f cookie-rtmps)
+    # Check if there are logs older than 5 days
+    # docker logs doesn't natively filter "older than", so we check if logs from "until 120h" (5 days ago) exist.
+    # If the output is not empty, it means there are logs older than 5 days.
+    OLD_LOGS=$(docker logs --until 120h cookie-rtmps 2>/dev/null | head -n 1)
 
-    while true; do
-        echo -e "\n${GREEN}=== Log Options ===${NC}"
-        echo "1) Return to Main Menu"
-        echo "2) Clear Logs"
-        echo -e "Select an option: \c"
-        read -r log_opt
+    if [ ! -z "$OLD_LOGS" ]; then
+        while true; do
+            echo -e "\n${YELLOW}Notice: Log entries older than 5 days have been detected.${NC}"
+            echo -e "${GREEN}=== Log Options ===${NC}"
+            echo "1) Return to Main Menu"
+            echo "2) Clear Old Logs (Truncate all logs)"
+            echo -e "Select an option: \c"
+            read -r log_opt
 
         case $log_opt in
             1) break ;;
@@ -1259,6 +1494,49 @@ view_logs() {
             *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
         esac
     done
+            case $log_opt in
+                1) break ;;
+                2)
+                    echo -e "${YELLOW}Clearing logs...${NC}"
+                    # Truncate internal logs
+                    docker exec cookie-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /tmp/noalbs.log /tmp/validator.log' 2>/dev/null || true
+                    # Truncate Docker's own log file for the container
+                    LOG_PATH=$(docker inspect --format='{{.LogPath}}' cookie-rtmps 2>/dev/null)
+                    if [ ! -z "$LOG_PATH" ]; then
+                        sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
+                    fi
+                    echo -e "${GREEN}Logs cleared.${NC}"
+                    sleep 1
+                    break
+                    ;;
+                *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+            esac
+        done
+    else
+        echo -e "\n${GREEN}No log entries older than 5 days detected. Returning to Main Menu...${NC}"
+        sleep 2
+    fi
+}
+
+
+view_realtime_logs() {
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}Docker is not installed!${NC}"
+        sleep 2
+        return
+    fi
+
+    if ! docker ps | grep -q "cookie-rtmps"; then
+        echo -e "${RED}Container is not running!${NC}"
+        sleep 2
+        return
+    fi
+
+    echo -e "${YELLOW}Showing live logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
+    # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
+    (trap 'exit 0' INT; docker logs -f cookie-rtmps)
+    echo -e "${YELLOW}Log view exited.${NC}"
+    sleep 1
 }
 
 stop_container() {
@@ -1301,6 +1579,13 @@ while true; do
         echo "12) Stop Server"
         echo "13) Real-time Logs"
         echo "14) Quit"
+        echo "11) Install OBS Headless & Vertical Canvas"
+        echo "12) Build & Start Server"
+        echo "13) Run Integration Tests"
+        echo "14) Stop Server"
+        echo "15) Check and Clear Old Logs"
+        echo "16) View Real-Time Logs"
+        echo "17) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1319,6 +1604,13 @@ while true; do
         12) stop_container ;;
         13) view_logs ;;
         14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        11) install_obs_vertical ;;
+        12) build_and_run ;;
+        13) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;
+        14) stop_container ;;
+        15) view_logs ;;
+        16) view_realtime_logs ;;
+        17) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done

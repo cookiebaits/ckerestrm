@@ -1,6 +1,7 @@
 # CookieRTMPS: Secure, Self-hosted Multistreaming Solution (Fork)
+# Cookie-RTMPS: Secure, Self-hosted Multistreaming Solution
 
-[![Discord](https://img.shields.io/discord/1303046473985818654?label=Discord&logo=discord&style=for-the-badge)](http://wubu.cookiebaits.com)
+**Cookie-RTMPS** is a modern, high-performance RTMPS server and tooling solution built by cookiebaits. It provides secure, self-hosted multistreaming capabilities.
 
 **CRITICAL SECURITY ADVISORY & PROJECT CONTEXT (Read First!)**
 
@@ -14,6 +15,8 @@ This project (`cookiebaits/CookieRTMPS`) is a **fork** of the `MorrowShore/Prism
 **Recommendation:** Due to the persistent lack of true stream key validation in the `MorrowShore/Prism` repository, users concerned about stream security are strongly advised to use this fork (`cookiebaits/CookieRTMPS`) or implement their own robust validation.
 
 ---
+## Overview
+# CookieRTMPS: Secure, Self-hosted Multistreaming Solution 
 
 ## Introduction (cookiebaits/CookieRTMPS)
 
@@ -22,31 +25,37 @@ Would you like to stream to Twitch, YouTube, Kick, Trovo, Facebook, Instagram, X
 You can host **CookieRTMPS** on a server to act as a **secure and efficient** prism for your streamed content!
 
 You stream **one** high-quality feed to your CookieRTMPS server, and it will:
+You can host **Cookie-RTMPS** on a server to act as a **secure and efficient** tool for your streamed content!
+
+You stream **one** high-quality feed to your Cookie-RTMPS server, and it will:
 1.  **Validate** the incoming stream to ensure it's from you, preventing unauthorized access.
 2.  **Relay** your stream to all the platforms you configure.
 
-This fork also includes performance tuning (optimized `chunk_size`), updated core components for better stability and security, and active maintenance.
-
-### Key New Features (v3.4+)
+### Key Features
+*   **NOALBS Scene Switcher & Cloud BRB:** Integrated NGINX OBS Automatic Low Bitrate Switching (NOALBS). Automatically detects stream drops or low bitrates and plays a Cloud BRB fallback video (or optionally switches OBS scenes) to keep your stream alive at the ingest endpoints, ensuring seamless viewing experiences.
+*   **Automated Server IP Whitelisting:** The interactive installer now supports securely auto-detecting and adding your server's public IP (useful for VPNs/VPS) to the broadcast whitelist.
 *   **Vertical Streaming Support:** Optimized for use with the **OBS Aitum Vertical plugin**. Push a second, independent vertical feed to specialized targets (TikTok, YouTube Vertical, Twitch Vertical) alongside your horizontal stream.
 *   **Automated Stream Titles:** Automatically set and update your stream titles in the format: `Base Title / Episode # / Date`. Episode numbers are persisted and increment automatically! (Current support: Twitch API).
 *   **Cloudflare Reverse Proxy:** Built-in support for Cloudflare Real IP, allowing you to secure your stats page behind a Cloudflare proxy.
-*   **Nginx 1.30.1 & Custom RTMP:** Updated to the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
+*   **Nginx 1.30.1 & Custom RTMP:** Uses the latest stable Nginx with a custom, hardened RTMP module for maximum reliability.
+*   **Robust Pre-Deployment Checks:** The installation script automatically verifies that all essential host dependencies (like Docker, curl, and networking tools) are present before building, and explicitly verifies that Nginx and Stunnel processes start successfully within the container to catch configuration errors early.
+*   **Resilient Nginx Configuration:** The proxy routing is designed to gracefully handle environments without domains configured, preventing crashes during initialization by intelligently defaulting internal domains.
 
-## Prequisites
+## Prerequisites
 
-You'd need a VPS server. Key considerations:
+You need a VPS server. Key considerations:
 *   **Network Performance:** Good bandwidth, low latency, and stable routing between your VPS and your chosen streaming platforms are crucial, especially for 1080p 60fps.
-*   **Resources:** A 2 vCore, 2GB RAM VPS (like those from Ionos, Linode, Digital Ocean, Vultr, Hetzner Cloud) is often sufficient. This fork has been tested and runs effectively on such configurations. Choose a location strategically.
+*   **Resources:** A 2 vCore, 2GB RAM VPS (like those from Ionos, Linode, Digital Ocean, Vultr, Hetzner Cloud) is often sufficient. Choose a location strategically.
 
 ## How To Set up `cookiebaits/CookieRTMPS`
+## Installation & Setup
 
-*   1- **SSH into your VPS server:**
+1.  **SSH into your VPS server:**
     ```bash
     ssh root@<your_server_ip_address>
     ```
 
-*   2- **Clone the repository & Set permissions:**
+2.  **Clone the repository & Run Installer:**
     ```bash
     git clone https://github.com/cookiebaits/cookie-rtmps.git && cd cookie-rtmps && chmod +x install.sh && ./install.sh
     ```
@@ -56,32 +65,41 @@ You'd need a VPS server. Key considerations:
   [Automatically integrated in the previous step now] for manual execution ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
-    *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
+    *   Configure your stream keys and set any desired optimizations.
+    *   (Optional) Select "Install OBS Headless & Vertical Canvas" to install OBS Studio, Xvfb, and the Aitum Vertical Canvas plugin for running a headless streaming setup on your VPS. This will generate a `run_headless_obs.sh` script to properly start OBS on a virtual display with sufficient resolution for both horizontal and vertical canvases.
     *   Select "Build & Start Server" to launch your customized RTMP relay.
 
-*   4- **Configure OBS (or other streaming software):**
+3.  **Headless OBS with Aitum Vertical Canvas (Optional):**
+    *   If you chose to install the headless OBS setup, you can launch it using:
+        ```bash
+        ./run_headless_obs.sh
+        ```
+    *   This sets up an `Xvfb` display (`:99`) at `3840x2160` ensuring neither the horizontal nor the vertical canvas causes the encoder to crash, and then launches `obs-studio` headlessly.
+    *   Use OBS websockets or a VNC server to manage your OBS scenes.
+
+4.  **Configure OBS (or other streaming software):**
     *   Service: `Custom...`
     *   **Horizontal Server:** `rtmp://<your_vps_ip_address>:1935/live`
     *   **Vertical Server:** `rtmp://<your_vps_ip_address>:1935/vertical` (For Aitum Vertical)
     *   Stream Key: **Use ONE of the actual stream keys you configured during the setup process** (or the custom Master OBS Key if you set one).
 
-*   5- **Begin streaming from OBS!**
+4.  **Begin streaming from OBS!**
 
 We advise testing with one or two destinations first.
 
 ## How To Manage CookieRTMPS
+## Usage Instructions
 
 *   **STOP** the container: `docker stop cookie-rtmps`
 *   **START** the container: `docker start cookie-rtmps`
 *   **VIEW LOGS:** `docker logs cookie-rtmps` (or `docker logs -f cookie-rtmps` for live logs)
 *   **EDIT Destinations / Keys:** Stop, remove (`docker rm cookie-rtmps`), and re-run the `docker run` command.
+*   **EDIT Destinations / Keys:** Stop, remove (`docker rm cookie-rtmps`), and re-run the setup script or `docker run` command.
 *   **UNINSTALL:** Stop, remove container, then `docker rmi cookie-rtmps`.
 
 ## Troubleshooting Common Issues
 
-*   **Lag / Falling Behind Stream:** Often a network bottleneck. This fork uses `chunk_size: 8192` for improved performance.
-    *   **Diagnosis:** Test one destination at a time. Use `mtr <destination_hostname>` from VPS.
-    *   **Solutions:** Different ingest servers, different VPS location, or lower stream bitrate.
+*   **Lag / Falling Behind Stream:** Often a network bottleneck. Try different ingest servers, a different VPS location, or lower stream bitrate.
 *   **Stream Rejects / "Invalid Key":**
     *   OBS key *must exactly match* one key from `docker run`.
     *   Ensure at least one destination key is active in `docker run`.
@@ -89,15 +107,21 @@ We advise testing with one or two destinations first.
 *   **One Destination Not Working:** Check URL/Key in `docker run`. Check Nginx/Stunnel logs. Ensure stream is active on the platform.
 
 ## Support & Contributing to This Fork
+    *   OBS key *must exactly match* one key configured.
+    *   Ensure at least one destination key is active in the container configuration.
+    *   Check validator logs: `docker exec cookie-rtmps tail /tmp/validator.log` or `docker logs cookie-rtmps`.
+*   **One Destination Not Working:** Check URL/Key configuration. Check Nginx/Stunnel logs. Ensure stream is active on the platform.
 
-Need help or have suggestions for **this fork**? Your contributions and feedback are welcome!
+## Configuration
 
 *   Raise an Issue: [https://github.com/cookiebaits/CookieRTMPS/issues](https://github.com/cookiebaits/CookieRTMPS/issues)
 *   Join our Discord: [http://wubu.cookiebaits.com](http://wubu.cookiebaits.com) (Shield above also links here)
+Environment variables and configuration settings use the `cookie-rtmps` naming convention. For example:
+- `COOKIE_RTMPS_OBS_KEY` (if master key is enabled)
 
----
-**Regarding the Original `MorrowShore/Prism` Repository:**
+Check the installer script `install.sh` to explore all available configurations.
 
-As noted in the advisory at the top, attempts to contribute essential security fixes to the original `MorrowShore/Prism` repository were met with dismissal and a subsequent "fix" that does not adequately address the core stream hijacking vulnerability. The maintainer's focus appeared to be on the perceived method of contribution rather than the critical security implications for users.
+## License & Author
 
 Given this, `cookiebaits/CookieRTMPS` will serve as an actively maintained, secure, and performance-tuned alternative for the community. We encourage users to prioritize their security.
+Built and maintained by **cookiebaits**.

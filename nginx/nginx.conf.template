@@ -7,7 +7,7 @@ events {}
 # Stream block for Port Fusion (SNI-based routing)
 stream {
     map $ssl_preread_server_name $backend_name {
-        ${SERVER_DOMAIN}  http_backend;
+        ${NGINX_SERVER_DOMAIN}  http_backend;
         default           rtmp_backend;
     }
 
@@ -16,11 +16,11 @@ stream {
     }
 
     upstream rtmp_backend {
-        server 127.0.0.1:1935;
+        server 127.0.0.1:19352;
     }
 
     server {
-        listen 443;
+        listen 1935;
         proxy_pass $backend_name;
         ssl_preread on;
     }
@@ -51,7 +51,7 @@ http {
     # HTTP Server (Port 80)
     server {
         listen 80;
-        server_name ${SERVER_DOMAIN};
+        server_name ${NGINX_SERVER_DOMAIN};
 
         # ACME Challenge for Certbot
         location /.well-known/acme-challenge/ {
@@ -60,7 +60,7 @@ http {
 
         # Redirect all HTTP traffic to HTTPS if domain is set
         location / {
-            if ($host = ${SERVER_DOMAIN}) {
+            if ($host = ${NGINX_SERVER_DOMAIN}) {
                 return 301 https://$host$request_uri;
             }
             root /usr/local/nginx/html;
@@ -77,10 +77,10 @@ http {
     # HTTPS Server (Internal Port 8443, Fused from 443)
     server {
         listen 8443 ssl;
-        server_name ${SERVER_DOMAIN};
+        server_name ${NGINX_SERVER_DOMAIN};
 
-        ssl_certificate /etc/letsencrypt/live/${SERVER_DOMAIN}/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/${SERVER_DOMAIN}/privkey.pem;
+        ssl_certificate /etc/letsencrypt/live/${NGINX_SERVER_DOMAIN}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/${NGINX_SERVER_DOMAIN}/privkey.pem;
 
         # Hardened SSL Settings
         ssl_protocols TLSv1.3;
@@ -117,7 +117,7 @@ http {
 
 rtmp {
     server {
-        listen 1935;
+        listen 19352;
         chunk_size ${CHUNK_SIZE};
 
         # Stability and Security Enhancements
