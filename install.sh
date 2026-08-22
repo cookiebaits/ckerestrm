@@ -847,10 +847,8 @@ build_and_run() {
     fi
 
     echo -e "${YELLOW}Stopping any existing container to free ports...${NC}"
-    echo -e "${YELLOW}Cleaning up any existing rtmps instances and files...${NC}"
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker stop >/dev/null 2>&1 || true
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker rm >/dev/null 2>&1 || true
-    docker images | grep -i rtmps | awk '{print $3}' | xargs -r docker rmi -f >/dev/null 2>&1 || true
+    docker stop cookie-rtmps 2>/dev/null || true
+    docker rm cookie-rtmps 2>/dev/null || true
 
     echo -e "${YELLOW}Checking for port conflicts...${NC}"
     CONFLICTS=0
@@ -939,12 +937,17 @@ build_and_run() {
     docker build -t cookie-rtmps .
 
     echo -e "${GREEN}Stopping any existing container...${NC}"
-    echo -e "${YELLOW}Cleaning up any existing rtmps instances and files...${NC}"
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker stop >/dev/null 2>&1 || true
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker rm >/dev/null 2>&1 || true
-    docker images | grep -i rtmps | awk '{print $3}' | xargs -r docker rmi -f >/dev/null 2>&1 || true
+    docker stop cookie-rtmps 2>/dev/null || true
+    docker rm cookie-rtmps 2>/dev/null || true
 
     echo -e "${GREEN}Starting container...${NC}"
+
+    # GPU support logic for NVENC
+    GPU_FLAGS=""
+    if command -v nvidia-smi &> /dev/null; then
+        echo -e "${GREEN}NVIDIA GPU detected. Enabling NVENC support for container...${NC}"
+        GPU_FLAGS="--gpus all,capabilities=compute,utility,video"
+    fi
 
     # Port mapping logic: Map HTTP/HTTPS only if domain is set
     PORT_MAPS="-p ${PORT_RTMP}:1935"
@@ -955,8 +958,9 @@ build_and_run() {
     # Start the container
     docker run -d --name cookie-rtmps \
         $PORT_MAPS \
+        $GPU_FLAGS \
         --restart unless-stopped \
-        --log-opt max-size=50m --log-opt max-file=1 \
+        --log-opt max-size=50m --log-opt max-file=3 \
         --log-opt compress=true \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
@@ -1066,53 +1070,6 @@ build_and_run() {
     read -r
 }
 
-view_logs() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Docker is not installed!${NC}"
-        sleep 2
-        return
-    fi
-
-    echo -e "${YELLOW}Showing real-time logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
-    # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
-    (trap 'exit 0' INT; docker logs --since 48h -f cookie-rtmps)
-    # Check if there are logs older than 5 days
-    # docker logs doesn't natively filter "older than", so we check if logs from "until 120h" (5 days ago) exist.
-    # If the output is not empty, it means there are logs older than 5 days.
-    OLD_LOGS=$(docker logs --until 120h cookie-rtmps 2>/dev/null | head -n 1)
-
-    if [ ! -z "$OLD_LOGS" ]; then
-        while true; do
-            echo -e "\n${YELLOW}Notice: Log entries older than 5 days have been detected.${NC}"
-            echo -e "${GREEN}=== Log Options ===${NC}"
-            echo "1) Return to Main Menu"
-            echo "2) Clear Old Logs (Truncate all logs)"
-            echo -e "Select an option: \c"
-            read -r log_opt
-
-            case $log_opt in
-                1) break ;;
-                2)
-                    echo -e "${YELLOW}Clearing logs...${NC}"
-                    # Truncate internal logs
-                    docker exec cookie-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /tmp/noalbs.log /tmp/validator.log' 2>/dev/null || true
-                    # Truncate Docker's own log file for the container
-                    LOG_PATH=$(docker inspect --format='{{.LogPath}}' cookie-rtmps 2>/dev/null)
-                    if [ ! -z "$LOG_PATH" ]; then
-                        sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
-                    fi
-                    echo -e "${GREEN}Logs cleared.${NC}"
-                    sleep 1
-                    break
-                    ;;
-                *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-            esac
-        done
-    else
-        echo -e "\n${GREEN}No log entries older than 5 days detected. Returning to Main Menu...${NC}"
-        sleep 2
-    fi
-}
 
 
 view_realtime_logs() {

@@ -87,25 +87,29 @@ class Noalbs:
         logger.info("Starting Cloud BRB stream...")
         # FFmpeg command to loop the video and push to the local ingest
         # This keeps the stream alive at the ingest points if the source drops
-        # Check for nvenc support dynamically
+        # Check for actual nvenc hardware support by running a fast dummy encode
         nvenc_support = False
         try:
-            res = subprocess.run(["ffmpeg", "-encoders"], capture_output=True, text=True)
-            if "h264_nvenc" in res.stdout:
+            res = subprocess.run([
+                "ffmpeg", "-f", "lavfi", "-i", "nullsrc=s=128x128:d=0.1",
+                "-c:v", "h264_nvenc", "-f", "null", "-"
+            ], capture_output=True, text=True)
+            if res.returncode == 0:
                 nvenc_support = True
         except:
             pass
 
         cmd = ["ffmpeg", "-re", "-stream_loop", "-1"]
-
+        
         # Audio thread queue size
         cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
-
+        
         if nvenc_support:
-            cmd.extend(["-c:v", "h264_nvenc", "-preset", "p3", "-tune", "ll"])
+            # Modern RTX GPUs perform well with p4/p5 preset and high tier
+            cmd.extend(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ll", "-profile:v", "high"])
         else:
             cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"])
-
+        
         cmd.extend([
             "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
             "-sc_threshold", "0",
