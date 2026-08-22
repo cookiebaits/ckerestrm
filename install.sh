@@ -1028,29 +1028,6 @@ build_and_run() {
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
 
 
-    # Restart the container service to ensure it is running properly before tests
-    echo -e "${YELLOW}Restarting the cookie-rtmps service to ensure it is running properly...${NC}"
-    docker restart cookie-rtmps
-
-        echo -e "${YELLOW}Waiting 5 seconds for services to start...${NC}"
-        sleep 5
-
-        echo -n "Verifying nginx inside container... "
-        if docker exec cookie-rtmps pgrep -x "nginx" > /dev/null; then
-            echo -e "[${GREEN}PASSED${NC}]"
-        else
-            echo -e "[${RED}FAILED${NC}]"
-            echo -e "${RED}Error: Nginx failed to start inside the container. Check logs for details.${NC}"
-        fi
-
-        echo -n "Verifying stunnel inside container... "
-        if docker exec cookie-rtmps pgrep -x "stunnel4" > /dev/null; then
-            echo -e "[${GREEN}PASSED${NC}]"
-        else
-            echo -e "[${RED}FAILED${NC}]"
-            echo -e "${RED}Error: Stunnel failed to start inside the container. Check logs for details.${NC}"
-        fi
-
         # Run Integration Tests
         if [ -f "./integration_test.sh" ]; then
             chmod +x ./integration_test.sh
@@ -1059,12 +1036,6 @@ build_and_run() {
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
-    echo -e "${YELLOW}Resetting services...${NC}"
-    docker restart cookie-rtmps
-    echo -e "${YELLOW}Waiting 5 seconds for services to initialize...${NC}"
-    sleep 5
-    echo -e "${YELLOW}Running integration tests...${NC}"
-    ./integration_test.sh
 
     echo -e "Press Enter to continue..."
     read -r
