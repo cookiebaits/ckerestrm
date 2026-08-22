@@ -78,6 +78,7 @@ OBS_SCENE_LIVE="Main"
 OBS_SCENE_BRB="BRB"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
+CLOUD_BRB="false"
 CLOUD_BRB="true"
 BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
 
@@ -1317,6 +1318,12 @@ build_and_run() {
         return
     fi
 
+    docker rmi cookie-rtmps 2>/dev/null || true
+    echo -e "${YELLOW}Removing older prism-rtmps containers and images...${NC}"
+    docker stop prism-rtmps 2>/dev/null || true
+    docker rm prism-rtmps 2>/dev/null || true
+    docker rmi prism-rtmps 2>/dev/null || true
+
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t cookie-rtmps .
 
@@ -1336,6 +1343,8 @@ build_and_run() {
     docker run -d --name cookie-rtmps \
         $PORT_MAPS \
         --restart unless-stopped \
+        --log-opt max-size=50m --log-opt max-file=1 \
+        --log-opt compress=true \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
         -e FACEBOOK_URL="$FACEBOOK_URL" \
@@ -1433,6 +1442,13 @@ build_and_run() {
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
+    echo -e "${YELLOW}Resetting services...${NC}"
+    docker restart cookie-rtmps
+    echo -e "${YELLOW}Waiting 5 seconds for services to initialize...${NC}"
+    sleep 5
+    echo -e "${YELLOW}Running integration tests...${NC}"
+    ./integration_test.sh
+
     echo -e "Press Enter to continue..."
     read -r
 }
@@ -1444,6 +1460,9 @@ view_logs() {
         return
     fi
 
+    echo -e "${YELLOW}Showing real-time logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
+    # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
+    (trap 'exit 0' INT; docker logs --since 48h -f cookie-rtmps)
     # Check if there are logs older than 5 days
     # docker logs doesn't natively filter "older than", so we check if logs from "until 120h" (5 days ago) exist.
     # If the output is not empty, it means there are logs older than 5 days.
@@ -1458,6 +1477,23 @@ view_logs() {
             echo -e "Select an option: \c"
             read -r log_opt
 
+        case $log_opt in
+            1) break ;;
+            2)
+                echo -e "${YELLOW}Clearing logs...${NC}"
+                # Truncate internal logs
+                docker exec cookie-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log' 2>/dev/null || true
+                # Truncate Docker's own log file for the container
+                LOG_PATH=$(docker inspect --format='{{.LogPath}}' cookie-rtmps 2>/dev/null)
+                if [ ! -z "$LOG_PATH" ]; then
+                    sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
+                fi
+                echo -e "${GREEN}Logs cleared.${NC}"
+                sleep 1
+                ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
             case $log_opt in
                 1) break ;;
                 2)
@@ -1539,6 +1575,10 @@ while true; do
         echo "8) Configure Domain / Reverse Proxy (Optional)"
         echo "9) Configure Optimizations (Chunk Size)"
         echo "10) Configure NOALBS Scene Switcher"
+        echo "11) Build & Start Server"
+        echo "12) Stop Server"
+        echo "13) Real-time Logs"
+        echo "14) Quit"
         echo "11) Install OBS Headless & Vertical Canvas"
         echo "12) Build & Start Server"
         echo "13) Run Integration Tests"
@@ -1560,6 +1600,10 @@ while true; do
         8) configure_domain ;;
         9) configure_optimizations ;;
         10) configure_noalbs ;;
+        11) build_and_run ;;
+        12) stop_container ;;
+        13) view_logs ;;
+        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         11) install_obs_vertical ;;
         12) build_and_run ;;
         13) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;

@@ -1,14 +1,30 @@
+# CookieRTMPS: Secure, Self-hosted Multistreaming Solution (Fork)
 # Cookie-RTMPS: Secure, Self-hosted Multistreaming Solution
 
 **Cookie-RTMPS** is a modern, high-performance RTMPS server and tooling solution built by cookiebaits. It provides secure, self-hosted multistreaming capabilities.
 
+**CRITICAL SECURITY ADVISORY & PROJECT CONTEXT (Read First!)**
+
+This project (`cookiebaits/CookieRTMPS`) is a **fork** of the `MorrowShore/Prism` RTMP relay. It was created primarily to address a **critical security vulnerability** in the original version that allows for **stream hijacking**, and to provide ongoing maintenance and improvements.
+
+*   **The Vulnerability (Original `MorrowShore/Prism` Pre-May 2025):** The original project historically lacked mandatory stream key validation (`on_publish` check). This meant if a server's IP address and port (usually 1935) were known, **anyone could stream to the server using *any* stream key**, and the original Prism would relay that unauthorized stream to all configured destinations (Twitch, YouTube, etc.).
+*   **Attempted Contribution:** A Pull Request was submitted to `MorrowShore/Prism` with a robust fix for this vulnerability (implementing `on_publish` key validation via `stream_validator.py`). Unfortunately, this PR was closed by the original maintainer with comments focusing on the perceived use of AI in its generation and an unrelated, since-reverted funding file modification, rather than the technical merits of the security fix. Communication on the PR was subsequently limited.
+*   **The "Fix" in Original `MorrowShore/Prism` (Post-May 7, 2025):** Following the closure of the PR, the original maintainer implemented their own changes. These changes include randomizing the RTMP application path (e.g., `rtmp://<ip>/<random_string>`). While this adds a minor layer of *obscurity*, it **does not fundamentally fix the stream hijacking vulnerability**. The random path is often logged and easily discoverable, and if found, hijacking is still possible because the stream key itself is *still not validated*. Their README continues to state "Your Stream Key Does Not Matter," and their commit messages for this "fix" reflect a focus on issues other than robust authentication.
+*   **The Solution in This Fork (`cookiebaits/CookieRTMPS`):** This fork implements **proper stream key validation**. When a stream connects, its key is checked against your configured destination keys. Only streams with a matching key are relayed. This is the industry-standard approach to securing RTMP relays.
+
+**Recommendation:** Due to the persistent lack of true stream key validation in the `MorrowShore/Prism` repository, users concerned about stream security are strongly advised to use this fork (`cookiebaits/CookieRTMPS`) or implement their own robust validation.
+
+---
 ## Overview
 # CookieRTMPS: Secure, Self-hosted Multistreaming Solution 
 
-## Introduction (cookiebaits/PrismRTMPS)
+## Introduction (cookiebaits/CookieRTMPS)
 
 Would you like to stream to Twitch, YouTube, Kick, Trovo, Facebook, Instagram, X (Twitter), Cloudflare, and custom RTMP destinations at once, without the upload strain on your computer or recurring fees of commercial services?
 
+You can host **CookieRTMPS** on a server to act as a **secure and efficient** prism for your streamed content!
+
+You stream **one** high-quality feed to your CookieRTMPS server, and it will:
 You can host **Cookie-RTMPS** on a server to act as a **secure and efficient** tool for your streamed content!
 
 You stream **one** high-quality feed to your Cookie-RTMPS server, and it will:
@@ -31,6 +47,7 @@ You need a VPS server. Key considerations:
 *   **Network Performance:** Good bandwidth, low latency, and stable routing between your VPS and your chosen streaming platforms are crucial, especially for 1080p 60fps.
 *   **Resources:** A 2 vCore, 2GB RAM VPS (like those from Ionos, Linode, Digital Ocean, Vultr, Hetzner Cloud) is often sufficient. Choose a location strategically.
 
+## How To Set up `cookiebaits/CookieRTMPS`
 ## Installation & Setup
 
 1.  **SSH into your VPS server:**
@@ -41,6 +58,11 @@ You need a VPS server. Key considerations:
 2.  **Clone the repository & Run Installer:**
     ```bash
     git clone https://github.com/cookiebaits/cookie-rtmps.git && cd cookie-rtmps && chmod +x install.sh && ./install.sh
+    ```
+
+*   3- **Run the Interactive Installer:**
+    ```bash
+  [Automatically integrated in the previous step now] for manual execution ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
     *   Configure your stream keys and set any desired optimizations.
@@ -65,11 +87,13 @@ You need a VPS server. Key considerations:
 
 We advise testing with one or two destinations first.
 
+## How To Manage CookieRTMPS
 ## Usage Instructions
 
 *   **STOP** the container: `docker stop cookie-rtmps`
 *   **START** the container: `docker start cookie-rtmps`
 *   **VIEW LOGS:** `docker logs cookie-rtmps` (or `docker logs -f cookie-rtmps` for live logs)
+*   **EDIT Destinations / Keys:** Stop, remove (`docker rm cookie-rtmps`), and re-run the `docker run` command.
 *   **EDIT Destinations / Keys:** Stop, remove (`docker rm cookie-rtmps`), and re-run the setup script or `docker run` command.
 *   **UNINSTALL:** Stop, remove container, then `docker rmi cookie-rtmps`.
 
@@ -77,6 +101,12 @@ We advise testing with one or two destinations first.
 
 *   **Lag / Falling Behind Stream:** Often a network bottleneck. Try different ingest servers, a different VPS location, or lower stream bitrate.
 *   **Stream Rejects / "Invalid Key":**
+    *   OBS key *must exactly match* one key from `docker run`.
+    *   Ensure at least one destination key is active in `docker run`.
+    *   Check validator logs: `docker exec cookie-rtmps tail /tmp/validator.log` or `docker logs cookie-rtmps`.
+*   **One Destination Not Working:** Check URL/Key in `docker run`. Check Nginx/Stunnel logs. Ensure stream is active on the platform.
+
+## Support & Contributing to This Fork
     *   OBS key *must exactly match* one key configured.
     *   Ensure at least one destination key is active in the container configuration.
     *   Check validator logs: `docker exec cookie-rtmps tail /tmp/validator.log` or `docker logs cookie-rtmps`.
@@ -84,6 +114,8 @@ We advise testing with one or two destinations first.
 
 ## Configuration
 
+*   Raise an Issue: [https://github.com/cookiebaits/CookieRTMPS/issues](https://github.com/cookiebaits/CookieRTMPS/issues)
+*   Join our Discord: [http://wubu.cookiebaits.com](http://wubu.cookiebaits.com) (Shield above also links here)
 Environment variables and configuration settings use the `cookie-rtmps` naming convention. For example:
 - `COOKIE_RTMPS_OBS_KEY` (if master key is enabled)
 
@@ -91,4 +123,5 @@ Check the installer script `install.sh` to explore all available configurations.
 
 ## License & Author
 
+Given this, `cookiebaits/CookieRTMPS` will serve as an actively maintained, secure, and performance-tuned alternative for the community. We encourage users to prioritize their security.
 Built and maintained by **cookiebaits**.
