@@ -58,7 +58,6 @@ COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Copy the validation server and supporting scripts
 COPY stream_validator.py /app/stream_validator.py
-COPY update_titles.py /app/update_titles.py
 COPY noalbs /app/noalbs
 
 # Config Stunnel

@@ -87,12 +87,36 @@ class Noalbs:
         logger.info("Starting Cloud BRB stream...")
         # FFmpeg command to loop the video and push to the local ingest
         # This keeps the stream alive at the ingest points if the source drops
-        cmd = [
-            "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
-            "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-            "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
-            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
-        ]
+        # Check for actual nvenc hardware support by running a fast dummy encode
+        nvenc_support = False
+        try:
+            res = subprocess.run([
+                "ffmpeg", "-f", "lavfi", "-i", "nullsrc=s=128x128:d=0.1",
+                "-c:v", "h264_nvenc", "-f", "null", "-"
+            ], capture_output=True, text=True)
+            if res.returncode == 0:
+                nvenc_support = True
+        except:
+            pass
+
+        cmd = ["ffmpeg", "-re", "-stream_loop", "-1"]
+
+        # Audio thread queue size
+        cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
+
+        if nvenc_support:
+            cmd.extend(["-c:v", "h264_nvenc", "-preset", "p3", "-tune", "ll"])
+        else:
+            cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"])
+
+        cmd.extend([
+            "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
+            "-sc_threshold", "0",
+            "-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "160k",
+            "-max_muxing_queue_size", "1024",
+            "-f", "flv",
+            f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
+        ])
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.cloud_brb_start_time = time.time()
