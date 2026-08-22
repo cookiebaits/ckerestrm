@@ -946,7 +946,7 @@ build_and_run() {
     GPU_FLAGS=""
     if command -v nvidia-smi &> /dev/null; then
         echo -e "${GREEN}NVIDIA GPU detected. Enabling NVENC support for container...${NC}"
-        GPU_FLAGS="--gpus all"
+        GPU_FLAGS="--gpus all,capabilities=compute,utility,video"
     fi
 
     # Port mapping logic: Map HTTP/HTTPS only if domain is set

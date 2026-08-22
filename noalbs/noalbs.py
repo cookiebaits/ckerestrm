@@ -105,7 +105,8 @@ class Noalbs:
         cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
 
         if nvenc_support:
-            cmd.extend(["-c:v", "h264_nvenc", "-preset", "p3", "-tune", "ll"])
+            # Modern RTX GPUs perform well with p4/p5 preset and high tier
+            cmd.extend(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ll", "-profile:v", "high"])
         else:
             cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"])
 
