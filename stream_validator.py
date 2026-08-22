@@ -74,25 +74,7 @@ def increment_episode_count():
         except Exception as e:
             app.logger.error(f"Error writing episode count: {e}")
 
-def run_update_titles():
-    # Only run if Twitch credentials exist
-    if not (os.getenv('TWITCH_CLIENT_ID') and os.getenv('TWITCH_OAUTH_TOKEN') and os.getenv('TWITCH_BROADCASTER_ID')):
-        return
 
-    count = get_episode_count()
-    date_str = datetime.now().strftime('%Y-%m-%d')
-    base_title = os.getenv('STREAM_BASE_TITLE', 'Live Stream')
-    full_title = f"{base_title} | Ep.{count} | {date_str}"
-
-    app.logger.info(f"Updating Twitch title to: {full_title}")
-
-    try:
-        # Call the update script
-        subprocess.run(['python3', '/app/update_titles.py', full_title], check=False)
-        # Note: We don't increment here to avoid double increments from dual horizontal/vertical streams
-        # We'll increment on publish_done of the primary app.
-    except Exception as e:
-        app.logger.error(f"Failed to update titles: {e}")
 
 @app.route('/validate', methods=['POST'])
 def validate():
@@ -144,8 +126,6 @@ def validate():
 
     if stream_key_attempt in VALID_KEYS or stream_key_attempt == 'cloud_brb_loop':
         app.logger.info(f"ACCEPTED stream from {client_ip}")
-        # Update titles in background to not block Nginx
-        threading.Thread(target=run_update_titles).start()
         return Response('OK', status=200)
     else:
         app.logger.warning(f"REJECTED invalid key from {client_ip}")
