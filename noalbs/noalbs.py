@@ -104,12 +104,17 @@ class Noalbs:
         # Audio thread queue size
         cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
 
+        
+        # Audio thread queue size
+        cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
+        
         if nvenc_support:
             # Modern RTX GPUs perform well with p4/p5 preset and high tier
             cmd.extend(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ll", "-profile:v", "high"])
         else:
             cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"])
 
+        
         cmd.extend([
             "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
             "-sc_threshold", "0",
