@@ -100,6 +100,10 @@ class Noalbs:
             pass
 
         cmd = ["ffmpeg", "-re", "-stream_loop", "-1"]
+
+        # Audio thread queue size
+        cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
+
         
         # Audio thread queue size
         cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
@@ -109,6 +113,7 @@ class Noalbs:
             cmd.extend(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ll", "-profile:v", "high"])
         else:
             cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"])
+
         
         cmd.extend([
             "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
