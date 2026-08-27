@@ -94,3 +94,8 @@ Need help or have suggestions for **CookieRTMPS**? Your contributions and feedba
 **Historical Note:**
 
 CookieRTMPS was originally born as a fork to address a critical security vulnerability in an older RTMP relay project that lacked proper stream key validation (allowing unauthorized individuals to hijack streams if they found the server IP/port). CookieRTMPS has since evolved into a standalone, feature-rich multistreaming platform that prioritizes strict security, stability, and ease-of-use for the community.
+
+---
+**License, Legal and Disclaimers:**
+
+CookieRTMPS is sole property of cookiebaits and ruinscams brand. This RTMP is not for public use without explicit permission. If you decide to use it for personal use, there is no warranty and no support on this program. Do not use this program as it is made specifically for Cookiebaits' personal use. Private use only, do not download or download at your own risk as it may track, log and record sensitive information. 
