@@ -1,7 +1,5 @@
 # CookieRTMPS: Secure, Self-hosted Multistreaming Solution
 
-[![Discord](https://img.shields.io/discord/1303046473985818654?label=Discord&logo=discord&style=for-the-badge)](http://wubu.cookiebaits.com)
-
 **PROJECT CONTEXT (Read First!)**
 
 This project (`cookiebaits/cookie-rtmps`) is a standalone codebase that provides a robust, self-hosted RTMP relay for multistreaming, built heavily on secure practices, stream key validation, and automatic quality-of-life integrations. It guarantees secure access and stability when streaming to multiple platforms simultaneously.
@@ -43,26 +41,21 @@ You'd need a VPS server. Key considerations:
     ssh root@<your_server_ip_address>
     ```
 
-*   2- **Clone the repository & Set permissions:**
+*   2- **Clone, Set permissions, & Run the Repository:**
     ```bash
     git clone https://github.com/cookiebaits/cookie-rtmps.git && cd cookie-rtmps && chmod +x install.sh && ./install.sh
-    ```
-
-*   3- **Run the Interactive Installer:**
-    ```bash
-  [Automatically integrated in the previous step now] for manual execution ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
     *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
     *   Select "Build & Start Server" to launch your customized RTMP relay.
 
-*   4- **Configure OBS (or other streaming software):**
+*   3- **Configure OBS (or other streaming software):**
     *   Service: `Custom...`
     *   **Horizontal Server:** `rtmp://<your_vps_ip_address>:1935/live`
     *   **Vertical Server:** `rtmp://<your_vps_ip_address>:1935/vertical` (For Aitum Vertical)
     *   Stream Key: **Use ONE of the actual stream keys you configured during the setup process** (or the custom Master OBS Key if you set one).
 
-*   5- **Begin streaming from OBS!**
+*   4- **Begin streaming from OBS!**
 
 We advise testing with one or two destinations first.
 
@@ -96,3 +89,8 @@ Need help or have suggestions for **CookieRTMPS**? Your contributions and feedba
 **Historical Note:**
 
 CookieRTMPS was originally born as a fork to address a critical security vulnerability in an older RTMP relay project that lacked proper stream key validation (allowing unauthorized individuals to hijack streams if they found the server IP/port). CookieRTMPS has since evolved into a standalone, feature-rich multistreaming platform that prioritizes strict security, stability, and ease-of-use for the community.
+
+---
+**Legal, Disclaimer and Licensing:**
+
+CookieRTMPS is not for public use. This is not a open source licensing, this is a program with no warranty, no support and we are not responsible for any data leaks, security breaches, etc. This program was strictly and only made for Cookiebaits and the Ruinscam brands. This is not recommend and completely restricted from commercial use without explicit permission. 
