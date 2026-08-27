@@ -31,8 +31,6 @@ class Noalbs:
         self.is_low = False
         self.is_streaming = False
         self.obs_client = None
-        self.cloud_brb_start_time = None
-        self.cloud_brb_timeout = False
 
     def get_obs_client(self):
         if self.obs_client:
@@ -63,9 +61,6 @@ class Noalbs:
                         live = app.find('live')
                         if live is not None:
                             for stream in live.findall('stream'):
-                                name = stream.find('name')
-                                if name is not None and name.text == 'cloud_brb_loop':
-                                    continue
                                 if stream.find('publishing') is not None:
                                     bw_in = stream.find('bw_in')
                                     if bw_in is not None:
@@ -87,45 +82,14 @@ class Noalbs:
         logger.info("Starting Cloud BRB stream...")
         # FFmpeg command to loop the video and push to the local ingest
         # This keeps the stream alive at the ingest points if the source drops
-        # Check for actual nvenc hardware support by running a fast dummy encode
-        nvenc_support = False
-        try:
-            res = subprocess.run([
-                "ffmpeg", "-f", "lavfi", "-i", "nullsrc=s=128x128:d=0.1",
-                "-c:v", "h264_nvenc", "-f", "null", "-"
-            ], capture_output=True, text=True)
-            if res.returncode == 0:
-                nvenc_support = True
-        except:
-            pass
-
-        cmd = ["ffmpeg", "-re", "-stream_loop", "-1"]
-
-        # Audio thread queue size
-        cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
-
-        
-        # Audio thread queue size
-        cmd.extend(["-thread_queue_size", "1024", "-i", self.brb_video_path])
-        
-        if nvenc_support:
-            # Modern RTX GPUs perform well with p4/p5 preset and high tier
-            cmd.extend(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ll", "-profile:v", "high"])
-        else:
-            cmd.extend(["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"])
-
-        
-        cmd.extend([
-            "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
-            "-sc_threshold", "0",
-            "-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "160k",
-            "-max_muxing_queue_size", "1024",
-            "-f", "flv",
-            f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
-        ])
+        cmd = [
+            "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
+            "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+            "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
+            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
+        ]
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            self.cloud_brb_start_time = time.time()
         except Exception as e:
             logger.error(f"Failed to start Cloud BRB process: {e}")
 
@@ -138,7 +102,6 @@ class Noalbs:
             except subprocess.TimeoutExpired:
                 self.cloud_process.kill()
             self.cloud_process = None
-            self.cloud_brb_start_time = None
 
     def switch_scene(self, scene):
         client = self.get_obs_client()
@@ -161,74 +124,35 @@ class Noalbs:
         consecutive_low = 0
         while True:
             bitrate = self.get_bitrate()
-            
-            # Check for Cloud BRB timeout (5 minutes)
-            if self.cloud_process and self.cloud_brb_start_time:
-                if time.time() - self.cloud_brb_start_time > 300:
-                    logger.info("Cloud BRB has been running for 5 minutes. Stopping it to fully drop the stream.")
-                    self.stop_cloud_brb()
-                    self.cloud_brb_timeout = True
 
             if bitrate > 0:
                 self.stop_cloud_brb()
                 if not self.is_streaming:
-                    logger.info(f"\n" + "="*50 + f"\n[STREAM START] Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\nStream detected at {bitrate}kbps.\n" + "="*50)
+                    logger.info(f"Stream detected at {bitrate}kbps.")
                     self.is_streaming = True
-                    self.cloud_brb_timeout = False # Reset timeout flag when user connects
-                    # If it was an intentional stop previously, we still need to switch to main
-                    # if the bitrate is good. So we mark it as low if we are not on main.
-                    # This ensures the restore logic triggers if we start streaming again.
-                    if not self.is_low:
-                        self.is_low = True
 
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
                     if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"[LOW BITRATE] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                        logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                        self.switch_scene(self.scene_brb)
                         self.is_low = True
-                        if self.cloud_brb_enabled and not self.cloud_brb_timeout:
-                            self.start_cloud_brb()
-                        else:
-                            self.switch_scene(self.scene_brb)
                 else:
                     consecutive_low = 0
-                    # When restoring, also restore if we just started streaming (in case we were on BRB from a previous session)
-                    if bitrate >= self.low_threshold: # Restore at low_threshold per user request "over 1000kbps"
-                        if self.is_low or not hasattr(self, '_initial_scene_set'):
-                            logger.info(f"Bitrate restored/good ({bitrate}kbps). Switching to {self.scene_main}")
-                            self.switch_scene(self.scene_main)
-                            self.is_low = False
-                            self._initial_scene_set = True
+                    if bitrate >= self.restore_threshold and self.is_low:
+                        logger.info(f"Bitrate restored ({bitrate}kbps). Switching to {self.scene_main}")
+                        self.switch_scene(self.scene_main)
+                        self.is_low = False
             else:
                 consecutive_low = 0
                 if self.is_streaming:
-                    client = self.get_obs_client()
-                    # Default to True if we can't connect, assuming a severe network drop
-                    is_obs_streaming = True
-                    if client:
-                        try:
-                            status = client.get_stream_status()
-                            is_obs_streaming = getattr(status, 'outputActive', getattr(status, 'output_active', True))
-                        except Exception as e:
-                            logger.error(f"Failed to get OBS stream status: {e}")
-                            # If connection fails, assume it's a disconnect (network drop)
-                            is_obs_streaming = True
-                    else:
-                        logger.warning("Could not connect to OBS. Assuming network drop.")
-                        is_obs_streaming = True
-                    
-                    if is_obs_streaming:
-                        logger.warning(f"[DISCONNECT] Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')} - Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
-                        self.is_low = True
-                        if self.cloud_brb_enabled and not self.cloud_brb_timeout:
-                            self.start_cloud_brb()
-                        else:
-                            self.switch_scene(self.scene_brb)
-                    else:
-                        logger.info(f"\n" + "="*50 + f"\n[STREAM END] Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}\nSource stream ended cleanly.\n" + "="*50)
-                        self.is_low = False
-                    
+                    logger.warning("Source stream disconnected. Switching to BRB scene.")
+                    self.switch_scene(self.scene_brb)
                     self.is_streaming = False
+                    self.is_low = True
+
+                if self.cloud_brb_enabled:
+                    self.start_cloud_brb()
 
             time.sleep(2)
 

@@ -72,8 +72,6 @@ fi
 TMP_TEMPLATE=$(mktemp)
 cp $NGINX_TEMPLATE $TMP_TEMPLATE
 
-export NGINX_SERVER_DOMAIN="${SERVER_DOMAIN:-localhost}"
-
 echo "Configuring Nginx push destinations..."
 
 # Function to add push directive if key is present
@@ -154,16 +152,18 @@ echo "Starting Stunnel..."
 stunnel4 /etc/stunnel/stunnel.conf
 
 # --- SSL Initialization (Dummy Certificates) ---
-CERT_DIR="/etc/letsencrypt/live/${NGINX_SERVER_DOMAIN}"
-if [ ! -f "${CERT_DIR}/fullchain.pem" ]; then
-    echo "SSL certificate not found for ${NGINX_SERVER_DOMAIN}. Generating dummy certificate..."
-    mkdir -p "${CERT_DIR}"
-    openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
-        -keyout "${CERT_DIR}/privkey.pem" \
-        -out "${CERT_DIR}/fullchain.pem" \
-        -subj "/CN=${NGINX_SERVER_DOMAIN}"
-    # Set permissions to prevent Nginx startup issues or security warnings
-    chmod 600 "${CERT_DIR}/privkey.pem" "${CERT_DIR}/fullchain.pem"
+if [ -n "$SERVER_DOMAIN" ]; then
+    CERT_DIR="/etc/letsencrypt/live/${SERVER_DOMAIN}"
+    if [ ! -f "${CERT_DIR}/fullchain.pem" ]; then
+        echo "SSL certificate not found for ${SERVER_DOMAIN}. Generating dummy certificate..."
+        mkdir -p "${CERT_DIR}"
+        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+            -keyout "${CERT_DIR}/privkey.pem" \
+            -out "${CERT_DIR}/fullchain.pem" \
+            -subj "/CN=${SERVER_DOMAIN}"
+        # Set permissions to prevent Nginx startup issues or security warnings
+        chmod 600 "${CERT_DIR}/privkey.pem" "${CERT_DIR}/fullchain.pem"
+    fi
 fi
 
 # --- Certbot Renewal Loop ---
