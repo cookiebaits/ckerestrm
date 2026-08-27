@@ -67,7 +67,6 @@ CHAT_TIKTOK=""
 # Host Port Settings
 PORT_RTMP="1935"
 PORT_HTTP="8443"
-PORT_HTTPS="8008"
 PORT_STATS="8081"
 
 # NOALBS Settings
@@ -152,7 +151,6 @@ CLOUD_BRB="$CLOUD_BRB"
 BRB_VIDEO_URL="$BRB_VIDEO_URL"
 PORT_RTMP="$PORT_RTMP"
 PORT_HTTP="$PORT_HTTP"
-PORT_HTTPS="$PORT_HTTPS"
 PORT_STATS="$PORT_STATS"
 ENV_EOF
     echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
@@ -1045,7 +1043,7 @@ build_and_run() {
     CONFLICTS=0
     declare -a PORTS_TO_CHECK=("$PORT_RTMP")
     if [ ! -z "$SERVER_DOMAIN" ]; then
-        PORTS_TO_CHECK+=("$PORT_HTTP" "$PORT_HTTPS")
+        PORTS_TO_CHECK+=("$PORT_HTTP")
     fi
 
     for port in "${PORTS_TO_CHECK[@]}"; do
@@ -1131,7 +1129,7 @@ build_and_run() {
     # Port mapping logic: Map HTTP/HTTPS only if domain is set
     PORT_MAPS="-p ${PORT_RTMP}:1935"
     if [ ! -z "$SERVER_DOMAIN" ]; then
-        PORT_MAPS="$PORT_MAPS -p ${PORT_HTTP}:80 -p ${PORT_HTTPS}:443"
+        PORT_MAPS="$PORT_MAPS -p ${PORT_HTTP}:80"
     fi
 
     # Start the container
@@ -1202,6 +1200,12 @@ build_and_run() {
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
+
+        # Run Integration Tests
+        if [ -f "./integration_test.sh" ]; then
+            chmod +x ./integration_test.sh
+            ./integration_test.sh
+        fi
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
@@ -1283,9 +1287,10 @@ while true; do
         echo "9) Configure Optimizations (Chunk Size)"
         echo "10) Configure NOALBS Scene Switcher"
         echo "11) Build & Start Server"
-        echo "12) Stop Server"
-        echo "13) View Logs"
-        echo "14) Quit"
+        echo "12) Run Integration Tests"
+        echo "13) Stop Server"
+        echo "14) View Logs"
+        echo "15) Quit"
     echo -e "Select an option: \c"
     read -r option
 
@@ -1301,9 +1306,10 @@ while true; do
         9) configure_optimizations ;;
         10) configure_noalbs ;;
         11) build_and_run ;;
-        12) stop_container ;;
-        13) view_logs ;;
-        14) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        12) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;
+        13) stop_container ;;
+        14) view_logs ;;
+        15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
 done
