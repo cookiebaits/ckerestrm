@@ -777,29 +777,55 @@ configure_domain() {
 }
 
 configure_whitelist() {
-    clear
-    echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
-    echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
-    echo ""
-    echo -e "Enter IP address to whitelist, 'server' to auto-add server IP, or 'disable' to allow all (Leave blank to keep current):"
-    read -r ip_input
-    if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
-        ACCEPTED_IP=""
-        echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
-    elif [ "$ip_input" == "server" ] || [ "$ip_input" == "SERVER" ]; then
-        SERVER_IP_FETCH=$(curl -4 -s ifconfig.me || echo "")
-        if [ ! -z "$SERVER_IP_FETCH" ]; then
-            ACCEPTED_IP="$SERVER_IP_FETCH"
-            echo -e "${GREEN}IP Whitelist updated to server IP: $ACCEPTED_IP${NC}"
-        else
-            echo -e "${RED}Failed to fetch server IP.${NC}"
-        fi
-    elif [ ! -z "$ip_input" ]; then
-        ACCEPTED_IP="$ip_input"
-        echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
-    fi
-    save_config
-    sleep 2
+    while true; do
+        clear
+        echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
+        echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
+        echo ""
+        echo "1) Server's IP Address (For those who proxy, VPN or Wireguard Into the Server)"
+        echo "2) Manual IP Address"
+        echo "3) Clear IP Address"
+        echo "4) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r wl_opt
+
+        case $wl_opt in
+            1)
+                SERVER_IP_FETCH=$(curl -4 -s ifconfig.me || echo "")
+                if [ ! -z "$SERVER_IP_FETCH" ]; then
+                    ACCEPTED_IP="$SERVER_IP_FETCH"
+                    echo -e "${GREEN}IP Whitelist updated to server IP: $ACCEPTED_IP${NC}"
+                else
+                    echo -e "${RED}Failed to fetch server IP.${NC}"
+                fi
+                save_config
+                sleep 2
+                ;;
+            2)
+                echo -e "Enter IP address to whitelist: \c"
+                read -r ip_input
+                if [ ! -z "$ip_input" ]; then
+                    ACCEPTED_IP="$ip_input"
+                    echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
+                    save_config
+                fi
+                sleep 2
+                ;;
+            3)
+                ACCEPTED_IP=""
+                echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
+                save_config
+                sleep 2
+                ;;
+            4|"")
+                break
+                ;;
+            *)
+                echo -e "${RED}Invalid option${NC}"
+                sleep 1
+                ;;
+        esac
+    done
 }
 
 configure_titles() {

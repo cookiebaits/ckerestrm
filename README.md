@@ -1,5 +1,7 @@
 # CookieRTMPS: Secure, Self-hosted Multistreaming Solution
 
+[![Discord](https://img.shields.io/discord/1303046473985818654?label=Discord&logo=discord&style=for-the-badge)](http://wubu.cookiebaits.com)
+
 **PROJECT CONTEXT (Read First!)**
 
 This project (`cookiebaits/cookie-rtmps`) is a standalone codebase that provides a robust, self-hosted RTMP relay for multistreaming, built heavily on secure practices, stream key validation, and automatic quality-of-life integrations. It guarantees secure access and stability when streaming to multiple platforms simultaneously.
@@ -41,9 +43,14 @@ You'd need a VPS server. Key considerations:
     ssh root@<your_server_ip_address>
     ```
 
-*   2- **Clone, Run, & Set permissions for the repository:**
+*   2- **Clone the repository & Set permissions:**
     ```bash
     git clone https://github.com/cookiebaits/cookie-rtmps.git && cd cookie-rtmps && chmod +x install.sh && ./install.sh
+    ```
+
+*   3- **Run the Interactive Installer:**
+    ```bash
+  [Automatically integrated in the previous step now] for manual execution ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
     *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
@@ -89,8 +96,3 @@ Need help or have suggestions for **CookieRTMPS**? Your contributions and feedba
 **Historical Note:**
 
 CookieRTMPS was originally born as a fork to address a critical security vulnerability in an older RTMP relay project that lacked proper stream key validation (allowing unauthorized individuals to hijack streams if they found the server IP/port). CookieRTMPS has since evolved into a standalone, feature-rich multistreaming platform that prioritizes strict security, stability, and ease-of-use for the community.
-
----
-**License, Legal and Disclaimers:**
-
-CookieRTMPS is sole property of cookiebaits and ruinscams brand. This RTMP is not for public use without explicit permission. If you decide to use it for personal use, there is no warranty and no support on this program. Do not use this program as it is made specifically for Cookiebaits' personal use. Private use only, do not download or download at your own risk as it may track, log and record sensitive information. 
