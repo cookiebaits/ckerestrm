@@ -72,8 +72,6 @@ fi
 TMP_TEMPLATE=$(mktemp)
 cp $NGINX_TEMPLATE $TMP_TEMPLATE
 
-export NGINX_SERVER_DOMAIN="${SERVER_DOMAIN:-localhost}"
-
 echo "Configuring Nginx push destinations..."
 
 # Function to add push directive if key is present
@@ -104,25 +102,14 @@ add_push() {
 
 # Add pushes for each platform using the function
 add_push "Youtube"    "YOUTUBE_KEY"    "YOUTUBE_URL"    "youtube"
-add_push "Facebook"   "FACEBOOK_KEY"   "FACEBOOK_URL"   "facebook"
-add_push "Instagram"  "INSTAGRAM_KEY"  "INSTAGRAM_URL"  "instagram"
 add_push "TikTok"     "TIKTOK_KEY"     "TIKTOK_URL"     "tiktok"
 add_push "Twitch"     "TWITCH_KEY"     "TWITCH_URL"     "twitch"
 add_push "Kick"       "KICK_KEY"       "KICK_URL"       "kick"
-add_push "X (Twitter)" "X_KEY"          "X_URL"          "x"
-add_push "Trovo"      "TROVO_KEY"      "TROVO_URL"      "trovo"
 add_push "RTMP1"      "RTMP1_KEY"      "RTMP1_URL"      "rtmp1"
-add_push "RTMP2"      "RTMP2_KEY"      "RTMP2_URL"      "rtmp2"
-add_push "RTMP3"      "RTMP3_KEY"      "RTMP3_URL"      "rtmp3"
 
 # Vertical Pushes
 add_push "V-Youtube"   "V_YOUTUBE_KEY"   "V_YOUTUBE_URL"   "v_youtube"
-add_push "V-Facebook"  "V_FACEBOOK_KEY"  "V_FACEBOOK_URL"  "v_facebook"
-add_push "V-Instagram" "V_INSTAGRAM_KEY" "V_INSTAGRAM_URL" "v_instagram"
-add_push "V-TikTok"    "V_TIKTOK_KEY"    "V_TIKTOK_URL"    "v_tiktok"
 add_push "V-Twitch"    "V_TWITCH_KEY"    "V_TWITCH_URL"    "v_twitch"
-add_push "V-Kick"      "V_KICK_KEY"      "V_KICK_URL"      "v_kick"
-add_push "V-X (Twitter)" "V_X_KEY"        "V_X_URL"         "v_x"
 add_push "V-RTMP1"      "V_RTMP1_KEY"    "V_RTMP1_URL"     "v_rtmp1"
 
 
@@ -154,16 +141,18 @@ echo "Starting Stunnel..."
 stunnel4 /etc/stunnel/stunnel.conf
 
 # --- SSL Initialization (Dummy Certificates) ---
-CERT_DIR="/etc/letsencrypt/live/${NGINX_SERVER_DOMAIN}"
-if [ ! -f "${CERT_DIR}/fullchain.pem" ]; then
-    echo "SSL certificate not found for ${NGINX_SERVER_DOMAIN}. Generating dummy certificate..."
-    mkdir -p "${CERT_DIR}"
-    openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
-        -keyout "${CERT_DIR}/privkey.pem" \
-        -out "${CERT_DIR}/fullchain.pem" \
-        -subj "/CN=${NGINX_SERVER_DOMAIN}"
-    # Set permissions to prevent Nginx startup issues or security warnings
-    chmod 600 "${CERT_DIR}/privkey.pem" "${CERT_DIR}/fullchain.pem"
+if [ -n "$SERVER_DOMAIN" ]; then
+    CERT_DIR="/etc/letsencrypt/live/${SERVER_DOMAIN}"
+    if [ ! -f "${CERT_DIR}/fullchain.pem" ]; then
+        echo "SSL certificate not found for ${SERVER_DOMAIN}. Generating dummy certificate..."
+        mkdir -p "${CERT_DIR}"
+        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+            -keyout "${CERT_DIR}/privkey.pem" \
+            -out "${CERT_DIR}/fullchain.pem" \
+            -subj "/CN=${SERVER_DOMAIN}"
+        # Set permissions to prevent Nginx startup issues or security warnings
+        chmod 600 "${CERT_DIR}/privkey.pem" "${CERT_DIR}/fullchain.pem"
+    fi
 fi
 
 # --- Certbot Renewal Loop ---

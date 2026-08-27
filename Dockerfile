@@ -6,7 +6,7 @@ ENV NGINX_RTMP_MODULE_VERSION=cookie-nginx-rtmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --upgrade --break-system-packages flask flask-session gunicorn requests obsws-python twitchio google-api-python-client eventlet flask-socketio edge-tts && \
+    pip3 install --break-system-packages flask gunicorn requests obsws-python && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext certbot ffmpeg && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -58,6 +58,9 @@ COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Copy the validation server and supporting scripts
 COPY stream_validator.py /app/stream_validator.py
+COPY update_titles.py /app/update_titles.py
+COPY tiktok_pusher.py /app/tiktok_pusher.py
+COPY tiktok_search.py /app/tiktok_search.py
 COPY noalbs /app/noalbs
 
 # Config Stunnel
@@ -66,32 +69,19 @@ RUN mkdir -p  /etc/stunnel/conf.d
 COPY stunnel/stunnel.conf /etc/stunnel/stunnel.conf
 COPY stunnel/stunnel4 /etc/default/stunnel4
 
-#Facebook Stunnel Port 19350
-COPY stunnel/facebook.conf /etc/stunnel/conf.d/facebook.conf
-
-#Instagram Stunnel Port 19351
-COPY stunnel/instagram.conf /etc/stunnel/conf.d/instagram.conf
-
 #Tiktok Stunnel Port 19358
 COPY stunnel/tiktok.conf /etc/stunnel/conf.d/tiktok.conf
 
 #Kick Stunnel Port 19356
 COPY stunnel/kick.conf /etc/stunnel/conf.d/kick.conf
 
-#X Stunnel Port 19354
-COPY stunnel/x.conf /etc/stunnel/conf.d/x.conf
-
 RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Define generic non-sensitive environment variables
 ENV YOUTUBE_URL=rtmp://x.rtmp.youtube.com/live2/
-ENV FACEBOOK_URL=rtmp://127.0.0.1:19350/rtmp/
-ENV INSTAGRAM_URL=rtmp://127.0.0.1:19351/rtmp/
 ENV TIKTOK_URL=rtmp://127.0.0.1:19358/s_v/
 ENV TWITCH_URL=rtmp://ingest.global-contribute.live-video.net/app/
-ENV TROVO_URL=rtmp://livepush.trovo.live/live/
 ENV KICK_URL=rtmp://127.0.0.1:19356/kick/
-ENV X_URL=rtmp://127.0.0.1:19354/x/
 ENV APP_NAME=live
 ENV CHUNK_SIZE=8192
 
