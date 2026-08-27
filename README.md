@@ -41,14 +41,9 @@ You'd need a VPS server. Key considerations:
     ssh root@<your_server_ip_address>
     ```
 
-*   2- **Clone the repository & Set permissions:**
+*   2- **Clone, Run, & Set permissions for the repository:**
     ```bash
     git clone https://github.com/cookiebaits/cookie-rtmps.git && cd cookie-rtmps && chmod +x install.sh && ./install.sh
-    ```
-
-*   3- **Run the Interactive Installer:**
-    ```bash
-  [Automatically integrated in the previous step now] for manual execution ./install.sh
     ```
     *   Use the menu to easily install Docker (if needed).
     *   Configure your stream keys and set any desired optimizations (like NGINX `chunk_size`).
