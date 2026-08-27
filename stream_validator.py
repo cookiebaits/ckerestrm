@@ -12,6 +12,8 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+active_pushers = {}
+
 # Configuration
 VALID_KEYS = []
 DESTINATION_KEYS = {
@@ -117,6 +119,24 @@ def validate():
         app.logger.info(f"ACCEPTED stream from {client_ip}")
         # Update titles in background to not block Nginx
         threading.Thread(target=run_update_titles).start()
+
+        app_name = parsed_data.get('app', [''])[0]
+        pusher_key = f"{app_name}_{stream_key_attempt}"
+
+        if app_name == os.getenv('APP_NAME', 'live') and os.getenv('TIKTOK_URL') == "auto":
+            if pusher_key not in active_pushers:
+                app.logger.info(f"Starting TikTok auto-pusher for horizontal stream...")
+                active_pushers[pusher_key] = subprocess.Popen(
+                    ['python3', '/app/tiktok_pusher.py', f"rtmp://127.0.0.1:19352/{app_name}/{stream_key_attempt}"]
+                )
+
+        if app_name == 'vertical' and os.getenv('V_TIKTOK_URL') == "auto":
+            if pusher_key not in active_pushers:
+                app.logger.info(f"Starting TikTok auto-pusher for vertical stream...")
+                active_pushers[pusher_key] = subprocess.Popen(
+                    ['python3', '/app/tiktok_pusher.py', f"rtmp://127.0.0.1:19352/{app_name}/{stream_key_attempt}"]
+                )
+
         return Response('OK', status=200)
     else:
         app.logger.warning(f"REJECTED invalid key from {client_ip}")
@@ -126,6 +146,21 @@ def validate():
 def publish_done():
     # Nginx sends GET by default for on_publish_done in some versions, but usually POST
     app_name = request.args.get('app', '')
+    stream_key = request.args.get('name', '')
+
+    if not app_name or not stream_key:
+        raw_data = request.get_data(as_text=True)
+        parsed_data = parse_qs(raw_data)
+        app_name = parsed_data.get('app', [app_name])[0]
+        stream_key = parsed_data.get('name', [stream_key])[0]
+
+    pusher_key = f"{app_name}_{stream_key}"
+
+    if pusher_key in active_pushers:
+        app.logger.info(f"Terminating TikTok auto-pusher for {pusher_key}...")
+        active_pushers[pusher_key].terminate()
+        del active_pushers[pusher_key]
+
     if app_name == os.getenv('APP_NAME', 'live'):
         # Increment episode count when horizontal stream finishes
         increment_episode_count()

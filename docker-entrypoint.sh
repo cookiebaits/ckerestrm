@@ -87,6 +87,10 @@ add_push() {
         if [ -z "$push_url" ]; then
              echo "Warning: ${platform_name} key (${env_key_var}) is set, but URL (${env_url_var}) is empty. Skipping push."
              sed -i "s|#${template_marker}| |g" $TMP_TEMPLATE
+        elif [ "$push_url" = "auto" ]; then
+            echo "${platform_name} Auto-Pusher activated."
+            ENV_OK=1
+            sed -i "s|#${template_marker}| |g" $TMP_TEMPLATE
         else
             echo "${platform_name} activated."
             # Correctly escape slashes in URLs for sed, use | as delimiter

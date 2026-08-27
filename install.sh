@@ -17,6 +17,9 @@ INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/"
 INSTAGRAM_KEY=""
 TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/"
 TIKTOK_KEY=""
+TIKTOK_SL_TOKEN=""
+TIKTOK_TITLE=""
+TIKTOK_GAME_ID=""
 TWITCH_URL="rtmp://127.0.0.1:19353/app/"
 TWITCH_KEY=""
 KICK_URL="rtmp://127.0.0.1:19356/kick/"
@@ -98,6 +101,9 @@ INSTAGRAM_URL="$INSTAGRAM_URL"
 INSTAGRAM_KEY="$INSTAGRAM_KEY"
 TIKTOK_URL="$TIKTOK_URL"
 TIKTOK_KEY="$TIKTOK_KEY"
+TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN"
+TIKTOK_TITLE="$TIKTOK_TITLE"
+TIKTOK_GAME_ID="$TIKTOK_GAME_ID"
 TWITCH_URL="$TWITCH_URL"
 TWITCH_KEY="$TWITCH_KEY"
 KICK_URL="$KICK_URL"
@@ -335,6 +341,7 @@ configure_keys() {
                echo -e "Select TikTok Server:"
                echo "  1) Secure (rtmps://push-rtmp-f5-ap-southeast-1.tiktokcdn.com:443 -> via Stunnel)"
                echo "  2) Custom URL"
+               echo "  3) Streamlabs Auto-Pusher (Bypass TikTok Studio)"
                echo -e "Option (Current URL: $TIKTOK_URL): \c"
                read -r tt_opt
                case $tt_opt in
@@ -345,6 +352,15 @@ configure_keys() {
                       if [ ! -z "$tt_url" ]; then
                           TIKTOK_URL="$tt_url"
                       fi
+                      ;;
+                   3)
+                      TIKTOK_URL="auto"
+                      echo -e "Enter Streamlabs Token: \c"
+                      read -r TIKTOK_SL_TOKEN
+                      echo -e "Enter Stream Title: \c"
+                      read -r TIKTOK_TITLE
+                      echo -e "Enter Game ID (Optional): \c"
+                      read -r TIKTOK_GAME_ID
                       ;;
                esac
                save_config
@@ -570,6 +586,7 @@ configure_vertical_keys() {
                echo -e "Select TikTok Server:"
                echo "  1) Secure (rtmps://push-rtmp-f5-ap-southeast-1.tiktokcdn.com:443 -> via Stunnel)"
                echo "  2) Custom URL"
+               echo "  3) Streamlabs Auto-Pusher (Bypass TikTok Studio)"
                echo -e "Option (Current URL: $V_TIKTOK_URL): \c"
                read -r tt_opt
                case $tt_opt in
@@ -580,6 +597,15 @@ configure_vertical_keys() {
                       if [ ! -z "$tt_url" ]; then
                           V_TIKTOK_URL="$tt_url"
                       fi
+                      ;;
+                   3)
+                      V_TIKTOK_URL="auto"
+                      echo -e "Enter Streamlabs Token: \c"
+                      read -r TIKTOK_SL_TOKEN
+                      echo -e "Enter Stream Title: \c"
+                      read -r TIKTOK_TITLE
+                      echo -e "Enter Game ID (Optional): \c"
+                      read -r TIKTOK_GAME_ID
                       ;;
                esac
                save_config
@@ -1195,6 +1221,9 @@ build_and_run() {
         -e INSTAGRAM_KEY="$INSTAGRAM_KEY" \
         -e TIKTOK_URL="$TIKTOK_URL" \
         -e TIKTOK_KEY="$TIKTOK_KEY" \
+        -e TIKTOK_SL_TOKEN="$TIKTOK_SL_TOKEN" \
+        -e TIKTOK_TITLE="$TIKTOK_TITLE" \
+        -e TIKTOK_GAME_ID="$TIKTOK_GAME_ID" \
         -e TWITCH_URL="$TWITCH_URL" \
         -e TWITCH_KEY="$TWITCH_KEY" \
         -e KICK_URL="$KICK_URL" \
