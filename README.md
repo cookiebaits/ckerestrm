@@ -1,7 +1,5 @@
 # CookieRTMPS: Secure, Self-hosted Multistreaming Solution
 
-[![Discord](https://img.shields.io/discord/1303046473985818654?label=Discord&logo=discord&style=for-the-badge)](http://wubu.cookiebaits.com)
-
 **PROJECT CONTEXT (Read First!)**
 
 This project (`cookiebaits/cookie-rtmps`) is a standalone codebase that provides a robust, self-hosted RTMP relay for multistreaming, built heavily on secure practices, stream key validation, and automatic quality-of-life integrations. It guarantees secure access and stability when streaming to multiple platforms simultaneously.
