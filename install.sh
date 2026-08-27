@@ -1305,15 +1305,17 @@ view_logs() {
     done
 }
 
-stop_container() {
+stop_and_uninstall() {
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}Docker is not installed!${NC}"
         sleep 2
         return
     fi
-    echo -e "${YELLOW}Stopping container...${NC}"
+    echo -e "${YELLOW}Stopping services and uninstalling...${NC}"
     docker stop cookie-rtmps 2>/dev/null && echo -e "${GREEN}Container stopped.${NC}" || echo -e "${RED}Container not running.${NC}"
-    sleep 2
+    docker rm cookie-rtmps 2>/dev/null && echo -e "${GREEN}Container removed, ports unbound.${NC}" || true
+    docker rmi cookie-rtmps 2>/dev/null && echo -e "${GREEN}Image removed. CookieRTMPS has been completely removed from Docker.${NC}" || true
+    sleep 3
 }
 
 # Cache Server IP for UI Performance
@@ -1343,7 +1345,7 @@ while true; do
         echo "10) Configure NOALBS Scene Switcher"
         echo "11) Build & Start Server"
         echo "12) Run Integration Tests"
-        echo "13) Stop Server"
+        echo "13) Stop Server & Uninstall"
         echo "14) View Logs"
         echo "15) Quit"
     echo -e "Select an option: \c"
@@ -1362,7 +1364,7 @@ while true; do
         10) configure_noalbs ;;
         11) build_and_run ;;
         12) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;
-        13) stop_container ;;
+        13) stop_and_uninstall ;;
         14) view_logs ;;
         15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
