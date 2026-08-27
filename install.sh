@@ -70,7 +70,7 @@ PORT_HTTP="8443"
 PORT_STATS="8081"
 
 # NOALBS Settings
-NOALBS_ENABLED="false"
+NOALBS_ENABLED="true"
 OBS_WS_HOST="127.0.0.1"
 OBS_WS_PORT="4455"
 OBS_WS_PASSWORD=""
@@ -78,7 +78,7 @@ OBS_SCENE_LIVE="Main"
 OBS_SCENE_BRB="BRB"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
-CLOUD_BRB="false"
+CLOUD_BRB="true"
 BRB_VIDEO_URL=""
 
 CONFIG_FILE="rtmp_config.env"
@@ -781,11 +781,19 @@ configure_whitelist() {
     echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
     echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
     echo ""
-    echo -e "Enter IP address to whitelist (Leave blank to keep current, type 'disable' to allow all):"
+    echo -e "Enter IP address to whitelist, 'server' to auto-add server IP, or 'disable' to allow all (Leave blank to keep current):"
     read -r ip_input
     if [ "$ip_input" == "disable" ] || [ "$ip_input" == "DISABLE" ]; then
         ACCEPTED_IP=""
         echo -e "${GREEN}IP Whitelist disabled. All IPs allowed.${NC}"
+    elif [ "$ip_input" == "server" ] || [ "$ip_input" == "SERVER" ]; then
+        SERVER_IP_FETCH=$(curl -4 -s ifconfig.me || echo "")
+        if [ ! -z "$SERVER_IP_FETCH" ]; then
+            ACCEPTED_IP="$SERVER_IP_FETCH"
+            echo -e "${GREEN}IP Whitelist updated to server IP: $ACCEPTED_IP${NC}"
+        else
+            echo -e "${RED}Failed to fetch server IP.${NC}"
+        fi
     elif [ ! -z "$ip_input" ]; then
         ACCEPTED_IP="$ip_input"
         echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
@@ -1035,9 +1043,16 @@ build_and_run() {
         return
     fi
 
-    echo -e "${YELLOW}Stopping any existing container to free ports...${NC}"
-    docker stop prism-rtmps 2>/dev/null || true
-    docker rm prism-rtmps 2>/dev/null || true
+    echo -e "${YELLOW}Stopping and removing any old rtmps instances...${NC}"
+    OLD_CONTAINERS=$(docker ps -a --format '{{.ID}} {{.Names}}' | grep -i rtmps | awk '{print $1}')
+    if [ ! -z "$OLD_CONTAINERS" ]; then
+        docker stop $OLD_CONTAINERS 2>/dev/null || true
+        docker rm $OLD_CONTAINERS 2>/dev/null || true
+    fi
+    OLD_IMAGES=$(docker images --format '{{.ID}} {{.Repository}}' | grep -i rtmps | awk '{print $1}')
+    if [ ! -z "$OLD_IMAGES" ]; then
+        docker rmi -f $OLD_IMAGES 2>/dev/null || true
+    fi
 
     echo -e "${YELLOW}Checking for port conflicts...${NC}"
     CONFLICTS=0
@@ -1115,6 +1130,16 @@ build_and_run() {
         echo -e "Press Enter to return to menu..."
         read -r
         return
+    fi
+
+    if [ "$CLOUD_BRB" == "true" ] && [ -z "$BRB_VIDEO_URL" ]; then
+        echo -e "${YELLOW}Cloud BRB is enabled but BRB Video URL is empty. Setting to default...${NC}"
+        BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
+        save_config
+        mkdir -p ./data
+        rm -f ./data/brb_video.mp4
+        echo -e "${YELLOW}Downloading default BRB video...${NC}"
+        curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded default BRB video.${NC}" || echo -e "${RED}Failed to download BRB video.${NC}"
     fi
 
     echo -e "${GREEN}Building Docker Image...${NC}"
@@ -1200,6 +1225,10 @@ build_and_run() {
         echo -e "You can stream to: rtmp://${DISPLAY_HOST}:${PORT_RTMP}/${APP_NAME}"
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
+
+        echo -e "${YELLOW}Resetting services and running integration tests...${NC}"
+        docker restart prism-rtmps
+        sleep 3
 
         # Run Integration Tests
         if [ -f "./integration_test.sh" ]; then
