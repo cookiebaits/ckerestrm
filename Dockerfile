@@ -6,7 +6,7 @@ ENV NGINX_RTMP_MODULE_VERSION=cookie-nginx-rtmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
-    pip3 install --upgrade --break-system-packages flask flask-session gunicorn requests obsws-python twitchio google-api-python-client eventlet flask-socketio edge-tts && \
+    pip3 install --break-system-packages flask gunicorn requests obsws-python && \
     apt-get install -y --no-install-recommends ca-certificates openssl libssl-dev stunnel4 gettext certbot ffmpeg && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -58,6 +58,9 @@ COPY nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Copy the validation server and supporting scripts
 COPY stream_validator.py /app/stream_validator.py
+COPY update_titles.py /app/update_titles.py
+COPY tiktok_pusher.py /app/tiktok_pusher.py
+COPY tiktok_search.py /app/tiktok_search.py
 COPY noalbs /app/noalbs
 
 # Config Stunnel

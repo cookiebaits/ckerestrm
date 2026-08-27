@@ -5,7 +5,6 @@ from urllib.parse import parse_qs
 import threading
 import subprocess
 from datetime import datetime
-import ipaddress
 
 app = Flask(__name__)
 logging.basicConfig(
@@ -74,7 +73,25 @@ def increment_episode_count():
         except Exception as e:
             app.logger.error(f"Error writing episode count: {e}")
 
+def run_update_titles():
+    # Only run if Twitch credentials exist
+    if not (os.getenv('TWITCH_CLIENT_ID') and os.getenv('TWITCH_OAUTH_TOKEN') and os.getenv('TWITCH_BROADCASTER_ID')):
+        return
 
+    count = get_episode_count()
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    base_title = os.getenv('STREAM_BASE_TITLE', 'Live Stream')
+    full_title = f"{base_title} | Ep.{count} | {date_str}"
+
+    app.logger.info(f"Updating Twitch title to: {full_title}")
+
+    try:
+        # Call the update script
+        subprocess.run(['python3', '/app/update_titles.py', full_title], check=False)
+        # Note: We don't increment here to avoid double increments from dual horizontal/vertical streams
+        # We'll increment on publish_done of the primary app.
+    except Exception as e:
+        app.logger.error(f"Failed to update titles: {e}")
 
 @app.route('/validate', methods=['POST'])
 def validate():
@@ -88,44 +105,18 @@ def validate():
         client_ip = parsed_data.get('addr', [request.remote_addr])[0]
 
     # IP Whitelist Check
-    if ACCEPTED_IP:
-        allowed = False
-        try:
-            client_obj = ipaddress.ip_address(client_ip)
-            # Allow private RFC1918 IPs (e.g., Wireguard) when whitelisting is active
-            if client_obj.is_private:
-                allowed = True
-
-            for allowed_ip in ACCEPTED_IP.split(','):
-                if allowed:
-                    break
-                allowed_ip = allowed_ip.strip()
-                if not allowed_ip:
-                    continue
-                try:
-                    if '/' in allowed_ip:
-                        if client_obj in ipaddress.ip_network(allowed_ip, strict=False):
-                            allowed = True
-                            break
-                    else:
-                        if client_obj == ipaddress.ip_address(allowed_ip):
-                            allowed = True
-                            break
-                except ValueError:
-                    continue
-        except ValueError:
-            pass
-
-        if not allowed:
-            app.logger.warning(f"REJECTED IP: {client_ip}")
-            return Response('IP not whitelisted', status=403)
+    if ACCEPTED_IP and client_ip != ACCEPTED_IP:
+        app.logger.warning(f"REJECTED IP: {client_ip}")
+        return Response('IP not whitelisted', status=403)
 
     # Key Check
     if not VALID_KEYS:
         return Response('No keys configured', status=403)
 
-    if stream_key_attempt in VALID_KEYS or stream_key_attempt == 'cloud_brb_loop':
+    if stream_key_attempt in VALID_KEYS:
         app.logger.info(f"ACCEPTED stream from {client_ip}")
+        # Update titles in background to not block Nginx
+        threading.Thread(target=run_update_titles).start()
         return Response('OK', status=200)
     else:
         app.logger.warning(f"REJECTED invalid key from {client_ip}")

@@ -78,9 +78,8 @@ OBS_SCENE_LIVE="Main"
 OBS_SCENE_BRB="BRB"
 LOW_BITRATE="1000"
 RESTORE_BITRATE="1500"
-CLOUD_BRB="false"
 CLOUD_BRB="true"
-BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
+BRB_VIDEO_URL=""
 
 CONFIG_FILE="rtmp_config.env"
 
@@ -88,65 +87,6 @@ CONFIG_FILE="rtmp_config.env"
 if [ -f "$CONFIG_FILE" ]; then
     source "$CONFIG_FILE"
 fi
-
-
-
-check_dependencies() {
-    echo -e "${YELLOW}Checking host dependencies...${NC}"
-
-    local package_manager=""
-    if command -v apt-get &> /dev/null; then
-        package_manager="apt-get install -y"
-    elif command -v yum &> /dev/null; then
-        package_manager="yum install -y"
-    elif command -v dnf &> /dev/null; then
-        package_manager="dnf install -y"
-    elif command -v pacman &> /dev/null; then
-        package_manager="pacman -S --noconfirm"
-    elif command -v zypper &> /dev/null; then
-        package_manager="zypper install -y"
-    fi
-
-    # Install curl if missing
-    if ! command -v curl &> /dev/null; then
-        echo -e "${YELLOW}'curl' is missing. Attempting to install...${NC}"
-        if [ -n "$package_manager" ]; then
-            sudo $package_manager curl || { echo -e "${RED}Failed to install curl. Please install it manually.${NC}"; return 1; }
-        else
-            echo -e "${RED}Unsupported package manager. Please install 'curl' manually.${NC}"
-            return 1
-        fi
-    else
-        echo -e "${GREEN}  - curl: OK${NC}"
-    fi
-
-    # Install iproute2 (for ss) or net-tools (for netstat) if missing
-    if ! command -v ss &> /dev/null && ! command -v netstat &> /dev/null; then
-        echo -e "${YELLOW}Port checking tools ('ss' or 'netstat') missing. Attempting to install iproute2...${NC}"
-        if [ -n "$package_manager" ]; then
-            sudo $package_manager iproute2 || sudo $package_manager net-tools || { echo -e "${RED}Failed to install port checking tools. Please install manually.${NC}"; return 1; }
-        else
-            echo -e "${RED}Unsupported package manager. Please install 'iproute2' or 'net-tools' manually.${NC}"
-            return 1
-        fi
-    else
-        echo -e "${GREEN}  - ss/netstat: OK${NC}"
-    fi
-
-    # Install Docker if missing
-    if ! command -v docker &> /dev/null; then
-        echo -e "${YELLOW}'docker' is missing. Initiating Docker installation...${NC}"
-        install_docker
-        if ! command -v docker &> /dev/null; then
-            echo -e "${RED}Docker installation failed. Please install manually.${NC}"
-            return 1
-        fi
-    else
-        echo -e "${GREEN}  - docker: OK${NC}"
-    fi
-
-    return 0
-}
 
 save_config() {
     cat <<ENV_EOF > "$CONFIG_FILE"
@@ -500,6 +440,264 @@ configure_keys() {
     done
 }
 
+configure_vertical_keys() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== Configure Vertical Stream Keys ===${NC}"
+        echo -e "${YELLOW}Note: Vertical is officially supported on: YouTube, Twitch and TikTok.${NC}"
+        echo "1) YouTube (Current: ${V_YOUTUBE_KEY:-None})"
+        echo "2) Twitch (Current: ${V_TWITCH_KEY:-None})"
+        echo "3) Kick (Current: ${V_KICK_KEY:-None})"
+        echo "4) TikTok (Current: ${V_TIKTOK_KEY:-None})"
+        echo "5) Facebook (Current: ${V_FACEBOOK_KEY:-None})"
+        echo "6) Instagram (Current: ${V_INSTAGRAM_KEY:-None})"
+        echo "7) X (Twitter) (Current: ${V_X_KEY:-None})"
+        echo "8) Trovo (Current: ${V_TROVO_KEY:-None})"
+        echo "9) Custom RTMP (Current URL: ${V_RTMP1_URL:-None})"
+        echo "10) Mirror Horizontal Keys (Auto-fill from Horizontal)"
+        echo "11) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r choice
+
+        case $choice in
+            1)
+               prompt_for_key "YouTube Vertical Key" "V_YOUTUBE_KEY"
+               echo -e "Select YouTube Server:"
+               echo "  1) Primary (rtmp://x.rtmp.youtube.com/live2/)"
+               echo "  2) Secure Primary (rtmps://a.rtmps.youtube.com/live2/ -> via Stunnel)"
+               echo "  3) Custom URL"
+               echo -e "Option (Current URL: $V_YOUTUBE_URL): \c"
+               read -r y_opt
+               case $y_opt in
+                   1) V_YOUTUBE_URL="rtmp://x.rtmp.youtube.com/live2/" ;;
+                   2) V_YOUTUBE_URL="rtmp://127.0.0.1:19355/live2/" ;;
+                   3)
+                      echo -e "Enter Custom YouTube Server URL: "
+                      read -r y_url
+                      if [ ! -z "$y_url" ]; then
+                          V_YOUTUBE_URL="$y_url"
+                      fi
+                      ;;
+               esac
+               if [ "$V_YOUTUBE_URL" == "$YOUTUBE_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_YOUTUBE_URL=$(get_alternative_url "youtube" "$V_YOUTUBE_URL")
+                   echo -e "New Vertical URL: $V_YOUTUBE_URL"
+                   sleep 2
+               fi
+               save_config
+               ;;
+            2)
+               prompt_for_key "Twitch Vertical Key" "V_TWITCH_KEY"
+               echo -e "Select Twitch Server:"
+               echo "  1) Global (rtmp://ingest.global-contribute.live-video.net/app/)"
+               echo "  2) Secure Global (rtmps://ingest.global-contribute.live-video.net:443 -> Stunnel)"
+               echo "  3) US East: Ashburn (rtmp://use10.contribute.live-video.net/app/)"
+               echo "  4) US East: Ohio (rtmp://use20.contribute.live-video.net/app/)"
+               echo "  5) US West: Oregon (rtmp://usw20.contribute.live-video.net/app/)"
+               echo "  6) EU: Ireland (rtmp://euw10.contribute.live-video.net/app/)"
+               echo "  7) EU: Frankfurt (rtmp://euc10.contribute.live-video.net/app/)"
+               echo "  8) EU: Paris (rtmp://euw30.contribute.live-video.net/app/)"
+               echo "  9) Asia: Tokyo (rtmp://apn10.contribute.live-video.net/app/)"
+               echo "  10) Asia: Seoul (rtmp://apn20.contribute.live-video.net/app/)"
+               echo "  11) Asia: Singapore (rtmp://aps10.contribute.live-video.net/app/)"
+               echo "  12) Asia: Sydney (rtmp://aps20.contribute.live-video.net/app/)"
+               echo "  13) South America: Brazil (rtmp://sae10.contribute.live-video.net/app/)"
+               echo "  14) Custom URL"
+               echo -e "Option (Current URL: $V_TWITCH_URL): \c"
+               read -r t_opt
+               case $t_opt in
+                   1) V_TWITCH_URL="rtmp://ingest.global-contribute.live-video.net/app/" ;;
+                   2) V_TWITCH_URL="rtmp://127.0.0.1:19353/app/" ;;
+                   3) V_TWITCH_URL="rtmp://use10.contribute.live-video.net/app/" ;;
+                   4) V_TWITCH_URL="rtmp://use20.contribute.live-video.net/app/" ;;
+                   5) V_TWITCH_URL="rtmp://usw20.contribute.live-video.net/app/" ;;
+                   6) V_TWITCH_URL="rtmp://euw10.contribute.live-video.net/app/" ;;
+                   7) V_TWITCH_URL="rtmp://euc10.contribute.live-video.net/app/" ;;
+                   8) V_TWITCH_URL="rtmp://euw30.contribute.live-video.net/app/" ;;
+                   9) V_TWITCH_URL="rtmp://apn10.contribute.live-video.net/app/" ;;
+                   10) V_TWITCH_URL="rtmp://apn20.contribute.live-video.net/app/" ;;
+                   11) V_TWITCH_URL="rtmp://aps10.contribute.live-video.net/app/" ;;
+                   12) V_TWITCH_URL="rtmp://aps20.contribute.live-video.net/app/" ;;
+                   13) V_TWITCH_URL="rtmp://sae10.contribute.live-video.net/app/" ;;
+                   14)
+                      echo -e "Enter Custom Twitch Server URL: "
+                      read -r t_url
+                      if [ ! -z "$t_url" ]; then
+                          V_TWITCH_URL="$t_url"
+                      fi
+                      ;;
+               esac
+               if [ "$V_TWITCH_URL" == "$TWITCH_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_TWITCH_URL=$(get_alternative_url "twitch" "$V_TWITCH_URL")
+                   echo -e "New Vertical URL: $V_TWITCH_URL"
+                   sleep 2
+               fi
+               save_config
+               ;;
+            3)
+               prompt_for_key "Kick Vertical Key" "V_KICK_KEY"
+               echo -e "Select Kick Server:"
+               echo "  1) Standard (rtmp://live.kick.com/app/)"
+               echo "  2) Secure (rtmps://fa723fc1b171.global-contribute.live-video.net:443 -> via Stunnel)"
+               echo "  3) South Africa Relay (rtmp://kick.cisp.co.za/live)"
+               echo "  4) Custom URL"
+               echo -e "Option (Current URL: $V_KICK_URL): \c"
+               read -r k_opt
+               case $k_opt in
+                   1) V_KICK_URL="rtmp://live.kick.com/app/" ;;
+                   2) V_KICK_URL="rtmp://127.0.0.1:19356/kick/" ;;
+                   3) V_KICK_URL="rtmp://kick.cisp.co.za/live" ;;
+                   4)
+                      echo -e "Enter Custom Kick Server URL: "
+                      read -r k_url
+                      if [ ! -z "$k_url" ]; then
+                          V_KICK_URL="$k_url"
+                      fi
+                      ;;
+               esac
+               if [ "$V_KICK_URL" == "$KICK_URL" ]; then
+                   echo -e "${YELLOW}Warning: Same ingest server as Horizontal. Switching to alternative...${NC}"
+                   V_KICK_URL=$(get_alternative_url "kick" "$V_KICK_URL")
+                   echo -e "New Vertical URL: $V_KICK_URL"
+                   sleep 2
+               fi
+               save_config
+               ;;
+            4)
+               prompt_for_key "TikTok Vertical Key" "V_TIKTOK_KEY"
+               echo -e "Select TikTok Server:"
+               echo "  1) Secure (rtmps://push-rtmp-f5-ap-southeast-1.tiktokcdn.com:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_TIKTOK_URL): \c"
+               read -r tt_opt
+               case $tt_opt in
+                   1) V_TIKTOK_URL="rtmp://127.0.0.1:19358/s_v/" ;;
+                   2)
+                      echo -e "Enter Custom TikTok Server URL: "
+                      read -r tt_url
+                      if [ ! -z "$tt_url" ]; then
+                          V_TIKTOK_URL="$tt_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            5)
+               prompt_for_key "Facebook Vertical Key" "V_FACEBOOK_KEY"
+               echo -e "Select Facebook Server:"
+               echo "  1) Secure (rtmps://live-api-s.facebook.com:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_FACEBOOK_URL): \c"
+               read -r f_opt
+               case $f_opt in
+                   1) V_FACEBOOK_URL="rtmp://127.0.0.1:19350/rtmp/" ;;
+                   2)
+                      echo -e "Enter Custom Facebook Server URL: "
+                      read -r f_url
+                      if [ ! -z "$f_url" ]; then
+                          V_FACEBOOK_URL="$f_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            6)
+               prompt_for_key "Instagram Vertical Key" "V_INSTAGRAM_KEY"
+               echo -e "Select Instagram Server:"
+               echo "  1) Secure (rtmps://live-upload.instagram.com:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_INSTAGRAM_URL): \c"
+               read -r i_opt
+               case $i_opt in
+                   1) V_INSTAGRAM_URL="rtmp://127.0.0.1:19351/rtmp/" ;;
+                   2)
+                      echo -e "Enter Custom Instagram Server URL: "
+                      read -r i_url
+                      if [ ! -z "$i_url" ]; then
+                          V_INSTAGRAM_URL="$i_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            7)
+               prompt_for_key "X Vertical Key" "V_X_KEY"
+               echo -e "Select X Server:"
+               echo "  1) Secure (rtmps://va.pscp.tv:443 -> via Stunnel)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_X_URL): \c"
+               read -r x_opt
+               case $x_opt in
+                   1) V_X_URL="rtmp://127.0.0.1:19354/x/" ;;
+                   2)
+                      echo -e "Enter Custom X Server URL: "
+                      read -r x_url
+                      if [ ! -z "$x_url" ]; then
+                          V_X_URL="$x_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            8)
+               prompt_for_key "Trovo Vertical Key" "V_TROVO_KEY"
+               echo -e "Select Trovo Server:"
+               echo "  1) Primary (rtmp://livepush.trovo.live/live/)"
+               echo "  2) Custom URL"
+               echo -e "Option (Current URL: $V_TROVO_URL): \c"
+               read -r tr_opt
+               case $tr_opt in
+                   1) V_TROVO_URL="rtmp://livepush.trovo.live/live/" ;;
+                   2)
+                      echo -e "Enter Custom Trovo Server URL: "
+                      read -r tr_url
+                      if [ ! -z "$tr_url" ]; then
+                          V_TROVO_URL="$tr_url"
+                      fi
+                      ;;
+               esac
+               save_config
+               ;;
+            9)
+               echo -e "Enter Custom RTMP Vertical Server URL (Current: $V_RTMP1_URL): "
+               read -r c_url
+               if [ ! -z "$c_url" ]; then
+                   V_RTMP1_URL="$c_url"
+                   save_config
+               fi
+               prompt_for_key "Custom RTMP Vertical Key" "V_RTMP1_KEY"
+               ;;
+            10)
+               echo -e "${YELLOW}Mirroring Horizontal keys with alternative ingest servers...${NC}"
+               V_YOUTUBE_KEY="$YOUTUBE_KEY"
+               V_YOUTUBE_URL=$(get_alternative_url "youtube" "$YOUTUBE_URL")
+               V_TWITCH_KEY="$TWITCH_KEY"
+               V_TWITCH_URL=$(get_alternative_url "twitch" "$TWITCH_URL")
+               V_TIKTOK_KEY="$TIKTOK_KEY"
+               V_TIKTOK_URL="$TIKTOK_URL"
+               V_KICK_KEY="$KICK_KEY"
+               V_KICK_URL=$(get_alternative_url "kick" "$KICK_URL")
+               V_FACEBOOK_KEY="$FACEBOOK_KEY"
+               V_FACEBOOK_URL="$FACEBOOK_URL"
+               V_INSTAGRAM_KEY="$INSTAGRAM_KEY"
+               V_INSTAGRAM_URL="$INSTAGRAM_URL"
+               V_X_KEY="$X_KEY"
+               V_X_URL="$X_URL"
+               V_TROVO_KEY="$TROVO_KEY"
+               V_TROVO_URL="$TROVO_URL"
+               V_RTMP1_KEY="$RTMP1_KEY"
+               V_RTMP1_URL="$RTMP1_URL"
+               save_config
+               echo -e "${GREEN}Mirrored with diversified ingest servers.${NC}"
+               sleep 1
+               ;;
+            11) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
 
 configure_obs() {
     clear
@@ -584,41 +782,32 @@ configure_whitelist() {
         echo -e "${GREEN}=== IP Whitelist Configuration ===${NC}"
         echo -e "Current Accepted IP: ${YELLOW}${ACCEPTED_IP:-None (Allow All)}${NC}"
         echo ""
-        echo "1) Manually enter IP address"
-        echo "2) Auto-detect and include Server's Public IP"
-        echo "3) Disable IP Whitelist (Allow All)"
+        echo "1) Server's IP Address (For those who proxy, VPN or Wireguard Into the Server)"
+        echo "2) Manual IP Address"
+        echo "3) Clear IP Address"
         echo "4) Back to Main Menu"
         echo -e "Select an option: \c"
-        read -r ip_opt
+        read -r wl_opt
 
-        case $ip_opt in
+        case $wl_opt in
             1)
-                echo -e "Enter IP address to whitelist (e.g. 192.168.1.100, 10.0.0.5):"
+                SERVER_IP_FETCH=$(curl -4 -s ifconfig.me || echo "")
+                if [ ! -z "$SERVER_IP_FETCH" ]; then
+                    ACCEPTED_IP="$SERVER_IP_FETCH"
+                    echo -e "${GREEN}IP Whitelist updated to server IP: $ACCEPTED_IP${NC}"
+                else
+                    echo -e "${RED}Failed to fetch server IP.${NC}"
+                fi
+                save_config
+                sleep 2
+                ;;
+            2)
+                echo -e "Enter IP address to whitelist: \c"
                 read -r ip_input
                 if [ ! -z "$ip_input" ]; then
                     ACCEPTED_IP="$ip_input"
                     echo -e "${GREEN}IP Whitelist updated to: $ACCEPTED_IP${NC}"
                     save_config
-                    sleep 2
-                fi
-                ;;
-            2)
-                echo -e "${YELLOW}Detecting Server's Public IP...${NC}"
-                SERVER_IP=$(curl -4 -s ifconfig.me)
-                if [ ! -z "$SERVER_IP" ]; then
-                    # Check if ACCEPTED_IP already has values to append cleanly
-                    if [ -z "$ACCEPTED_IP" ]; then
-                        ACCEPTED_IP="$SERVER_IP"
-                    else
-                        # Prevent duplicate entries if the IP is already in the list
-                        if [[ ",$ACCEPTED_IP," != *",$SERVER_IP,"* ]]; then
-                            ACCEPTED_IP="${ACCEPTED_IP},${SERVER_IP}"
-                        fi
-                    fi
-                    echo -e "${GREEN}Server IP ($SERVER_IP) added to Whitelist.${NC}"
-                    save_config
-                else
-                    echo -e "${RED}Failed to detect Server IP.${NC}"
                 fi
                 sleep 2
                 ;;
@@ -628,7 +817,7 @@ configure_whitelist() {
                 save_config
                 sleep 2
                 ;;
-            4)
+            4|"")
                 break
                 ;;
             *)
@@ -639,6 +828,55 @@ configure_whitelist() {
     done
 }
 
+configure_titles() {
+    while true; do
+        clear
+        echo -e "${GREEN}=== Stream Titles & Twitch API Configuration ===${NC}"
+        echo "1) Base Title (Current: $STREAM_BASE_TITLE)"
+        echo "2) Twitch Client ID (Current: ${TWITCH_CLIENT_ID:-None})"
+        echo "3) Twitch OAuth Token (Current: ${TWITCH_OAUTH_TOKEN:-None})"
+        echo "4) Twitch Broadcaster ID (Current: ${TWITCH_BROADCASTER_ID:-None})"
+        echo "5) Reset Episode Count"
+        echo "6) Back to Main Menu"
+        echo -e "Select an option: \c"
+        read -r title_opt
+
+        case $title_opt in
+            1)
+                echo -e "Enter Base Stream Title:"
+                read -r title_input
+                STREAM_BASE_TITLE="$title_input"
+                save_config
+                ;;
+            2)
+                echo -e "Enter Twitch Client ID:"
+                read -r title_input
+                TWITCH_CLIENT_ID="$title_input"
+                save_config
+                ;;
+            3)
+                echo -e "Enter Twitch OAuth Token (Bearer):"
+                read -r title_input
+                TWITCH_OAUTH_TOKEN="$title_input"
+                save_config
+                ;;
+            4)
+                echo -e "Enter Twitch Broadcaster ID (Numeric):"
+                read -r title_input
+                TWITCH_BROADCASTER_ID="$title_input"
+                save_config
+                ;;
+            5)
+                mkdir -p ./data
+                echo "1" > ./data/episode_count.txt
+                echo -e "${GREEN}Episode count reset to 1.${NC}"
+                sleep 1
+                ;;
+            6) break ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
+}
 
 configure_chat() {
     while true; do
@@ -702,23 +940,18 @@ configure_chat() {
 configure_noalbs() {
     while true; do
         clear
-        echo "========================================"
-        echo "         NOALBS Configuration"
-        echo "========================================"
+        echo -e "${GREEN}=== NOALBS Scene Switcher Configuration ===${NC}"
         echo -e "Status: $([ "$NOALBS_ENABLED" == "true" ] && echo -e "${GREEN}ENABLED${NC}" || echo -e "${RED}DISABLED${NC}")"
         echo ""
-        echo "1) Toggle Enabled (Current: $NOALBS_ENABLED)"
+        echo "1) Toggle Enabled (Currently: $NOALBS_ENABLED)"
         echo "2) OBS WebSocket Host (Current: $OBS_WS_HOST)"
         echo "3) OBS WebSocket Port (Current: $OBS_WS_PORT)"
         echo "4) OBS WebSocket Password (Current: ${OBS_WS_PASSWORD:-(None)})"
         echo "5) Main/Live Scene Name (Current: $OBS_SCENE_LIVE)"
-        if [ "$CLOUD_BRB" == "true" ] && [ ! -z "$BRB_VIDEO_URL" ]; then
-            OBS_SCENE_BRB="Cloud BRB mp4"
-        fi
         echo "6) BRB Scene Name (Current: $OBS_SCENE_BRB)"
         echo "7) Low Bitrate Threshold (Current: $LOW_BITRATE kbps)"
         echo "8) Restore Bitrate Threshold (Current: $RESTORE_BITRATE kbps)"
-        echo "9) Toggle Cloud BRB (Current: $CLOUD_BRB)"
+        echo "9) Toggle Cloud BRB (Currently: $CLOUD_BRB)"
         echo "10) Configure BRB Video URL (Current: ${BRB_VIDEO_URL:-(None)})"
         echo "11) Back to Main Menu"
         echo -e "Select an option: \c"
@@ -726,12 +959,7 @@ configure_noalbs() {
 
         case $noalbs_opt in
             1)
-                if [ "$NOALBS_ENABLED" == "true" ]; then
-                    NOALBS_ENABLED="false"
-                    CLOUD_BRB="false"
-                else
-                    NOALBS_ENABLED="true"
-                fi
+                if [ "$NOALBS_ENABLED" == "true" ]; then NOALBS_ENABLED="false"; else NOALBS_ENABLED="true"; fi
                 save_config
                 ;;
             2)
@@ -771,12 +999,7 @@ configure_noalbs() {
                 if [ ! -z "$input" ]; then RESTORE_BITRATE="$input"; save_config; fi
                 ;;
             9)
-                if [ "$CLOUD_BRB" == "true" ]; then
-                    CLOUD_BRB="false"
-                else
-                    CLOUD_BRB="true"
-                    NOALBS_ENABLED="true"
-                fi
+                if [ "$CLOUD_BRB" == "true" ]; then CLOUD_BRB="false"; else CLOUD_BRB="true"; fi
                 save_config
                 ;;
             10)
@@ -784,7 +1007,6 @@ configure_noalbs() {
                 read -r input
                 if [ ! -z "$input" ]; then
                     BRB_VIDEO_URL="$input"
-                    OBS_SCENE_BRB="Cloud BRB mp4"
                     save_config
                     mkdir -p ./data
                     echo -e "${YELLOW}Downloading BRB video...${NC}"
@@ -811,7 +1033,6 @@ configure_optimizations() {
         sleep 1
     fi
 }
-
 
 install_docker() {
     echo -e "${GREEN}Checking for Docker...${NC}"
@@ -842,15 +1063,22 @@ check_port() {
 }
 
 build_and_run() {
-    if ! check_dependencies; then
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}Docker is not installed! Please run 'Install Docker' first.${NC}"
+        sleep 2
         return
     fi
 
-    echo -e "${YELLOW}Stopping any existing container to free ports...${NC}"
-    echo -e "${YELLOW}Cleaning up any existing rtmps instances and files...${NC}"
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker stop >/dev/null 2>&1 || true
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker rm >/dev/null 2>&1 || true
-    docker images | grep -i rtmps | awk '{print $3}' | xargs -r docker rmi -f >/dev/null 2>&1 || true
+    echo -e "${YELLOW}Stopping and removing any old rtmps instances...${NC}"
+    OLD_CONTAINERS=$(docker ps -a --format '{{.ID}} {{.Names}}' | grep -i rtmps | awk '{print $1}')
+    if [ ! -z "$OLD_CONTAINERS" ]; then
+        docker stop $OLD_CONTAINERS 2>/dev/null || true
+        docker rm $OLD_CONTAINERS 2>/dev/null || true
+    fi
+    OLD_IMAGES=$(docker images --format '{{.ID}} {{.Repository}}' | grep -i rtmps | awk '{print $1}')
+    if [ ! -z "$OLD_IMAGES" ]; then
+        docker rmi -f $OLD_IMAGES 2>/dev/null || true
+    fi
 
     echo -e "${YELLOW}Checking for port conflicts...${NC}"
     CONFLICTS=0
@@ -930,19 +1158,22 @@ build_and_run() {
         return
     fi
 
-    echo -e "${YELLOW}Cleaning up any existing rtmps instances and files...${NC}"
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker stop >/dev/null 2>&1 || true
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker rm >/dev/null 2>&1 || true
-    docker images | grep -i rtmps | awk '{print $3}' | xargs -r docker rmi -f >/dev/null 2>&1 || true
+    if [ "$CLOUD_BRB" == "true" ] && [ -z "$BRB_VIDEO_URL" ]; then
+        echo -e "${YELLOW}Cloud BRB is enabled but BRB Video URL is empty. Setting to default...${NC}"
+        BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
+        save_config
+        mkdir -p ./data
+        rm -f ./data/brb_video.mp4
+        echo -e "${YELLOW}Downloading default BRB video...${NC}"
+        curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded default BRB video.${NC}" || echo -e "${RED}Failed to download BRB video.${NC}"
+    fi
 
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t cookie-rtmps .
 
     echo -e "${GREEN}Stopping any existing container...${NC}"
-    echo -e "${YELLOW}Cleaning up any existing rtmps instances and files...${NC}"
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker stop >/dev/null 2>&1 || true
-    docker ps -a | grep -i rtmps | awk '{print $1}' | xargs -r docker rm >/dev/null 2>&1 || true
-    docker images | grep -i rtmps | awk '{print $3}' | xargs -r docker rmi -f >/dev/null 2>&1 || true
+    docker stop cookie-rtmps 2>/dev/null || true
+    docker rm cookie-rtmps 2>/dev/null || true
 
     echo -e "${GREEN}Starting container...${NC}"
 
@@ -956,8 +1187,6 @@ build_and_run() {
     docker run -d --name cookie-rtmps \
         $PORT_MAPS \
         --restart unless-stopped \
-        --log-opt max-size=50m --log-opt max-file=1 \
-        --log-opt compress=true \
         -e YOUTUBE_URL="$YOUTUBE_URL" \
         -e YOUTUBE_KEY="$YOUTUBE_KEY" \
         -e FACEBOOK_URL="$FACEBOOK_URL" \
@@ -1023,29 +1252,9 @@ build_and_run() {
         echo -e "Vertical stream:  rtmp://${DISPLAY_HOST}:${PORT_RTMP}/vertical"
         echo -e "Stats available at: http://${DISPLAY_HOST}/stat"
 
-
-    # Restart the container service to ensure it is running properly before tests
-    echo -e "${YELLOW}Restarting the cookie-rtmps service to ensure it is running properly...${NC}"
-    docker restart cookie-rtmps
-
-        echo -e "${YELLOW}Waiting 5 seconds for services to start...${NC}"
-        sleep 5
-
-        echo -n "Verifying nginx inside container... "
-        if docker exec cookie-rtmps pgrep -x "nginx" > /dev/null; then
-            echo -e "[${GREEN}PASSED${NC}]"
-        else
-            echo -e "[${RED}FAILED${NC}]"
-            echo -e "${RED}Error: Nginx failed to start inside the container. Check logs for details.${NC}"
-        fi
-
-        echo -n "Verifying stunnel inside container... "
-        if docker exec cookie-rtmps pgrep -x "stunnel4" > /dev/null; then
-            echo -e "[${GREEN}PASSED${NC}]"
-        else
-            echo -e "[${RED}FAILED${NC}]"
-            echo -e "${RED}Error: Stunnel failed to start inside the container. Check logs for details.${NC}"
-        fi
+        echo -e "${YELLOW}Resetting services and running integration tests...${NC}"
+        docker restart cookie-rtmps
+        sleep 3
 
         # Run Integration Tests
         if [ -f "./integration_test.sh" ]; then
@@ -1055,13 +1264,6 @@ build_and_run() {
     else
         echo -e "${RED}Failed to start container.${NC}"
     fi
-    echo -e "${YELLOW}Resetting services...${NC}"
-    docker restart cookie-rtmps
-    echo -e "${YELLOW}Waiting 5 seconds for services to initialize...${NC}"
-    sleep 5
-    echo -e "${YELLOW}Running integration tests...${NC}"
-    ./integration_test.sh
-
     echo -e "Press Enter to continue..."
     read -r
 }
@@ -1073,89 +1275,47 @@ view_logs() {
         return
     fi
 
-    echo -e "${YELLOW}Showing real-time logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
+    echo -e "${YELLOW}Showing logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
     # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
-    (trap 'exit 0' INT; docker logs --since 48h -f cookie-rtmps)
-    # Check if there are logs older than 5 days
-    # docker logs doesn't natively filter "older than", so we check if logs from "until 120h" (5 days ago) exist.
-    # If the output is not empty, it means there are logs older than 5 days.
-    OLD_LOGS=$(docker logs --until 120h cookie-rtmps 2>/dev/null | head -n 1)
+    (trap 'exit 0' INT; docker logs -f cookie-rtmps)
 
-    if [ ! -z "$OLD_LOGS" ]; then
-        while true; do
-            echo -e "\n${YELLOW}Notice: Log entries older than 5 days have been detected.${NC}"
-            echo -e "${GREEN}=== Log Options ===${NC}"
-            echo "1) Return to Main Menu"
-            echo "2) Clear Old Logs (Truncate all logs)"
-            echo -e "Select an option: \c"
-            read -r log_opt
+    while true; do
+        echo -e "\n${GREEN}=== Log Options ===${NC}"
+        echo "1) Return to Main Menu"
+        echo "2) Clear Logs"
+        echo -e "Select an option: \c"
+        read -r log_opt
 
-            case $log_opt in
-                1) break ;;
-                2)
-                    echo -e "${YELLOW}Clearing logs...${NC}"
-                    # Truncate internal logs
-                    docker exec cookie-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /tmp/noalbs.log /tmp/validator.log' 2>/dev/null || true
-                    # Truncate Docker's own log file for the container
-                    LOG_PATH=$(docker inspect --format='{{.LogPath}}' cookie-rtmps 2>/dev/null)
-                    if [ ! -z "$LOG_PATH" ]; then
-                        sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
-                    fi
-                    echo -e "${GREEN}Logs cleared.${NC}"
-                    sleep 1
-                    break
-                    ;;
-                *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
-            esac
-        done
-    else
-        echo -e "\n${GREEN}No log entries older than 5 days detected. Returning to Main Menu...${NC}"
-        sleep 2
-    fi
+        case $log_opt in
+            1) break ;;
+            2)
+                echo -e "${YELLOW}Clearing logs...${NC}"
+                # Truncate internal logs
+                docker exec cookie-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log' 2>/dev/null || true
+                # Truncate Docker's own log file for the container
+                LOG_PATH=$(docker inspect --format='{{.LogPath}}' cookie-rtmps 2>/dev/null)
+                if [ ! -z "$LOG_PATH" ]; then
+                    sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || echo -e "${RED}Failed to truncate Docker log file. You may need sudo.${NC}"
+                fi
+                echo -e "${GREEN}Logs cleared.${NC}"
+                sleep 1
+                ;;
+            *) echo -e "${RED}Invalid option${NC}" ; sleep 1 ;;
+        esac
+    done
 }
 
-
-view_realtime_logs() {
+stop_and_uninstall() {
     if ! command -v docker &> /dev/null; then
         echo -e "${RED}Docker is not installed!${NC}"
         sleep 2
         return
     fi
-
-    if ! docker ps | grep -q "cookie-rtmps"; then
-        echo -e "${RED}Container is not running!${NC}"
-        sleep 2
-        return
-    fi
-
-    # Auto delete logs older than 24 hours logic
-    OLD_LOGS=$(docker logs --until 24h cookie-rtmps 2>/dev/null | head -n 1)
-    if [ ! -z "$OLD_LOGS" ]; then
-        echo -e "${YELLOW}Notice: Automatically clearing log entries older than 24 hours.${NC}"
-        docker exec cookie-rtmps sh -c 'truncate -s 0 /var/log/nginx/access.log /var/log/nginx/error.log /tmp/noalbs.log /tmp/validator.log' 2>/dev/null || true
-        LOG_PATH=$(docker inspect --format='{{.LogPath}}' cookie-rtmps 2>/dev/null)
-        if [ ! -z "$LOG_PATH" ]; then
-            sudo truncate -s 0 "$LOG_PATH" 2>/dev/null || truncate -s 0 "$LOG_PATH" 2>/dev/null || true
-        fi
-        echo -e "${GREEN}Old logs cleared.${NC}"
-    fi
-
-    echo -e "${YELLOW}Showing live logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
-    # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
-    (trap 'exit 0' INT; docker logs --since 24h -f cookie-rtmps 2>&1 | awk '/[Ee]rror|[Ff]ail/ {print "\033[1;31m" $0 "\033[0m"; fflush(); next} {print; fflush()}')
-    echo -e "${YELLOW}Log view exited.${NC}"
-    sleep 1
-}
-
-stop_container() {
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}Docker is not installed!${NC}"
-        sleep 2
-        return
-    fi
-    echo -e "${YELLOW}Stopping container...${NC}"
+    echo -e "${YELLOW}Stopping services and uninstalling...${NC}"
     docker stop cookie-rtmps 2>/dev/null && echo -e "${GREEN}Container stopped.${NC}" || echo -e "${RED}Container not running.${NC}"
-    sleep 2
+    docker rm cookie-rtmps 2>/dev/null && echo -e "${GREEN}Container removed, ports unbound.${NC}" || true
+    docker rmi cookie-rtmps 2>/dev/null && echo -e "${GREEN}Image removed. CookieRTMPS has been completely removed from Docker.${NC}" || true
+    sleep 3
 }
 
 # Cache Server IP for UI Performance
@@ -1175,35 +1335,38 @@ while true; do
     echo "-------------------------------------"
     echo "1) Install Docker (if not installed)"
     echo "2) Configure Stream Keys (Horizontal)"
-    echo "3) Configure OBS Setup & Security Key"
-    echo "4) Configure IP Whitelist (Optional)"
-    echo "5) Configure Combined Chat (Optional)"
-    echo "6) Configure Domain / Reverse Proxy (Optional)"
-    echo "7) Configure Optimizations (Chunk Size)"
-    echo "8) Configure NOALBS Scene Switcher"
-    echo "9) Build & Start Server"
-    echo "10) Run Integration Tests"
-    echo "11) Stop Server"
-    echo "12) View Real-Time Logs"
-    echo "13) Quit"
+    echo "3) Configure Stream Keys (Vertical)"
+    echo "4) Configure OBS Setup & Security Key"
+    echo "5) Configure IP Whitelist (Optional)"
+    echo "6) Configure Combined Chat (Optional)"
+        echo "7) Configure Stream Titles & Twitch API (Optional)"
+        echo "8) Configure Domain / Reverse Proxy (Optional)"
+        echo "9) Configure Optimizations (Chunk Size)"
+        echo "10) Configure NOALBS Scene Switcher"
+        echo "11) Build & Start Server"
+        echo "12) Run Integration Tests"
+        echo "13) Stop Server & Uninstall"
+        echo "14) View Logs"
+        echo "15) Quit"
     echo -e "Select an option: \c"
     read -r option
 
     case $option in
         1) install_docker ;;
         2) configure_keys ;;
-        3) configure_obs ;;
-        4) configure_whitelist ;;
-        5) configure_chat ;;
-        6) configure_domain ;;
-        7) configure_optimizations ;;
-        8) configure_noalbs ;;
-        9) build_and_run ;;
-        10) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;
-        11) stop_container ;;
-        12) view_realtime_logs ;;
-        13) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
+        3) configure_vertical_keys ;;
+        4) configure_obs ;;
+        5) configure_whitelist ;;
+        6) configure_chat ;;
+        7) configure_titles ;;
+        8) configure_domain ;;
+        9) configure_optimizations ;;
+        10) configure_noalbs ;;
+        11) build_and_run ;;
+        12) if [ -f "./integration_test.sh" ]; then chmod +x ./integration_test.sh; ./integration_test.sh; else echo -e "${RED}Test script not found.${NC}"; fi; echo -e "Press Enter to continue..."; read -r ;;
+        13) stop_and_uninstall ;;
+        14) view_logs ;;
+        15) clear; echo -e "${GREEN}Goodbye!${NC}"; break ;;
         *) echo -e "${RED}Invalid option${NC}"; sleep 1 ;;
     esac
-
 done
