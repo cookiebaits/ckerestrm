@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import obsws_python as obs
 import subprocess
 import signal
+import threading
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("NOALBS")
@@ -27,6 +28,7 @@ class Noalbs:
         self.cloud_brb_enabled = os.getenv("CLOUD_BRB", "false").lower() == "true"
         self.brb_video_path = "/app/data/brb_video.mp4"
         self.cloud_process = None
+        self.cloud_brb_start_time = None
 
         self.is_low = False
         self.is_streaming = False
@@ -61,6 +63,10 @@ class Noalbs:
                         live = app.find('live')
                         if live is not None:
                             for stream in live.findall('stream'):
+                                name_node = stream.find('name')
+                                # Ignore fallback cloud_brb streams when calculating source bitrate
+                                if name_node is not None and name_node.text and name_node.text.startswith('cloud_brb'):
+                                    continue
                                 if stream.find('publishing') is not None:
                                     bw_in = stream.find('bw_in')
                                     if bw_in is not None:
@@ -79,29 +85,59 @@ class Noalbs:
             logger.error(f"Cloud BRB video not found at {self.brb_video_path}")
             return
 
-        logger.info("Starting Cloud BRB stream...")
-        # FFmpeg command to loop the video and push to the local ingest
-        # This keeps the stream alive at the ingest points if the source drops
+        logger.info("Process of noalbs taking over: Starting Cloud BRB fallback video stream...")
+        self.cloud_brb_start_time = time.time()
+
+        # Check for NVENC encoder support
+        has_nvenc = False
+        try:
+            res = subprocess.run(["ffmpeg", "-encoders"], capture_output=True, text=True, timeout=5)
+            if "h264_nvenc" in res.stdout:
+                has_nvenc = True
+        except Exception:
+            pass
+
+        if has_nvenc:
+            vcodec = ["-c:v", "h264_nvenc", "-preset", "p3", "-tune", "ll"]
+        else:
+            vcodec = ["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"]
+
+        tee_target = f"[f=flv:onfail=ignore]rtmp://127.0.0.1:19352/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:19352/vertical/cloud_brb_loop"
+
         cmd = [
-            "ffmpeg", "-re", "-stream_loop", "-1", "-i", self.brb_video_path,
-            "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-            "-b:v", "1500k", "-maxrate", "1500k", "-bufsize", "3000k",
-            "-f", "flv", f"rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop"
+            "ffmpeg", "-hide_banner", "-loglevel", "warning",
+            "-re", "-thread_queue_size", "1024",
+            "-stream_loop", "-1", "-i", self.brb_video_path,
+            *vcodec,
+            "-b:v", "3000k", "-maxrate", "3000k", "-bufsize", "6000k",
+            "-g", "60", "-keyint_min", "60", "-sc_threshold", "0",
+            "-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "160k",
+            "-max_muxing_queue_size", "1024",
+            "-f", "tee", "-map", "0:v", "-map", "0:a",
+            tee_target
         ]
         try:
             self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            logger.info("Cloud BRB fallback video process successfully spawned.")
         except Exception as e:
             logger.error(f"Failed to start Cloud BRB process: {e}")
 
     def stop_cloud_brb(self):
         if self.cloud_process:
-            logger.info("Stopping Cloud BRB stream.")
-            self.cloud_process.terminate()
-            try:
-                self.cloud_process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self.cloud_process.kill()
+            logger.info("Stopping Cloud BRB stream process...")
+            proc = self.cloud_process
             self.cloud_process = None
+            self.cloud_brb_start_time = None
+            def kill_proc():
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=3)
+                except Exception:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+            threading.Thread(target=kill_proc, daemon=True).start()
 
     def switch_scene(self, scene):
         client = self.get_obs_client()
@@ -134,17 +170,29 @@ class Noalbs:
                 if bitrate < self.low_threshold:
                     consecutive_low += 1
                     if consecutive_low >= 3 and not self.is_low:
-                        logger.warning(f"Low bitrate ({bitrate}kbps) for 6s. Switching to {self.scene_brb}")
+                        logger.error(f"Stream disruption: Low bitrate ({bitrate}kbps < {self.low_threshold}kbps).")
+                        logger.warning(f"Process of noalbs taking over: Switching OBS scene to {self.scene_brb}")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                 else:
                     consecutive_low = 0
                     if bitrate >= self.restore_threshold and self.is_low:
-                        logger.info(f"Bitrate restored ({bitrate}kbps). Switching to {self.scene_main}")
+                        logger.info(f"Bitrate restored ({bitrate}kbps). Switching OBS scene to {self.scene_main}")
                         self.switch_scene(self.scene_main)
                         self.is_low = False
             else:
                 consecutive_low = 0
+                # Check 300-second (5 minute) timeout if Cloud BRB is active
+                if self.cloud_process and self.cloud_brb_start_time:
+                    elapsed = time.time() - self.cloud_brb_start_time
+                    if elapsed >= 300:
+                        logger.error("Cloud BRB fallback active for 300 seconds without stream recovery. Terminating stream completely.")
+                        self.stop_cloud_brb()
+                        self.is_streaming = False
+                        self.is_low = False
+                        time.sleep(2)
+                        continue
+
                 if self.is_streaming:
                     client = self.get_obs_client()
                     # Default to True if we can't connect, assuming a severe network drop
@@ -152,7 +200,7 @@ class Noalbs:
                     if client:
                         try:
                             status = client.get_stream_status()
-                            is_obs_streaming = getattr(status, 'output_active', True)
+                            is_obs_streaming = getattr(status, 'output_active', getattr(status, 'outputActive', True))
                         except Exception as e:
                             logger.error(f"Failed to get OBS stream status: {e}")
                             # If connection fails, assume it's a disconnect (network drop)
@@ -162,7 +210,8 @@ class Noalbs:
                         is_obs_streaming = True
 
                     if is_obs_streaming:
-                        logger.warning("Source stream disconnected but OBS is still streaming (or unreachable). Switching to BRB scene.")
+                        logger.error("Process of noalbs taking over: Source stream disconnected / dropped! Bitrate 0 kbps.")
+                        logger.warning(f"Switching OBS scene to {self.scene_brb} and starting Cloud BRB fallback.")
                         self.switch_scene(self.scene_brb)
                         self.is_low = True
                         if self.cloud_brb_enabled:
@@ -170,8 +219,7 @@ class Noalbs:
                     else:
                         logger.info("Source stream ended cleanly.")
                         self.is_low = False
-
-                    self.is_streaming = False
+                        self.is_streaming = False
 
             time.sleep(2)
 

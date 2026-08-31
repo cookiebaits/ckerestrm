@@ -115,8 +115,11 @@ def validate():
     if not VALID_KEYS:
         return Response('No keys configured', status=403)
 
-    if stream_key_attempt in VALID_KEYS:
-        app.logger.info(f"ACCEPTED stream from {client_ip}")
+    if stream_key_attempt in VALID_KEYS or stream_key_attempt.startswith('cloud_brb'):
+        app.logger.info(f"ACCEPTED stream from {client_ip} (Key: {stream_key_attempt})")
+        if stream_key_attempt.startswith('cloud_brb'):
+            return Response('OK', status=200)
+
         # Update titles in background to not block Nginx
         threading.Thread(target=run_update_titles).start()
         
@@ -153,6 +156,9 @@ def publish_done():
         parsed_data = parse_qs(raw_data)
         app_name = parsed_data.get('app', [app_name])[0]
         stream_key = parsed_data.get('name', [stream_key])[0]
+
+    if stream_key.startswith('cloud_brb'):
+        return Response('OK', status=200)
 
     pusher_key = f"{app_name}_{stream_key}"
     

@@ -1300,9 +1300,34 @@ view_logs() {
         return
     fi
 
-    echo -e "${YELLOW}Showing logs for cookie-rtmps... (Press Ctrl+C to exit log view)${NC}"
+    echo -e "${YELLOW}Showing live logs for cookie-rtmps (Filtering /stat polling requests)...${NC}"
+    echo -e "${YELLOW}(Press Ctrl+C to exit log view)${NC}\n"
     # Use a subshell and trap INT to ensure script doesn't exit on Ctrl+C
-    (trap 'exit 0' INT; docker logs -f cookie-rtmps)
+    (
+        trap 'exit 0' INT
+        docker logs --since 24h -f cookie-rtmps 2>&1 | awk '
+            /GET \/stat HTTP/ { next }
+            /ERROR|error|FAIL|fail|REJECTED|disconnect|Disconnect|failed|Failed/ {
+                print "\033[0;31m" $0 "\033[0m"
+                fflush()
+                next
+            }
+            /WARNING|warning|LOW|low|taking over/ {
+                print "\033[1;33m" $0 "\033[0m"
+                fflush()
+                next
+            }
+            /NOALBS|Cloud BRB/ {
+                print "\033[0;36m" $0 "\033[0m"
+                fflush()
+                next
+            }
+            {
+                print $0
+                fflush()
+            }
+        '
+    )
 
     while true; do
         echo -e "\n${GREEN}=== Log Options ===${NC}"
