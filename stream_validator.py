@@ -5,6 +5,7 @@ from urllib.parse import parse_qs
 import threading
 import subprocess
 from datetime import datetime
+import ipaddress
 
 app = Flask(__name__)
 logging.basicConfig(
@@ -52,6 +53,34 @@ else:
 
 if ACCEPTED_IP:
     app.logger.info(f"IP Whitelist active: {ACCEPTED_IP}")
+
+def is_ip_allowed(client_ip_str, accepted_ip_setting):
+    if not accepted_ip_setting:
+        return True
+    try:
+        client_ip = ipaddress.ip_address(client_ip_str)
+        # Always permit loopback addresses (127.0.0.1)
+        if client_ip.is_loopback:
+            return True
+
+        for item in accepted_ip_setting.split(','):
+            item = item.strip()
+            if not item:
+                continue
+            try:
+                if '/' in item:
+                    net = ipaddress.ip_network(item, strict=False)
+                    if client_ip in net:
+                        return True
+                else:
+                    allowed_ip = ipaddress.ip_address(item)
+                    if client_ip == allowed_ip:
+                        return True
+            except ValueError:
+                continue
+    except ValueError:
+        pass
+    return False
 
 def get_episode_count():
     try:
@@ -107,7 +136,7 @@ def validate():
         client_ip = parsed_data.get('addr', [request.remote_addr])[0]
 
     # IP Whitelist Check
-    if ACCEPTED_IP and client_ip != ACCEPTED_IP:
+    if ACCEPTED_IP and not is_ip_allowed(client_ip, ACCEPTED_IP):
         app.logger.warning(f"REJECTED IP: {client_ip}")
         return Response('IP not whitelisted', status=403)
 
@@ -115,8 +144,11 @@ def validate():
     if not VALID_KEYS:
         return Response('No keys configured', status=403)
 
-    if stream_key_attempt in VALID_KEYS:
-        app.logger.info(f"ACCEPTED stream from {client_ip}")
+    if stream_key_attempt in VALID_KEYS or stream_key_attempt.startswith('cloud_brb'):
+        app.logger.info(f"ACCEPTED stream from {client_ip} (Key: {stream_key_attempt})")
+        if stream_key_attempt.startswith('cloud_brb'):
+            return Response('OK', status=200)
+
         # Update titles in background to not block Nginx
         threading.Thread(target=run_update_titles).start()
         
@@ -153,6 +185,9 @@ def publish_done():
         parsed_data = parse_qs(raw_data)
         app_name = parsed_data.get('app', [app_name])[0]
         stream_key = parsed_data.get('name', [stream_key])[0]
+
+    if stream_key.startswith('cloud_brb'):
+        return Response('OK', status=200)
 
     pusher_key = f"{app_name}_{stream_key}"
     
