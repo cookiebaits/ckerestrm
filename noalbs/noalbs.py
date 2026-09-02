@@ -102,7 +102,7 @@ class Noalbs:
         else:
             vcodec = ["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"]
 
-        tee_target = f"[f=flv:onfail=ignore]rtmp://127.0.0.1:19352/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:19352/vertical/cloud_brb_loop"
+        tee_target = f"[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/vertical/cloud_brb_loop"
 
         cmd = [
             "ffmpeg", "-hide_banner", "-loglevel", "warning",
@@ -188,6 +188,13 @@ class Noalbs:
                     if elapsed >= 300:
                         logger.error("Cloud BRB fallback active for 300 seconds without stream recovery. Terminating stream completely.")
                         self.stop_cloud_brb()
+                        client = self.get_obs_client()
+                        if client:
+                            try:
+                                client.stop_stream()
+                                logger.info("Successfully requested OBS WebSocket to stop stream.")
+                            except Exception as e:
+                                logger.error(f"Failed to stop OBS stream via WebSocket: {e}")
                         self.is_streaming = False
                         self.is_low = False
                         time.sleep(2)
@@ -219,7 +226,7 @@ class Noalbs:
                     else:
                         logger.info("Source stream ended cleanly.")
                         self.is_low = False
-                        self.is_streaming = False
+                    self.is_streaming = False
 
             time.sleep(2)
 
