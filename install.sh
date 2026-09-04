@@ -1180,15 +1180,16 @@ build_and_run() {
         return
     fi
 
-    if [ "$CLOUD_BRB" == "true" ] && [ -z "$BRB_VIDEO_URL" ]; then
-        echo -e "${YELLOW}Cloud BRB is enabled but BRB Video URL is empty. Setting to default...${NC}"
+    if [ -z "$BRB_VIDEO_URL" ]; then
+        echo -e "${YELLOW}BRB Video URL is empty. Setting to default...${NC}"
         BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
         save_config
-        mkdir -p ./data
-        rm -f ./data/brb_video.mp4
-        echo -e "${YELLOW}Downloading default BRB video...${NC}"
-        curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded default BRB video.${NC}" || echo -e "${RED}Failed to download BRB video.${NC}"
     fi
+    echo -e "${YELLOW}Removing old BRB video and redownloading...${NC}"
+    mkdir -p ./data
+    rm -f ./data/brb_video.mp4
+    echo -e "${YELLOW}Downloading BRB video from $BRB_VIDEO_URL ...${NC}"
+    curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded BRB video.${NC}" || echo -e "${RED}Failed to download BRB video.${NC}"
 
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t cookie-rtmps .
