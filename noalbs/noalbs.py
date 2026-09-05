@@ -102,7 +102,7 @@ class Noalbs:
         else:
             vcodec = ["-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency"]
 
-        tee_target = f"[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:1935/vertical/cloud_brb_loop"
+        tee_target = f"[f=flv:onfail=ignore]rtmp://127.0.0.1:19352/{self.app_name}/cloud_brb_loop|[f=flv:onfail=ignore]rtmp://127.0.0.1:19352/vertical/cloud_brb_loop"
 
         cmd = [
             "ffmpeg", "-hide_banner", "-loglevel", "warning",
@@ -149,6 +149,14 @@ class Noalbs:
         except Exception as e:
             logger.error(f"OBS WebSocket Switch Error: {e}")
             self.obs_client = None # Force reconnect next time
+
+        # Attempt Aitum Vertical Canvas scene switch if plugin vendor request is supported
+        try:
+            if client:
+                client.call_vendor_request("aitum-vertical-canvas", "switch_scene", {"scene": scene})
+                logger.info(f"Successfully switched Aitum Vertical Canvas scene to: {scene}")
+        except Exception:
+            pass
 
     def run(self):
         if not self.enabled:
@@ -216,7 +224,7 @@ class Noalbs:
                         logger.warning("Could not connect to OBS. Assuming network drop.")
                         is_obs_streaming = True
 
-                    if is_obs_streaming:
+                    if is_obs_streaming or self.cloud_brb_enabled:
                         logger.error("Process of noalbs taking over: Source stream disconnected / dropped! Bitrate 0 kbps.")
                         logger.warning(f"Switching OBS scene to {self.scene_brb} and starting Cloud BRB fallback.")
                         self.switch_scene(self.scene_brb)
