@@ -100,7 +100,7 @@ class TestNoalbsComprehensive(unittest.TestCase):
         self.assertEqual(cmd[0], "ffmpeg")
         self.assertIn("-c:v", cmd)
         self.assertIn("libx264", cmd)
-
+        
         # Verify port 19352 target
         tee_target = cmd[-1]
         self.assertIn("rtmp://127.0.0.1:19352/live/cloud_brb_loop", tee_target)
@@ -206,7 +206,7 @@ class TestNoalbsComprehensive(unittest.TestCase):
         mock_proc = MagicMock()
         noalbs.cloud_process = mock_proc
         noalbs.cloud_brb_start_time = time.time() - 301 # Elapsed > 300s
-
+        
         mock_obs = MagicMock()
         noalbs.obs_client = mock_obs
 
