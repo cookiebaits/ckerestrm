@@ -101,10 +101,24 @@ class TestNoalbsComprehensive(unittest.TestCase):
         self.assertIn("-c:v", cmd)
         self.assertIn("libx264", cmd)
         
-        # Verify port 19352 target
+        # Verify optional audio map (-map 0:a?) and port 19352 target
+        self.assertIn("-map", cmd)
+        self.assertIn("0:a?", cmd)
         tee_target = cmd[-1]
         self.assertIn("rtmp://127.0.0.1:19352/live/cloud_brb_loop", tee_target)
         self.assertIn("rtmp://127.0.0.1:19352/vertical/cloud_brb_loop", tee_target)
+
+    @patch("noalbs.noalbs.os.path.exists", return_value=True)
+    @patch("subprocess.Popen")
+    @patch("subprocess.run")
+    def test_start_cloud_brb_restarts_crashed_process(self, mock_run, mock_popen, mock_exists):
+        noalbs = Noalbs()
+        crashed_proc = MagicMock()
+        crashed_proc.poll.return_value = 1 # Process exited with error
+        noalbs.cloud_process = crashed_proc
+
+        noalbs.start_cloud_brb()
+        mock_popen.assert_called_once()
 
     @patch("noalbs.noalbs.os.path.exists", return_value=True)
     @patch("subprocess.Popen")
@@ -204,6 +218,7 @@ class TestNoalbsComprehensive(unittest.TestCase):
     def test_timeout_300s_stops_cloud_brb(self, mock_run, mock_popen, mock_exists):
         noalbs = Noalbs()
         mock_proc = MagicMock()
+        mock_proc.poll.return_value = None
         noalbs.cloud_process = mock_proc
         noalbs.cloud_brb_start_time = time.time() - 301 # Elapsed > 300s
         
@@ -212,8 +227,12 @@ class TestNoalbsComprehensive(unittest.TestCase):
 
         # Run timeout check
         if noalbs.cloud_process and noalbs.cloud_brb_start_time:
+            if noalbs.cloud_process.poll() is not None:
+                noalbs.cloud_process = None
+                noalbs.start_cloud_brb()
+
             elapsed = time.time() - noalbs.cloud_brb_start_time
-            if elapsed >= 300:
+            if elapsed >= noalbs.cloud_brb_timeout:
                 noalbs.stop_cloud_brb()
                 client = noalbs.get_obs_client()
                 if client:

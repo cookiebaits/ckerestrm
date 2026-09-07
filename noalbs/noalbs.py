@@ -26,7 +26,8 @@ class Noalbs:
         self.stats_url = "http://127.0.0.1:8081/stat"
 
         self.cloud_brb_enabled = os.getenv("CLOUD_BRB", "false").lower() == "true"
-        self.brb_video_path = "/app/data/brb_video.mp4"
+        self.brb_video_path = os.getenv("BRB_VIDEO_PATH", "/app/data/brb_video.mp4")
+        self.cloud_brb_timeout = int(os.getenv("CLOUD_BRB_TIMEOUT", 300))
         self.cloud_process = None
         self.cloud_brb_start_time = None
 
@@ -78,15 +79,22 @@ class Noalbs:
             return 0
 
     def start_cloud_brb(self):
-        if not self.cloud_brb_enabled or self.cloud_process:
+        if not self.cloud_brb_enabled:
             return
+
+        if self.cloud_process:
+            if self.cloud_process.poll() is None:
+                return
+            logger.warning("Existing Cloud BRB process exited. Restarting...")
+            self.cloud_process = None
 
         if not os.path.exists(self.brb_video_path):
             logger.error(f"Cloud BRB video not found at {self.brb_video_path}")
             return
 
         logger.info("Process of noalbs taking over: Starting Cloud BRB fallback video stream...")
-        self.cloud_brb_start_time = time.time()
+        if not self.cloud_brb_start_time:
+            self.cloud_brb_start_time = time.time()
 
         # Check for NVENC encoder support
         has_nvenc = False
@@ -113,11 +121,12 @@ class Noalbs:
             "-g", "60", "-keyint_min", "60", "-sc_threshold", "0",
             "-c:a", "aac", "-ac", "2", "-ar", "48000", "-b:a", "160k",
             "-max_muxing_queue_size", "1024",
-            "-f", "tee", "-map", "0:v", "-map", "0:a",
+            "-f", "tee", "-map", "0:v", "-map", "0:a?",
             tee_target
         ]
         try:
-            self.cloud_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            with open("/tmp/cloud_brb.log", "a") as log_file:
+                self.cloud_process = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
             logger.info("Cloud BRB fallback video process successfully spawned.")
         except Exception as e:
             logger.error(f"Failed to start Cloud BRB process: {e}")
@@ -190,11 +199,16 @@ class Noalbs:
                         self.is_low = False
             else:
                 consecutive_low = 0
-                # Check 300-second (5 minute) timeout if Cloud BRB is active
+                # Check timeout or process crash if Cloud BRB is active
                 if self.cloud_process and self.cloud_brb_start_time:
+                    if self.cloud_process.poll() is not None:
+                        logger.warning("Cloud BRB FFmpeg process exited unexpectedly. Restarting...")
+                        self.cloud_process = None
+                        self.start_cloud_brb()
+
                     elapsed = time.time() - self.cloud_brb_start_time
-                    if elapsed >= 300:
-                        logger.error("Cloud BRB fallback active for 300 seconds without stream recovery. Terminating stream completely.")
+                    if elapsed >= self.cloud_brb_timeout:
+                        logger.error(f"Cloud BRB fallback active for {self.cloud_brb_timeout} seconds without stream recovery. Terminating stream completely.")
                         self.stop_cloud_brb()
                         client = self.get_obs_client()
                         if client:
