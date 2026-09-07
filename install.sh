@@ -1029,13 +1029,20 @@ configure_noalbs() {
                 save_config
                 ;;
             10)
-                echo -e "Enter BRB Video URL (Direct MP4 link):"
+                echo -e "Enter BRB Video URL (Direct MP4 link, or type 'disable'/'clear' to remove):"
                 read -r input
-                if [ ! -z "$input" ]; then
+                if [ "$input" == "disable" ] || [ "$input" == "clear" ] || [ "$input" == "DISABLE" ] || [ "$input" == "CLEAR" ]; then
+                    BRB_VIDEO_URL=""
+                    save_config
+                    rm -f ./data/brb_video.mp4
+                    echo -e "${GREEN}Cleared BRB Video URL and removed cached video.${NC}"
+                    sleep 1
+                elif [ ! -z "$input" ]; then
                     BRB_VIDEO_URL="$input"
                     save_config
                     mkdir -p ./data
-                    echo -e "${YELLOW}Downloading BRB video...${NC}"
+                    rm -f ./data/brb_video.mp4
+                    echo -e "${YELLOW}Downloading BRB video from $BRB_VIDEO_URL ...${NC}"
                     curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded.${NC}" || echo -e "${RED}Download failed.${NC}"
                     sleep 2
                 fi
@@ -1180,16 +1187,18 @@ build_and_run() {
         return
     fi
 
-    if [ -z "$BRB_VIDEO_URL" ]; then
-        echo -e "${YELLOW}BRB Video URL is empty. Setting to default...${NC}"
-        BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
-        save_config
-    fi
-    echo -e "${YELLOW}Removing old BRB video and redownloading...${NC}"
     mkdir -p ./data
-    rm -f ./data/brb_video.mp4
-    echo -e "${YELLOW}Downloading BRB video from $BRB_VIDEO_URL ...${NC}"
-    curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded BRB video.${NC}" || echo -e "${RED}Failed to download BRB video.${NC}"
+    if [ -f "./data/brb_video.mp4" ]; then
+        echo -e "${GREEN}Existing BRB video found at ./data/brb_video.mp4. Preserving video source.${NC}"
+    else
+        if [ -z "$BRB_VIDEO_URL" ]; then
+            echo -e "${YELLOW}BRB Video URL is empty and no cached video exists. Setting to default...${NC}"
+            BRB_VIDEO_URL="https://filedn.com/lfh40bKbFfD5um9HDFNrJFR/brb.mp4"
+            save_config
+        fi
+        echo -e "${YELLOW}Downloading BRB video from $BRB_VIDEO_URL ...${NC}"
+        curl -L "$BRB_VIDEO_URL" -o ./data/brb_video.mp4 && echo -e "${GREEN}Downloaded BRB video.${NC}" || echo -e "${RED}Failed to download BRB video.${NC}"
+    fi
 
     echo -e "${GREEN}Building Docker Image...${NC}"
     docker build -t cookie-rtmps .
